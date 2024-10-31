@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "lclstream"
-version = "0.8.0"
-description = "Image streaming application for psana."
+name = "lclstream_api"
+version = "0.4.0"
+description = "Image streaming API for psana."
 authors = ["Cong Wang <wangimagine@gmail.com>",
            "David M. Rogers <predictivestatmech@gmail.com>",
            "Valerio Mariani <valmar@slac.stanford.edu>"
@@ -9,25 +9,21 @@ authors = ["Cong Wang <wangimagine@gmail.com>",
 license = "MIT"
 readme = "README.md"
 
-[tool.poetry.scripts]
-psana_push = "lclstream.psana_push:run"
-psana_pull = "lclstream.psana_pull:run"
-
 [tool.poetry.dependencies]
-python = ">=3.9"
+python = "^3.9"
 fastapi = ">=0.103.2"
 pydantic = ">=2.1"
 uvicorn = ">=0.17"
 pynng = "^0.8.0"
-numpy = ">=1.20.0,<2.0"
+numpy = "^1.20"
 typer = "^0.12.3"
 h5py = "^3.11.0"
 hdf5plugin = "^4.4.0"
 #pyzfp = "*"
-stream = {git = "https://github.com/frobnitzem/stream.py", rev = "v1.0.0"}
+stream = {git = "https://github.com/frobnitzem/stream.py.git", rev = "v1.0.0"}
+lclstream = {git = "https://github.com/lcls-users/lclstream.git", rev = "v0.8.0"}
 
 [tool.poetry.group.dev.dependencies]
-httpx = "^0.27.0"
 pytest = "^8.2.2"
 
 [build-system]

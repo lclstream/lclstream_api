@@ -3,8 +3,6 @@ from typing import Optional, List,Dict, Any, Awaitable, Tuple
 import time
 import asyncio
 
-from pynng import Push0 # type: ignore[import-untyped]
-
 from .models import DataRequest, AccessMode, ImageRetrievalMode
 
 TransferStats = Tuple[int,float,float,float]
@@ -76,4 +74,3 @@ class Transfer:
         except Exception as e:
             return "failed"
         return self.state
-

@@ -1,9 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
+#
 # run as:
 #
 #     uvicorn --host localhost --port 5001 lclstream.server:app
+#
+# or (preferred):
+#
+#     certified serve lclstream.server:app https://0.0.0.0:5001
 #
 
 from typing import Dict, List
@@ -73,4 +77,3 @@ async def new_transfer(request: DataRequest) -> int:
     # stash in the list
     transfers[n] = trs
     return n
-
