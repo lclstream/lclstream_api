@@ -48,11 +48,11 @@ async def slurm_state(jobid: int) -> JobState:
     print("Job state not found!")
     return JobState.canceled
 
-async def start_slurm(script) -> int:
+async def start_slurm(script, *args) -> int:
     """Run a job-script on psana.
     Return the jobid, or -1 on error.
     """
-    cmd = ["ssh", "psana", "sbatch", script]
+    cmd = ["ssh", "psana", "sbatch", script] + args
     ret, out, err = await runcmd(*cmd, expect_ok=True)
     if ret != 0:
         print("Error Starting Job")
@@ -87,24 +87,27 @@ async def print_stream(s: asyncio.StreamReader) -> None:
         line = data.decode('utf-8')
         print(line, file=sys.stderr)
 
-async def watch_cmd(ev: EventLoop, proc) -> None:
-    """Print the proc's output as it is generated.
+async def parse_logs(s: asyncio.StreamReader) -> None:
+    """Parse the logs present in stdout.
     """
-    ev.start( Call(print_stream, proc.stderr) )
-    # Read one line of output.
-    async for data in proc.stdout:
+    async for data in s:
         line = data.decode('utf-8')
         print(line, end='', flush=True)
+
+async def watch_cmd(proc) -> None:
+    """Print the proc's output as it is generated.
+    """
+    t1 = print_stream(proc.stderr)
+    t2 = parse_logs(proc.stdout)
+    async for task in asyncio.as_completed([t1, t2]):
+        await task
 
 class SlurmJob:
     """A SLURM job that can be run() and kill()-ed
     """
     def __init__(self):
         self.jobid = None
-    def kill(self):
-        if self.jobid is not None:
-            kill_slurm(self.jobid)
-            self.jobid = None
+        self.state = JobState.new
     async def run(self, cmd):
         jobid = await start_slurm(cmd)
         self.jobid = jobid
@@ -112,73 +115,99 @@ class SlurmJob:
         for i in range(33): # wait 60 seconds for job start
             await asyncio.sleep(dt)
             dt = min(2.0, dt+0.5)
-            state = await slurm_state(jobid)
-            if state != JobState.queued:
+            self.state = await slurm_state(jobid)
+            if self.state != JobState.queued:
                 break
         else:
-            kill_slurm(jobid)
-            return self.done(state)
+            return self.kill()
 
-        if state.is_final():
-            return self.done(state)
+        if self.state.is_final():
+            return self.done()
 
-        print(f"Job {jobid} is {state.value}.")
+        #print(f"Job {jobid} is {self.state.value}.")
 
         dt = 5.0
-        for i in range(1000):
+        for i in range(1000): # max time ~ hrs.
             await asyncio.sleep(dt)
-            # poll every 2 minutes for job completion
+            # poll logarithmically up to 2 minute intervals for job completion
             dt = min(120.0, dt*2.0)
-            state = await slurm_state(jobid)
-            if state.is_final():
-                print(f"Job {jobid} is {state.value}.")
+            self.state = await slurm_state(jobid)
+            if self.state.is_final():
+                print(f"Job {jobid} is {self.state.value}.")
                 break
         else:
-            kill_slurm(jobid)
-            return self.done(JobState.canceled)
-        return self.done(state)
+            return self.kill()
+        return self.done()
 
-    def done(self, state):
+    def done(self) -> JobState:
         self.jobid = None
-        return state
+        return self.state
 
-def handle_cmd_error(ev: EventLoop, exc: Exception):
-    raise RuntimeError("Error running command.") from exc
+    def kill(self) -> JobState:
+        if self.jobid is not None:
+            kill_slurm(self.jobid)
+            self.jobid = None
+        self.state = JobState.canceled
+        return self.state
 
+#def handle_cmd_error(ev: EventLoop, exc: Exception):
+#    raise RuntimeError("Error running command.") from exc
 
-async def stream_job():
+async def stream_job(fname, port):
     """ Main process to
 
     1. start the cache (local process)
     2. start the producer (via slurm)
     3. monitor the joint process
+
+    fname: name of file to send from psana node
+    port:  port on this server to serve TCP nng-push stream
     """
 
+#/sdf/home/r/rogersdd/src/nng_stream/nng_cache -vv tcp://$addr:$recv tcp://$addr:$send &
+
+#submit_job() {
+#  ssh psana sbatch /sdf/home/r/rogersdd/venvs/run_file_push $fname \
+#                        tcp://$addr:$recv \
+#    | sed -n 's/.*[ \t]\([0-9][0-9]*\).*/\1/p'
+#
+    recv = port-1
     proc = await asyncio.create_subprocess_exec(
-            ["ls", "/root"],
+            ["/sdf/home/r/rogersdd/src/nng_stream/nng_cache",
+                "-vv", f"tcp://134.79.23.43:{recv}",
+                f"tcp://134.79.23.43:{port}"],
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE)
-    err = False
 
     S = SlurmJob()
-    async with EventLoop() as event:
-        cache = watch_cmd(ev, proc)
-        slurm = S.run("/sdf/home/r/rogersdd/sleep.sh")
-        async for task in asyncio.as_completed([cache, slurm]):
-            ans = await task
-            if task == slurm:
-                if ans != JobState.complete:
-                    proc.kill()
-                    raise RuntimeError(f"Slurm job exited at state {ans.value}")
-            elif task == cache:
-                await proc.wait()
-                if proc.returncode != 0:
-                    S.kill()
-                    raise RuntimeError(f"Command returned {proc.returncode}")
-            else:
-                raise KeyError(f"Unknown task: {task}")
+
+    cache = watch_cmd(proc)
+    slurm = S.run("/sdf/home/r/rogersdd/venvs/run_file_push", fname, uri)
+    slurm_done = False
+    async for task in asyncio.as_completed([cache, slurm]):
+        ans = await task
+        if task == slurm:
+            slurm_done = True
+            if ans != JobState.complete:
+                proc.kill()
+                raise RuntimeError(f"Slurm job exited at state {ans.value}")
+        elif task == cache:
+            if not slurm_done:
+                S.kill()
+                print("Warning: Cache completed before SLURM job.")
+            break
+
+        else:
+            raise KeyError(f"Unknown task: {task}")
 
     # Wait for the subprocess exit.
+    await proc.wait()
+    if proc.returncode != 0:
+        raise RuntimeError(f"Cache returned {proc.returncode}")
+    return 0
 
 if __name__=="__main__":
-    asyncio.run( stream_job() )
+    argv = sys.argv
+    fname = argv[1]
+    port = int(argv[2])
+    sys.exit( asyncio.run( stream_job(fname, port) ) )
