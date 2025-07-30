@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "lclstream_api"
-version = "0.4.0"
+version = "0.6.0"
 description = "Image streaming API for psana."
 authors = ["Cong Wang <wangimagine@gmail.com>",
            "David M. Rogers <predictivestatmech@gmail.com>",
@@ -10,11 +10,11 @@ license = "MIT"
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = ">=3.9,<4.0"
 fastapi = ">=0.103.2"
 pydantic = ">=2.1"
 uvicorn = ">=0.17"
-lclstream = {git = "https://github.com/lcls-users/lclstream.git", rev = "v0.8.0"}
+psik = "^2.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.2.2"
