@@ -15,6 +15,7 @@ fastapi = ">=0.103.2"
 pydantic = ">=2.1"
 uvicorn = ">=0.17"
 psik = "^2.0.0"
+lclstream = {git = "https://github.com/lcls-users/lclstream.git"}
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.2.2"

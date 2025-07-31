@@ -17,20 +17,25 @@ from fastapi import (
 )
 import psik
 
-from lclstreamer.models import Parameters
-
 from ..config import to_mgr, load_config, Config
-from ..models import TransferStatus, TransferMetrics, JobID
+from ..models import (
+    TransferStatus,
+    TransferMetrics,
+    JobID
+)
+from ..lclstreamer_param import (
+    Parameters,
+    DataHandlerParameters,
+    BinaryDataStreamingDataHandlerParameters,
+)
 
-def default_config():
+def default_config() -> Config:
     return load_config()
 CachedConfig = Annotated[Config, Depends(default_config)]
 
-def default_mgr(config: CachedConfig):
-    return to_mgr(config)
-Manager = Annotated[psik.Manager, Depends(default_mgr)]
-
-TransferStats = Tuple[int,float,float,float]
+def default_mgr(cfg: CachedConfig) -> psik.JobManager:
+    return to_mgr(cfg)
+Manager = Annotated[psik.JobManager, Depends(default_mgr)]
 
 transfers = APIRouter(responses={
         401: {"description": "Unauthorized"}})
@@ -110,7 +115,7 @@ class PortDatabase: # singleton
         return entry
 
 DB = PortDatabase()
-def get_database():
+def get_database() -> PortDatabase:
     return DB
 
 Database = Annotated[PortDatabase, Depends(get_database)]
@@ -133,6 +138,7 @@ async def get_transfers(mgr: Manager,
     """
 
     out = []
+    return []
     async for job in mgr.ls():
         last = job.history[-1]
         if state is not None and state != last.state:
@@ -146,7 +152,7 @@ async def get_transfers(mgr: Manager,
                     name = job.spec.name or '',
                     url = entry.external_url,
                     user = entry.user,
-                    updated = last.time,
+                    time = last.time,
                     jobndx = last.jobndx,
                     state = last.state,
                     info = last.info))
@@ -164,10 +170,13 @@ def replace_data_handler(req: Parameters, url: str) -> None:
     # Replace data handlers entirely to avoid the user outputting
     # somewhere unanticipated by LCLStream-API.
     req.data_handlers = DataHandlerParameters(
-        urls: [ url ],
-        role: "client",
-        library: "nng",
-        socket_type: "push",
+        BinaryDataStreamingDataHandler =
+          BinaryDataStreamingDataHandlerParameters(
+            urls = [ url ],
+            role = "client",
+            library = "nng",
+            socket_type = "push",
+          )
     )
 
 @transfers.post("/", include_in_schema=False)
@@ -213,7 +222,7 @@ async def new_transfer(request: Parameters,
     # before we should run based on it.
     try:
         (Path(job.spec.directory)/"lclstreamer.json").write_text(
-            json.dumps(request, indent=2)
+            request.model_dump_json(indent=2)
         )
 
         last = job.history[-1]
@@ -228,7 +237,7 @@ async def new_transfer(request: Parameters,
                     name = job.spec.name or '',
                     url = entry.external_url,
                     user = entry.user,
-                    updated = last.time,
+                    time = last.time,
                     jobndx = last.jobndx,
                     state = last.state,
                     info = last.info)
@@ -257,7 +266,7 @@ async def get_transfer(jobid: JobID,
                     name = job.spec.name or '',
                     url = entry.external_url,
                     user = entry.user,
-                    updated = last.time,
+                    time = last.time,
                     jobndx = last.jobndx,
                     state = last.state,
                     info = last.info))
@@ -284,7 +293,7 @@ def get_outdir(req: Parameters, cfg: CachedConfig) -> Path:
     experiment / req.config pair.
     """
     # TODO: back-port hash function from tmo-prefex
-    cfg_hash = str(hash(json.dumps(req)))
+    cfg_hash = str(hash(req.model_dump_json()))
     expt = "tmo_unknown"
     # TODO: check for exact equality of cache_path / lclstreamer.json
     # and search through a sequence of dir-s if not...
@@ -348,14 +357,14 @@ def generate_job(req: Parameters,
     """
 
     # Lookup the proper env for the requested event source.
-    if req.lclstreamer.event_source == "Psana1EventSource"
+    if req.lclstreamer.event_source == "Psana1EventSource":
         psana_env = "psana1"
     else:
         psana_env = "psana2"
 
     # Prepare the job's working directory
     template = """
-    pixi run -e {psana_env} mpirun -n64 lclstreamer \
+    pixi run -e {psana_env} mpirun -n120 lclstreamer \
                        --config lclstreamer.json
     """
     # to add after initial testing:
@@ -363,13 +372,13 @@ def generate_job(req: Parameters,
 
     script = template.format(req=req)#, outdir=get_outdir(req, cfg))
     return psik.JobSpec(
-            name="psana2h5",
-            script=script,
-            resources=psik.ResourceSpec(
-                duration=60,
-                node_count=1,
-                processes_per_node=120,
-                cpu_cores_per_process=1,
+            name = "lclstreamer",
+            script = script,
+            resources = psik.ResourceSpec(
+                duration = 60,
+                node_count = 1,
+                processes_per_node = 120,
+                cpu_cores_per_process = 1,
             ),
             #callback="",
             #cb_secret="",

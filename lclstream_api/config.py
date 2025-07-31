@@ -1,6 +1,6 @@
 from typing import Union, Optional
 import os
-from functools import cache
+#from functools import cache
 from pathlib import Path
 
 from pydantic import BaseModel
@@ -41,7 +41,6 @@ def load_config(config_name: Optional[Pstr] = None) -> Config:
     cfg = path.read_text(encoding='utf-8')
     return Config.model_validate_json(cfg)
 
-@cache
 def to_mgr(cfg: psik.Config) -> psik.JobManager:
-    cfg.prefix.mkdir(exist_ok=True, parents=True)
-    return psik.JobManager(cfg)
+    cfg.psik.prefix.mkdir(exist_ok=True, parents=True)
+    return psik.JobManager(cfg.psik)

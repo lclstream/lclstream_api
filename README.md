@@ -21,13 +21,13 @@ on command.  The steps run as follows,
 Create a configuration file in `/etc/lclstream_api.json` or
 `$VIRTUAL_ENV/etc/lclstream_api.json` like:
 
-    { database_url: "sqlite+pysqlite:////sdf/home/r/rogersdd/lclstream_api.db",
-      psik: {
-        prefix: "/sdf/home/r/rogersdd/psik",
-        rc_path: "/sdf/home/r/rogersdd/bin/rc"
-        backends: {
+    { "database_url": "sqlite+pysqlite:////sdf/home/r/rogersdd/lclstream_api.db",
+      "psik": {
+        "prefix": "/sdf/home/r/rogersdd/psik",
+        "rc_path": "/sdf/home/r/rogersdd/bin/rc"
+        "backends": {
           "default": {
-            type: "local"
+            "type": "local"
           }
         }
       }
@@ -63,10 +63,25 @@ directory.  If you set the `LCLSTREAM_API_CONFIG`
 environment variable to point at your own json file, it
 will override the one in `$VIRTUAL_ENV/etc`.
 
+For testing, you can create a self-signed identity
+using
+
+    poetry run certified init --host 127.0.0.1 lclstream-api
+
 Manually run the server code with:
 
     poetry run uvicorn lclstream_api.server:app --reload
 
+or
+
+    poetry run certified serve lclstream_api.server:app https://127.0.0.1:4433
+
+It is helpful to create a minimal `$VIRTUAL_ENV/etc/psik.json`
+setting 
+
+    { "prefix": "/path/to/prefix"}
+
+so you can use `psik ls`.
 
 # Deployment Instructions
 
@@ -81,7 +96,7 @@ Run the server with the `uvicorn` launch command
 above, but specifying the key and certificate files
 as explained there.
 
-    certified serve https://::1:4433 lclstream_api.server:app
+    certified serve lclstream_api.server:app https://0.0.0.0:4433
 
 or
 

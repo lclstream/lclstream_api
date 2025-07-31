@@ -23,7 +23,7 @@ tags_metadata : List[Dict[str, Any]] = [
 
 api = FastAPI(
         title = "LCLStream API",
-        lifespan = lifespan,
+        #lifespan = lifespan,
         openapi_url   = "/openapi.json",
         root_path     = "/v1",
         docs_url      = "/",
