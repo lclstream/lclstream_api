@@ -10,25 +10,37 @@ class CustomBaseModel(BaseModel):
         extra="forbid",  # Allows extra attributes during validation
     )
 
+class InternalEventSourceParameters(CustomBaseModel):
+    number_of_events_to_generate: int
+
 class Psana1EventSourceParameters(CustomBaseModel): ...  # noqa: E701
 
 class Psana2EventSourceParameters(CustomBaseModel): ...  # noqa: E701
 
-class HDF5SerializerParameters(CustomBaseModel):
+class HDF5BinarySerializerParameters(CustomBaseModel):
     compression_level: int = 3
     compression: (
-        Optional[Literal[
+        Literal[
             "gzip",
             "gzip_with_shuffle",
             "bitshuffle_with_lz4",
             "bitshuffle_with_zstd",
             "zfp",
-        ] ]
+        ]
+        | None
     ) = None
     fields: dict[str, str]
 
 class BatchProcessingPipelineParameters(CustomBaseModel):
     batch_size: int
+
+class PeaknetPreprocessingPipelineParameters(CustomBaseModel):
+    batch_size: int
+    target_height: int
+    target_width: int
+    pad_style: Literal["center", "bottom-right"] = "center"
+    add_channel_dim: bool = True
+    num_channels: int = 1
 
 class BinaryDataStreamingDataHandlerParameters(CustomBaseModel):
     urls: list[str]
@@ -36,12 +48,10 @@ class BinaryDataStreamingDataHandlerParameters(CustomBaseModel):
     library: Literal["zmq", "nng"] = "nng"
     socket_type: Literal["push"] = "push"
 
-
 class BinaryFileWritingDataHandlerParameters(CustomBaseModel):
     file_prefix: str = ""
     file_suffix: str = "h5"
     write_directory: Path = Path.cwd()
-
 
 class DataSourceParameters(CustomBaseModel):
     type: str
@@ -56,26 +66,26 @@ class LclstreamerParameters(CustomBaseModel):
     skip_incomplete_events: bool
 
 class EventSourceParameters(CustomBaseModel):
+    InternalEventSource: Optional[InternalEventSourceParameters] = None
     Psana1EventSource: Optional[Psana1EventSourceParameters] = None
-
     Psana2EventSource: Optional[Psana2EventSourceParameters] = None
 
 class ProcessingPipelineParameters(CustomBaseModel):
     BatchProcessingPipeline: Optional[BatchProcessingPipelineParameters] = None
+    PeaknetPreprocessingPipeline: Optional[PeaknetPreprocessingPipelineParameters] = None
 
 class DataSerializerParameters(CustomBaseModel):
-    Hdf5Serializer: Optional[HDF5SerializerParameters] = None
+    Hdf5BinarySerializer: Optional[HDF5BinarySerializerParameters] = None
 
 class DataHandlerParameters(CustomBaseModel):
     BinaryDataStreamingDataHandler: Optional[BinaryDataStreamingDataHandlerParameters] = (
         None
     )
-
     BinaryFileWritingDataHandler: Optional[BinaryFileWritingDataHandlerParameters] = None
 
 class Parameters(CustomBaseModel):
-    event_source: EventSourceParameters
     lclstreamer: LclstreamerParameters
+    event_source: EventSourceParameters
     data_sources: dict[str, DataSourceParameters]
     data_serializer: DataSerializerParameters
     data_handlers: DataHandlerParameters

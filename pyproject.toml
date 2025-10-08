@@ -20,6 +20,8 @@ lclstream = {git = "https://github.com/lcls-users/lclstream.git"}
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.2.2"
 httpx = "^0.27.2"
+pytest-asyncio = "^1.2.0"
+mpi4py = "^4.1.0"
 
 [build-system]
 requires = ["poetry-core"]

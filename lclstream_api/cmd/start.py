@@ -173,9 +173,12 @@ async def stream_job(fname, port):
 #
     recv = port-1
     proc = await asyncio.create_subprocess_exec(
-            ["/sdf/home/r/rogersdd/src/nng_stream/nng_cache",
-                "-vv", f"tcp://134.79.23.43:{recv}",
-                f"tcp://134.79.23.43:{port}"],
+            #["/sdf/home/r/rogersdd/src/nng_stream/nng_cache", "-v",
+            #   f"tcp://134.79.23.43:{recv}",
+            #   f"tcp://134.79.23.43:{port}"],
+            ["/home/99r/src/microservices/nng_stream/nng_cache", "-v",
+                f"tcp://127.0.0.1:{recv}",
+                f"tcp://127.0.0.1:{port}"],
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE)
 

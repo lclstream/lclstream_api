@@ -3,72 +3,81 @@ import asyncio
 from typing import List
 import pytest
 import os
-os.environ["RAND_PSANA"] = "1"
+import json
 
 import pytest
+import pytest_asyncio
 
 from fastapi.testclient import TestClient
-
-from lclstream.server import app
-from lclstream.transfer import Transfer
-from lclstream.models import DataRequest, ImageRetrievalMode, AccessMode
 from lclstream.psana_pull import puller
 
-from pynng import Pull0, Timeout
+from lclstream_api.server import api
+from lclstream_api.models import TransferStatus, TransferMetrics
+
+from test_config import config, setup_lclstream_api
+from test_jobs import param2
 
 ADDR = "tcp://127.0.0.1:28451"
 
-client = TestClient(app)
+client = TestClient(api)
 
-@pytest.fixture()
-def pull_server(event_loop):
-    async def run_pull(pull):
+@pytest_asyncio.fixture
+async def pull_server():
+    async def run_pull(addr):
+        # Sleep to allow the server boot-up.
+        await asyncio.sleep(0.1)
+        pull = puller(addr)
         nmsg = 0
         async for data in pull:
             nmsg += 1
         print(f"pull_server: received {nmsg} messages")
 
-    P = puller(ADDR)
-    task = asyncio.ensure_future(run_pull(P), loop=event_loop)
-
-    # Sleeps to allow the server boot-up.
-    event_loop.run_until_complete(asyncio.sleep(0.1))
+    #event_loop = asyncio.get_running_loop()
+    #task = asyncio.ensure_future(run_pull(ADDR), loop=event_loop)
+    task = asyncio.create_task(run_pull(ADDR))
 
     try:
         yield
     finally:
         task.cancel()
+        try:
+            ans = await task
+        except asyncio.CancelledError:
+            pass
 
-def test_get_list():
-    response = client.get("/transfers")
-    assert response.status_code == 200
-    resp = response.json()
-    assert isinstance(resp, list)
+def test_get_list(setup_lclstream_api):
+    for path in ["/transfers", "/transfers/"]:
+        response = client.get(path)
+        assert response.status_code == 200
+        resp = response.json()
+        assert isinstance(resp, list)
 
 @pytest.mark.asyncio
-async def test_mk_transfer(pull_server):
-    response = client.post("/transfers/new", json={"abc": 2})
+async def test_mk_transfer(pull_server, setup_lclstream_api):
+    response = client.post("/transfers", json={"abc": 2})
     assert response.status_code == 422
 
-    trs = DataRequest(exp = "grail",
-                      run = 42,
-                      access_mode = AccessMode.idx,
-                      detector_name = "excalibur",
-                      mode = ImageRetrievalMode.image,
-                      addr = ADDR)
-    response = client.post("/transfers/new", json=trs.model_dump())
+    trs = json.loads(param2)
+    response = client.post("/transfers", json=trs)
+    #response = client.post("/transfers", body=param2)
     assert response.status_code == 200
-    tid = response.json()
-    assert isinstance(tid, int)
+    stat = TransferStatus.model_validate_json(response.text)
+    assert stat.state == "new"
+    tid = stat.id
 
     response = client.get(f"/transfers/{tid}")
     assert response.status_code == 200
     state = response.json()
-    assert isinstance(state, str)
-    print(f"Transfer state = {state}")
+    assert isinstance(state, list)
+    for i, s in enumerate(state):
+        state[i] = TransferStatus.model_validate(s)
+    print(f"Transfer state = {state[-1]}")
     
-    response = client.post(f"/transfers/delete/{tid}")
+    response = client.delete(f"/transfers/{tid}")
     assert response.status_code == 200
     ok = response.json()
-    assert isinstance(ok, bool)
-    print(f"Delete transfer result = {ok}")
+    assert ok is None
+
+def test_read_transfer(setup_lclstream_api):
+    response = client.get("/transfers/12")
+    assert response.status_code == 404

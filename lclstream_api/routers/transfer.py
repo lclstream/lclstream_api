@@ -1,17 +1,12 @@
-from typing import Optional, List, Dict
+from typing import Optional, List
 from typing_extensions import Annotated
 from pathlib import Path
-import socket
 import logging
 _logger = logging.getLogger(__name__)
 
-from pydantic import BaseModel
 from fastapi import (
     APIRouter,
     HTTPException,
-    Form,
-    Query,
-    File,
     BackgroundTasks,
     Depends,
 )
@@ -23,11 +18,9 @@ from ..models import (
     TransferMetrics,
     JobID
 )
-from ..lclstreamer_param import (
-    Parameters,
-    DataHandlerParameters,
-    BinaryDataStreamingDataHandlerParameters,
-)
+from ..jobs import create_job
+from ..ports import Database
+from ..lclstreamer_param import Parameters
 
 def default_config() -> Config:
     return load_config()
@@ -36,6 +29,7 @@ CachedConfig = Annotated[Config, Depends(default_config)]
 def default_mgr(cfg: CachedConfig) -> psik.JobManager:
     return to_mgr(cfg)
 Manager = Annotated[psik.JobManager, Depends(default_mgr)]
+
 
 transfers = APIRouter(responses={
         401: {"description": "Unauthorized"}})
@@ -46,88 +40,14 @@ async def get_job(jobid: JobID, mgr: Manager) -> Path:
         raise HTTPException(status_code=404, detail="Transfer not found")
     return Path(base)
 
-class PortEntry(BaseModel):
-    user: str
-    port: int
-    internal_url: str
-    external_url: str
-
-class PortDatabase: # singleton
-    def __init__(self, host: Optional[str] = None, start=30001, end=34000) -> None:
-        assert end > start+1, "Need at least 2 ports"
-        if host is None:
-            self.host = socket.gethostname()
-        else:
-            self.host = host
-        self.open_ports = list(range(start, end, 2))
-        # Mapping from jobid to user, port pairs.
-        self.jobs : Dict[str, PortEntry] = {}
-
-    def alloc(self) -> Optional[int]:
-        """ Allocate a port -- usually called automagically
-            during create().
-        """
-        if len(self.open_ports) == 0:
-            _logger.error("No more open ports!")
-            return None
-        return self.open_ports.pop()
-
-    def free(self, port):
-        self.open_ports.append(port)
-
-    def internal_url(self, port: int) -> str:
-        # Internal ports are first in sequence
-        return f"tcp://{self.host}:{port}"
-    def external_url(self, port: int) -> str:
-        # External ports are internal+1
-        return f"tcp://{self.host}:{port+1}"
-
-    def create(self,
-               jobid: str,
-               user: str,
-               port: Optional[int] = None) -> PortEntry:
-        if jobid in self.jobs:
-            entry = self.jobs[jobid]
-            # Make create idempotent
-            if entry.user == user:
-                return entry
-            raise KeyError(f"Job {jobid} already created by another user!")
-        if port is None:
-            port = self.alloc()
-        if port is None:
-            raise RuntimeError("No available ports.")
-
-        entry = PortEntry(
-            user = user,
-            port = port,
-            internal_url = self.internal_url(port),
-            external_url = self.external_url(port),
-        )
-        self.jobs[jobid] = entry
-        return entry
-
-    def __getitem__(self, jobid: str) -> PortEntry:
-        return self.jobs[jobid]
-
-    def delete(self, jobid: str) -> PortEntry:
-        entry = self.jobs.pop(jobid)
-        self.free(entry.port)
-        return entry
-
-DB = PortDatabase()
-def get_database() -> PortDatabase:
-    return DB
-
-Database = Annotated[PortDatabase, Depends(get_database)]
-
 @transfers.get("/", include_in_schema=False)
 @transfers.get("")
-async def get_transfers(mgr: Manager,
-                        db: Database,
-                        index: int = 0,
-                        limit: Optional[int] = None,
-                        state: Optional[psik.JobState] = None,
-                       ) -> List[TransferStatus]:
+async def list_transfers(mgr: Manager,
+                         db: Database,
+                         index: int = 0,
+                         limit: Optional[int] = None,
+                         state: Optional[psik.JobState] = None,
+                        ) -> List[TransferStatus]:
     """
     Get information about transfers.
 
@@ -138,14 +58,19 @@ async def get_transfers(mgr: Manager,
     """
 
     out = []
-    return []
-    async for job in mgr.ls():
-        last = job.history[-1]
-        if state is not None and state != last.state:
-            continue
+    #async for job in mgr.ls(): # alternate outer loop
+        #try: entry = db[job.stamp] except KeyError: continue
+    for jobid, entry in db.items():
         try:
-            entry = db[job.stamp]
-        except KeyError:
+            pre = await get_job(jobid, mgr)
+            job = await psik.Job(pre)
+        except Exception:
+            continue
+        last = job.history[-1]
+        if last.state.is_final():
+            db.delete(jobid)
+
+        if state is not None and state != last.state:
             continue
         out.append(TransferStatus(
                     id = job.stamp,
@@ -165,19 +90,6 @@ async def get_transfers(mgr: Manager,
     if limit is not None:
         out = out[:limit]
     return out
-
-def replace_data_handler(req: Parameters, url: str) -> None:
-    # Replace data handlers entirely to avoid the user outputting
-    # somewhere unanticipated by LCLStream-API.
-    req.data_handlers = DataHandlerParameters(
-        BinaryDataStreamingDataHandler =
-          BinaryDataStreamingDataHandlerParameters(
-            urls = [ url ],
-            role = "client",
-            library = "nng",
-            socket_type = "push",
-          )
-    )
 
 @transfers.post("/", include_in_schema=False)
 @transfers.post("")
@@ -202,13 +114,7 @@ async def new_transfer(request: Parameters,
 
     internal_url = db.internal_url(port)
     # TODO: additional validation of request should go here.
-    replace_data_handler(request, internal_url)
-
-    pre = has_cache(request, cfg)
-    if pre is None:
-        spec = generate_job(request, internal_url, cfg)
-    else:
-        spec = replay_job(pre, internal_url, cfg)
+    spec = create_job(request, internal_url, cfg) # create the JobSpec
 
     try:
         job = await mgr.create(spec)
@@ -284,102 +190,3 @@ async def cancel_transfer(jobid: JobID,
         raise HTTPException(status_code=500, detail="Error reading job")
     bg_tasks.add_task(job.cancel)
     return
-
-
-############# helpers for writing job payload ##################
-
-def get_outdir(req: Parameters, cfg: CachedConfig) -> Path:
-    """ Compute the output directory name for this
-    experiment / req.config pair.
-    """
-    # TODO: back-port hash function from tmo-prefex
-    cfg_hash = str(hash(req.model_dump_json()))
-    expt = "tmo_unknown"
-    # TODO: check for exact equality of cache_path / lclstreamer.json
-    # and search through a sequence of dir-s if not...
-    return Path(cfg.cache_fmt % expt) / cfg_hash
-
-def has_cache(req: Parameters,
-              cfg: CachedConfig) -> Optional[Path]:
-    """ Return directory+filename prefix containing
-    cached h5 files created for this request.
-
-    If available, the h5 files are (return value)*.h5.
-    If no cached result is available, None is returned.
-    """
-    # FIXME: for testing, just replay this data.
-    return "/sdf/home/r/rogersdd/lclstreamer-output/r0"
-    return None
-
-    """ FIXME: revisit server-side caching.
-    outdir = get_outdir(req, cfg)
-    if not outdir.is_dir():
-        return None
-
-    prefix = f"{req.exp}.run_{req.run:03d}"
-    for child in outdir.iterdir():
-        #$expname.run_NNN.step_MM[-rank].JJJ.h5
-        if child.name.startswith(prefix) \
-                    and child.name.endswith(".h5"):
-            return outdir/prefix
-    return None
-    """
-
-def replay_job(pre: str,
-               url: str,
-               cfg: CachedConfig) -> psik.JobSpec:
-    """ Create the psik.JobSpec that, when run,
-        will transfer cached h5 data to the url.
-    """
-
-    local_push = """
-    lclstream push --addr {url} --ndial 1 {pre}*.h5
-    """.format(url=url, pre=pre)
-    return psik.JobSpec(
-                name = "lclstream-push",
-                script = local_push,
-                resources = psik.ResourceSpec(
-                    duration = 60,
-                    node_count = 1,
-                    processes_per_node = 1,
-                    cpu_cores_per_process = 1,
-                ),
-                #callback="",
-                #cb_secret="",
-    )
-
-def generate_job(req: Parameters,
-                 url: str,
-                 cfg: CachedConfig) -> psik.JobSpec:
-    """ Create the psik.JobSpec that, when run,
-        will run an lclstreamer job sending streaming
-        output to the url.
-    """
-
-    # Lookup the proper env for the requested event source.
-    if req.lclstreamer.event_source == "Psana1EventSource":
-        psana_env = "psana1"
-    else:
-        psana_env = "psana2"
-
-    # Prepare the job's working directory
-    template = """
-    pixi run -e {psana_env} mpirun -n120 lclstreamer \
-                       --config lclstreamer.json
-    """
-    # to add after initial testing:
-    #                  --dial '{dial}'
-
-    script = template.format(req=req)#, outdir=get_outdir(req, cfg))
-    return psik.JobSpec(
-            name = "lclstreamer",
-            script = script,
-            resources = psik.ResourceSpec(
-                duration = 60,
-                node_count = 1,
-                processes_per_node = 120,
-                cpu_cores_per_process = 1,
-            ),
-            #callback="",
-            #cb_secret="",
-    )

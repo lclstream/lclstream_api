@@ -7,10 +7,21 @@ from pydantic import BaseModel
 import psik
 
 class Config(BaseModel):
-    database_url: str = "sqlite+pysqlite:///:memory:"
-    #cache_fmt: str = "/sdf/scratch/lcls/ds/tmo/%s/scratch/lclstream_api"
-    #authz: str = "psik_api.authz:BaseAuthz"
+    replay_job: psik.JobSpec
+    lclstream_job: psik.JobSpec
     psik: psik.Config
+    cache_fmt: Optional[str] = None
+
+#database_url: str = "sqlite+pysqlite:///:memory:"
+#cache_fmt: str = "/sdf/scratch/lcls/ds/tmo/%s/scratch/lclstream_api"
+#authz: str = "psik_api.authz:BaseAuthz"
+# script="/home/99r/.cache/pypoetry/virtualenvs/lclstream-wj83ZDDz-py3.10/bin/lclstream push --addr {url} --ndial 1 {pre}*.h5",
+#script="pixi run -e {psana_env} mpirun -n120 lclstreamer --config lclstreamer.json",
+#resources = psik.ResourceSpec(duration=60,
+#            node_count=1,
+#            processes_per_node = 120,
+#            cpu_cores_per_process = 1),
+# script="uv run --project /home/99r/src/lclstreamer lclstreamer --config lclstreamer.json",
 
 Pstr = Union[str, os.PathLike]
 

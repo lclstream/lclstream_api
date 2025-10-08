@@ -1,5 +1,6 @@
 from typing import Dict, List, Any, Optional
 import logging
+from contextlib import asynccontextmanager
 from importlib.metadata import version
 _logger = logging.getLogger(__name__)
 version_tag = version(__package__)
@@ -46,7 +47,15 @@ api.include_router(
     tags = ["transfers"],
 )
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan():
+    _logger.info("Loading config.")
+    config = load_config()
+    # Setup activities
+    #setup_security(config.authz)
+    yield
+
+app = FastAPI(lifespan=lifespan)
 app.mount("/v1", api)
 
 try:
@@ -54,13 +63,6 @@ try:
     app.middleware("http")(log_request)
 except ImportError:
     pass
-
-@app.on_event("startup")
-async def setup_config_event():
-    _logger.info("Loading config.")
-    config = load_config()
-    # Setup activities
-    #setup_security(config.authz)
 
 """
 import signal
