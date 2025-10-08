@@ -74,14 +74,13 @@ async def list_transfers(mgr: Manager,
             continue
         out.append(TransferStatus(
                     id = job.stamp,
-                    name = job.spec.name or '',
                     url = entry.external_url,
                     user = entry.user,
                     time = last.time,
                     jobndx = last.jobndx,
                     state = last.state,
                     info = last.info))
-    out.sort(key = lambda x: -float(x.jobid))
+    out.sort(key = lambda x: -float(x.id))
     if index is not None and index > 0:
         if index >= len(out):
             out = []
@@ -108,6 +107,8 @@ async def new_transfer(request: Parameters,
 
     user = "none"
     port = db.alloc()
+    if port is None:
+        raise HTTPException(status_code=500, detail="Out of ports.")
 
     # TODO: periodically, check on jobs and reap completed jobs
     # from the db using db.delete(jobid)
@@ -122,6 +123,10 @@ async def new_transfer(request: Parameters,
         db.free(port)
         raise HTTPException(status_code=400,
                             detail=f"Error creating job: {str(e)}")
+
+    if job.spec.directory is None:
+        db.free(port)
+        raise HTTPException(status_code=500, detail="Error creating job directory.")
 
     # Write lclstreamer spec file to the job directory.
     # NOTE: this file must be thoroughly validated
@@ -140,7 +145,6 @@ async def new_transfer(request: Parameters,
                             detail=f"Error writing job: {str(e)}")
     return TransferStatus(
                     id = job.stamp,
-                    name = job.spec.name or '',
                     url = entry.external_url,
                     user = entry.user,
                     time = last.time,
@@ -169,7 +173,6 @@ async def get_transfer(jobid: JobID,
     for last in job.history:
         out.append(TransferStatus(
                     id = job.stamp,
-                    name = job.spec.name or '',
                     url = entry.external_url,
                     user = entry.user,
                     time = last.time,

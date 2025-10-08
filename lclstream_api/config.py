@@ -52,6 +52,6 @@ def load_config(config_name: Optional[Pstr] = None) -> Config:
     cfg = path.read_text(encoding='utf-8')
     return Config.model_validate_json(cfg)
 
-def to_mgr(cfg: psik.Config) -> psik.JobManager:
+def to_mgr(cfg: Config) -> psik.JobManager:
     cfg.psik.prefix.mkdir(exist_ok=True, parents=True)
     return psik.JobManager(cfg.psik)

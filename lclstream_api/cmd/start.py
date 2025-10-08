@@ -2,7 +2,7 @@ import sys
 import re
 from typing import List
 import asyncio
-from aiowire import EventLoop, Wire, Call
+#from aiowire import EventLoop, Wire, Call
 
 import psik
 
@@ -52,7 +52,7 @@ async def start_slurm(script, *args) -> int:
     """Run a job-script on psana.
     Return the jobid, or -1 on error.
     """
-    cmd = ["ssh", "psana", "sbatch", script] + args
+    cmd = ["ssh", "psana", "sbatch", script] + list(args)
     ret, out, err = await runcmd(*cmd, expect_ok=True)
     if ret != 0:
         print("Error Starting Job")
@@ -99,7 +99,7 @@ async def watch_cmd(proc) -> None:
     """
     t1 = print_stream(proc.stderr)
     t2 = parse_logs(proc.stdout)
-    async for task in asyncio.as_completed([t1, t2]):
+    for task in asyncio.as_completed([t1, t2]):
         await task
 
 class SlurmJob:
@@ -119,7 +119,7 @@ class SlurmJob:
             if self.state != JobState.queued:
                 break
         else:
-            return self.kill()
+            return await self.kill()
 
         if self.state.is_final():
             return self.done()
@@ -136,16 +136,16 @@ class SlurmJob:
                 print(f"Job {jobid} is {self.state.value}.")
                 break
         else:
-            return self.kill()
+            return await self.kill()
         return self.done()
 
     def done(self) -> JobState:
         self.jobid = None
         return self.state
 
-    def kill(self) -> JobState:
+    async def kill(self) -> JobState:
         if self.jobid is not None:
-            kill_slurm(self.jobid)
+            await kill_slurm(self.jobid)
             self.jobid = None
         self.state = JobState.canceled
         return self.state
@@ -187,16 +187,16 @@ async def stream_job(fname, port):
     cache = watch_cmd(proc)
     slurm = S.run("/sdf/home/r/rogersdd/venvs/run_file_push", fname, uri)
     slurm_done = False
-    async for task in asyncio.as_completed([cache, slurm]):
+    for task in asyncio.as_completed([cache, slurm]):
         ans = await task
         if task == slurm:
             slurm_done = True
             if ans != JobState.complete:
-                proc.kill()
+                await proc.kill()
                 raise RuntimeError(f"Slurm job exited at state {ans.value}")
         elif task == cache:
             if not slurm_done:
-                S.kill()
+                await S.kill()
                 print("Warning: Cache completed before SLURM job.")
             break
 

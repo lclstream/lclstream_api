@@ -1,6 +1,5 @@
 from pathlib import Path
 from typing import Literal, Optional
-Self = "Self"
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
@@ -92,7 +91,7 @@ class Parameters(CustomBaseModel):
     processing_pipeline: ProcessingPipelineParameters
 
     @model_validator(mode="after")
-    def check_model(self) -> Self:
+    def check_model(self) -> "Parameters":
       try:
         if getattr(self.event_source, self.lclstreamer.event_source) is None:
             raise ValueError(

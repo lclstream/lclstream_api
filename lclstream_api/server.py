@@ -48,7 +48,7 @@ api.include_router(
 )
 
 @asynccontextmanager
-async def lifespan():
+async def lifespan(app):
     _logger.info("Loading config.")
     config = load_config()
     # Setup activities

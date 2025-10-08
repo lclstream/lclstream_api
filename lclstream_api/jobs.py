@@ -37,10 +37,12 @@ def create_job(request: Parameters,
         spec = replay_job(pre, internal_url, cfg)
     return spec
 
-def get_outdir(req: Parameters, cfg: Config) -> Path:
+def get_outdir(req: Parameters, cfg: Config) -> Optional[Path]:
     """ Compute the output directory name for this
     experiment / req.config pair.
     """
+    if cfg.cache_fmt is None:
+        return None
     # TODO: back-port hash function from tmo-prefex
     cfg_hash = str(hash(req.model_dump_json()))
     expt = "tmo_unknown"
@@ -56,23 +58,16 @@ def has_cache(req: Parameters,
     If available, the h5 files are (return value)*.h5.
     If no cached result is available, None is returned.
     """
-    # FIXME: for testing, just replay this data.
-    #return "/sdf/home/r/rogersdd/lclstreamer-output/r0"
-    return None
-
-    """ FIXME: revisit server-side caching.
     outdir = get_outdir(req, cfg)
-    if not outdir.is_dir():
+    # check that outdir exists and contains h5 files first
+
+    if outdir is None or not outdir.is_dir():
         return None
 
-    prefix = f"{req.exp}.run_{req.run:03d}"
     for child in outdir.iterdir():
-        #$expname.run_NNN.step_MM[-rank].JJJ.h5
-        if child.name.startswith(prefix) \
-                    and child.name.endswith(".h5"):
-            return outdir/prefix
+        if child.name.endswith(".h5"):
+            return outdir
     return None
-    """
 
 def replay_job(pre: Path,
                url: str,

@@ -9,7 +9,7 @@ import pytest
 import pytest_asyncio
 
 from fastapi.testclient import TestClient
-from lclstream.psana_pull import puller
+from lclstream.nng import puller
 
 from lclstream_api.server import api
 from lclstream_api.models import TransferStatus, TransferMetrics
@@ -26,9 +26,9 @@ async def pull_server():
     async def run_pull(addr):
         # Sleep to allow the server boot-up.
         await asyncio.sleep(0.1)
-        pull = puller(addr)
+        pull = puller(addr, 1)
         nmsg = 0
-        async for data in pull:
+        for data in pull:
             nmsg += 1
         print(f"pull_server: received {nmsg} messages")
 
