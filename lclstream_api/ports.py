@@ -1,28 +1,28 @@
 from typing import Optional, Dict
 from typing_extensions import Annotated
-import socket
+import asyncio
 import logging
 _logger = logging.getLogger(__name__)
 
 from pydantic import BaseModel
 from fastapi import Depends
 
-class PortEntry(BaseModel):
-    user: str
-    port: int
-    internal_url: str
-    external_url: str
+from .models import PortEntry, JobState
+from .cache import cache_process
+from .config import Config, load_config
+
+CachedConfig = Annotated[Config, Depends(load_config)]
 
 class PortDatabase: # singleton
-    def __init__(self, host: Optional[str] = None, start=30001, end=34000) -> None:
+    def __init__(self, host: str, run_cache: str, start=30001, end=34000) -> None:
         assert end > start+1, "Need at least 2 ports"
-        if host is None:
-            self.host = socket.gethostname()
-        else:
-            self.host = host
+        self.host = host
+        self.run_cache = run_cache
+
         self.open_ports = list(range(start, end, 2))
         # Mapping from jobid to user, port pairs.
-        self.jobs : Dict[str, PortEntry] = {}
+        self.jobs: Dict[str, PortEntry] = {}
+        self.tasks: Dict[str, asyncio.Task] = {}
 
     def items(self):
         return self.jobs.items()
@@ -46,10 +46,10 @@ class PortDatabase: # singleton
         # External ports are internal+1
         return f"tcp://{self.host}:{port+1}"
 
-    def create(self,
-               jobid: str,
-               user: str,
-               port: Optional[int] = None) -> PortEntry:
+    async def create(self,
+                     jobid: str,
+                     user: str,
+                     port: Optional[int] = None) -> PortEntry:
         if jobid in self.jobs:
             entry = self.jobs[jobid]
             # Make create idempotent
@@ -68,18 +68,33 @@ class PortDatabase: # singleton
             external_url = self.external_url(port),
         )
         self.jobs[jobid] = entry
+        self.tasks[jobid] = await cache_process(self.run_cache, entry)
         return entry
 
     def __getitem__(self, jobid: str) -> PortEntry:
         return self.jobs[jobid]
 
-    def delete(self, jobid: str) -> PortEntry:
+    async def delete(self, jobid: str) -> PortEntry:
         entry = self.jobs.pop(jobid)
         self.free(entry.port)
+        task = self.tasks[jobid]
+        if not task.done():
+            task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
         return entry
 
-DB = PortDatabase()
-def get_database() -> PortDatabase:
+DB: PortDatabase = None # type: ignore[assignment]
+def get_database(config: CachedConfig) -> PortDatabase:
+    # initialize on first access (allows db to be configurable)
+    global DB
+    if DB is None:
+        DB = PortDatabase(config.cache_ip,
+                          config.run_cache,
+                          config.start_port,
+                          config.end_port)
     return DB
 
 Database = Annotated[PortDatabase, Depends(get_database)]

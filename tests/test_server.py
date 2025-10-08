@@ -12,7 +12,7 @@ from fastapi.testclient import TestClient
 from lclstream.nng import puller
 
 from lclstream_api.server import api
-from lclstream_api.models import TransferStatus, TransferMetrics
+from lclstream_api.models import TransferStatus, CacheMetrics
 
 from test_config import config, setup_lclstream_api
 from test_jobs import param2

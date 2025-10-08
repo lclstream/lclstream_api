@@ -1,6 +1,6 @@
 from typing import Union, Optional
 import os
-#from functools import cache
+from functools import cache
 from pathlib import Path
 
 from pydantic import BaseModel
@@ -10,7 +10,11 @@ class Config(BaseModel):
     replay_job: psik.JobSpec
     lclstream_job: psik.JobSpec
     psik: psik.Config
+    run_cache: str
     cache_fmt: Optional[str] = None
+    cache_ip: str
+    start_port: int = 30001
+    end_port: int = 34000
 
 #database_url: str = "sqlite+pysqlite:///:memory:"
 #cache_fmt: str = "/sdf/scratch/lcls/ds/tmo/%s/scratch/lclstream_api"
@@ -25,6 +29,7 @@ class Config(BaseModel):
 
 Pstr = Union[str, os.PathLike]
 
+@cache
 def load_config(config_name: Optional[Pstr] = None) -> Config:
     """Load lclstream_api's configuration file.
 

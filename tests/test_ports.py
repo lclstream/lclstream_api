@@ -1,15 +1,19 @@
+import asyncio
 import pytest
 
 from lclstream_api.ports import get_database
 
-def test_db():
-    DB = get_database()
+from test_config import config
+
+@pytest.mark.asyncio
+async def test_db(config):
+    DB = get_database(config)
 
     with pytest.raises(KeyError):
-        DB.delete("123")
+        await DB.delete("123")
     
     nopen = len(DB.open_ports)
-    ent = DB.create("job1", "tester")
+    ent = await DB.create("job1", "tester")
     assert len(DB.open_ports) == nopen-1
 
     assert ent.user == "tester"
@@ -21,9 +25,14 @@ def test_db():
         job = DB["111"]
 
     with pytest.raises(KeyError):
-        ent2 = DB.create("job1", "not_tester")
-    ent2 = DB.create("job1", "tester")
+        ent2 = await DB.create("job1", "not_tester")
+    ent2 = await DB.create("job1", "tester")
     assert ent == ent2
 
-    DB.delete("job1")
+    await asyncio.sleep(0.2)
+    print(DB["job1"])
+
+    ans = await DB.delete("job1")
     assert len(DB.open_ports) == nopen
+
+    assert ans.cache_state.is_final()

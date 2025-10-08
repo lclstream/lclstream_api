@@ -15,16 +15,14 @@ import psik
 from ..config import to_mgr, load_config, Config
 from ..models import (
     TransferStatus,
-    TransferMetrics,
+    CacheMetrics,
     JobID
 )
 from ..jobs import create_job
 from ..ports import Database
 from ..lclstreamer_param import Parameters
 
-def default_config() -> Config:
-    return load_config()
-CachedConfig = Annotated[Config, Depends(default_config)]
+CachedConfig = Annotated[Config, Depends(load_config)]
 
 def default_mgr(cfg: CachedConfig) -> psik.JobManager:
     return to_mgr(cfg)
@@ -68,7 +66,7 @@ async def list_transfers(mgr: Manager,
             continue
         last = job.history[-1]
         if last.state.is_final():
-            db.delete(jobid)
+            await db.delete(jobid)
 
         if state is not None and state != last.state:
             continue
@@ -111,7 +109,7 @@ async def new_transfer(request: Parameters,
         raise HTTPException(status_code=500, detail="Out of ports.")
 
     # TODO: periodically, check on jobs and reap completed jobs
-    # from the db using db.delete(jobid)
+    # from the db using await db.delete(jobid)
 
     internal_url = db.internal_url(port)
     # TODO: additional validation of request should go here.
@@ -137,10 +135,12 @@ async def new_transfer(request: Parameters,
         )
 
         last = job.history[-1]
+        entry = await db.create(job.stamp, user, port)
         bg_tasks.add_task(job.submit)
-        entry = db.create(job.stamp, user, port)
     except Exception as e:
-        db.free(port)
+        db.free(port) # Not db.delete, since db.create
+                      # does not create a job entry on failure,
+                      # and add_task should not fail.
         raise HTTPException(status_code=400,
                             detail=f"Error writing job: {str(e)}")
     return TransferStatus(
@@ -184,6 +184,7 @@ async def get_transfer(jobid: JobID,
 @transfers.delete('/{jobid}')
 async def cancel_transfer(jobid: JobID,
                           bg_tasks: BackgroundTasks,
+                          db: Database,
                           mgr: Manager) -> None:
     # Cancel job
     pre = await get_job(jobid, mgr)
@@ -192,4 +193,4 @@ async def cancel_transfer(jobid: JobID,
     except Exception:
         raise HTTPException(status_code=500, detail="Error reading job")
     bg_tasks.add_task(job.cancel)
-    return
+    bg_tasks.add_task(db.delete, jobid)

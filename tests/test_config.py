@@ -10,6 +10,10 @@ cfg_json = """{
   "psik": {
     "prefix": "%(base)s/psik"
   },
+  "run_cache": "/usr/local/bin/nng_cache",
+  "cache_ip": "127.0.0.1",
+  "start_port": 11401,
+  "end_port": 11420,
   "replay_job": {
     "name": "lclstream-push",
     "backend": "default",
