@@ -7,7 +7,7 @@ _logger = logging.getLogger(__name__)
 from pydantic import BaseModel
 from fastapi import Depends
 
-from .models import PortEntry, JobState
+from .models import PortEntry
 from .cache import cache_process
 from .config import Config, load_config
 
@@ -76,14 +76,17 @@ class PortDatabase: # singleton
 
     async def delete(self, jobid: str) -> PortEntry:
         entry = self.jobs.pop(jobid)
-        self.free(entry.port)
+
         task = self.tasks[jobid]
         if not task.done():
-            task.cancel()
+            task.cancel() # this will invoke entry.transition("cache", JobState.canceled)
+                          # which will cancel the job (if running)
         try:
             await task
         except asyncio.CancelledError:
             pass
+
+        self.free(entry.port)
         return entry
 
 DB: PortDatabase = None # type: ignore[assignment]

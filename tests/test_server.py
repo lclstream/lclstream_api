@@ -12,7 +12,7 @@ from fastapi.testclient import TestClient
 from lclstream.nng import puller
 
 from lclstream_api.server import api
-from lclstream_api.models import TransferStatus, CacheMetrics
+from lclstream_api.models import TransferStatus, CacheMetrics, TransferInfo
 
 from test_config import config, setup_lclstream_api
 from test_jobs import param2
@@ -67,11 +67,12 @@ async def test_mk_transfer(pull_server, setup_lclstream_api):
 
     response = client.get(f"/transfers/{tid}")
     assert response.status_code == 200
-    state = response.json()
-    assert isinstance(state, list)
-    for i, s in enumerate(state):
-        state[i] = TransferStatus.model_validate(s)
-    print(f"Transfer state = {state[-1]}")
+    #state = response.json()
+    info = TransferInfo.model_validate_json(response.text)
+    #assert isinstance(state, list)
+    #for i, s in enumerate(state):
+    #    state[i] = TransferStatus.model_validate(s)
+    print(f"Transfer info = {info}")
     
     response = client.delete(f"/transfers/{tid}")
     assert response.status_code == 200

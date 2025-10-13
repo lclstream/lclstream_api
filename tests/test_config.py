@@ -5,7 +5,8 @@ import pytest
 
 from lclstream_api.config import Config
 
-cfg_json = """{
+# this config only works if lclstreamer is setup...
+cfg_json2 = """{
   "cache_fmt": "%(base)s/lclstream_cache/%%s",
   "psik": {
     "prefix": "%(base)s/psik"
@@ -35,6 +36,42 @@ cfg_json = """{
       "cpu_cores_per_process": 1
     },
     "script": "lclstreamer --config lclstreamer.json"
+  }
+}
+"""
+
+# this config uses lclstream (client) to mimick lclstreamer
+# in order to make a self-contained package testable
+cfg_json = """{
+  "cache_fmt": "%(base)s/lclstream_cache/%%s",
+  "psik": {
+    "prefix": "%(base)s/psik"
+  },
+  "run_cache": "/usr/local/bin/nng_cache",
+  "cache_ip": "127.0.0.1",
+  "start_port": 11401,
+  "end_port": 11420,
+  "replay_job": {
+    "name": "lclstream-push",
+    "backend": "default",
+    "resources": {
+      "duration": 60,
+      "node_count": 1,
+      "processes_per_node": 1,
+      "cpu_cores_per_process": 1
+    },
+    "script": "lclstream push --addr {url} --ndial 1 {pre}*.h5"
+  },
+  "lclstream_job": {
+    "name": "lclstreamer",
+    "backend": "default",
+    "resources": {
+      "duration": 60,
+      "node_count": 1,
+      "processes_per_node": 1,
+      "cpu_cores_per_process": 1
+    },
+    "script": "lclstream push --addr {url} --ndial 1 */*.py"
   }
 }
 """

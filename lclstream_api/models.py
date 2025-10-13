@@ -1,10 +1,20 @@
 import time
+from enum import Enum
+from typing import Optional, List, Dict, Tuple
+import logging
+_logger = logging.getLogger(__name__)
 
 from pydantic import BaseModel, Field
 
+from psik import Job
 from psik.models import Transition, JobID, JobState
 
-class TransferStatus(Transition):
+class TransferStatus(BaseModel):
+    time:   float
+    jobndx: int
+    state:  JobState
+    info:   str
+
     id: JobID
     url: str
     user: str
@@ -20,11 +30,114 @@ def empty_metric() -> CacheMetrics:
     return CacheMetrics(time=time.time(),
                         producers=0, recvd=0, sent=0, buffered=0)
 
-class PortEntry(BaseModel):
+class ClientName(str, Enum):
+    cache    = "cache"
+    producer = "producer"
+    consumer = "consumer"
+
+class PortTransition(BaseModel):
+    time: float
+    client: ClientName
+    state: JobState
+    info: str
+
+class TransferInfo(BaseModel):
+    user: str
+    log: List[PortTransition]
+    metrics: CacheMetrics
+
+class PortEntry:
     user: str
     port: int
     internal_url: str
     external_url: str
-    cache_state: JobState = JobState.new
-    cache_start: float = Field(default_factory=lambda: time.time(), frozen=True)
-    cache_metrics: CacheMetrics = Field(default_factory=empty_metric)
+
+    states: Dict[ClientName, JobState]
+    log:    List[PortTransition]
+    job:    Optional[Job]
+
+    cache_metrics: CacheMetrics
+
+    def __init__(self, user: str, port: int,
+                 internal_url: str, external_url: str,
+                 states: Dict[str, JobState] = {},
+                 log: List[PortTransition] = [],
+                 cache_metrics: Optional[CacheMetrics] = None,
+                 job: Optional[Job] = None):
+        self.user = user
+        self.port = port
+        self.internal_url = internal_url
+        self.external_url = external_url
+        self.states = dict(states)
+
+        # ensure all clients are in some state.
+        for name in ClientName:
+            if name not in self.states:
+                states[name] = JobState.new
+        self.log = log
+        self.job = job
+        if cache_metrics is None:
+            self.cache_metrics = empty_metric()
+
+    async def transition(self,
+                         name: ClientName,
+                         state: JobState,
+                         jobndx: int = 0,
+                         info: str = "",
+                         job: Optional[Job] = None):
+        self.log.append( PortTransition(time=time.time(),
+                                        client=name,
+                                        state=state,
+                                        info=info) )
+        self.states[name] = state
+        if name == ClientName.producer:
+            if state == JobState.new:
+                assert job is not None
+                self.job = job
+                # cancel job if cache is not yet alive
+                if self.states[ClientName.cache].is_final():
+                    _logger.error("cache is %s at %s",
+                                  self.states[ClientName.cache].value,
+                                  str(self.log[-1]))
+                    await self.cancel_job()
+            else:
+                try:
+                    info_int = int(info)
+                except ValueError:
+                    info_int = 1 if info else 0
+                if self.job:
+                    await self.job.reached(jobndx, state, info_int)
+                else:
+                    _logger.error("self.job undefined at %s",
+                                    str(self.log[-1]))
+
+        if name == ClientName.cache and state.is_final():
+            await self.cancel_job()
+
+    async def cancel_job(self):
+        """ Cancel the job associated with this port.
+            The cache task must be canceled separately.
+        """
+        if self.job is None:
+            return
+
+        name = ClientName.producer
+        if self.states[name].is_final():
+            # producer is already done.
+            return
+
+        # cache should not have died first.
+        # we need to cancel the job now.
+        await self.job.cancel()
+        # TODO: check whether self.job.cancel() triggers
+        # a callback to this server, or whether we should
+        # append this event to the log now...
+        cstate = self.states[ClientName.cache]
+        self.log.append( PortTransition(time=time.time(),
+                                        client=name,
+                                        state=JobState.canceled,
+                                        info=f"cache {cstate.value}") )
+        self.states[name] = JobState.canceled
+
+    def metrics(self, metric: CacheMetrics):
+        self.cache_metrics = metric

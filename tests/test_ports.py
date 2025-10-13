@@ -34,5 +34,6 @@ async def test_db(config):
 
     ans = await DB.delete("job1")
     assert len(DB.open_ports) == nopen
+    print(ans.log)
 
-    assert ans.cache_state.is_final()
+    assert ans.states["cache"].is_final()
