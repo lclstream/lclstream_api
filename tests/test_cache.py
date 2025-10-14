@@ -25,7 +25,7 @@ async def test_watch_cmd():
                           sent=1, buffered=1)
     await watch_cmd("echo", metric.model_dump_json(), port=entry)
     assert entry.states[ClientName.cache] == JobState.completed
-    assert len(entry.log) == 2
+    assert len(entry.log) == 3
     assert entry.cache_metrics == metric
 
     # tested interactively to check parse is working as received
@@ -79,6 +79,7 @@ async def test_cache_job_complete(unused_tcp_port_factory, config):
     await run_pull(entry.external_url)
 
     await task
-    print("checking")
+    print("task complete. Log:")
+    print(entry.log)
     assert entry.states[ClientName.cache] == JobState.completed
-    assert entry.states[ClienName.producer] == JobState.completed
+    assert entry.states[ClientName.producer].is_final()

@@ -60,7 +60,7 @@ class PortEntry:
 
     def __init__(self, user: str, port: int,
                  internal_url: str, external_url: str,
-                 states: Dict[str, JobState] = {},
+                 states: Dict[ClientName, JobState] = {},
                  log: List[PortTransition] = [],
                  cache_metrics: Optional[CacheMetrics] = None,
                  job: Optional[Job] = None):
@@ -74,6 +74,11 @@ class PortEntry:
         for name in ClientName:
             if name not in self.states:
                 states[name] = JobState.new
+        if len(log) == 0: # always have a log entry to simplify life
+            log = [ PortTransition(time=time.time(),
+                                   client=ClientName.cache,
+                                   state=JobState.new,
+                                   info="") ]
         self.log = log
         self.job = job
         if cache_metrics is None:

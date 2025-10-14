@@ -36,16 +36,16 @@ Manager = Annotated[psik.JobManager, Depends(default_mgr)]
 transfers = APIRouter(responses={
         401: {"description": "Unauthorized"}})
 
-async def get_job(jobid: JobID, mgr: Manager) -> Path:
-    base = mgr.prefix / jobid
-    if not await base.is_dir():
-        raise HTTPException(status_code=404, detail="Transfer not found")
-    return Path(base)
+# Not needed, since the db stores the job.
+#async def get_job(jobid: JobID, mgr: Manager) -> Path:
+#    base = mgr.prefix / jobid
+#    if not await base.is_dir():
+#        raise HTTPException(status_code=404, detail="Transfer not found")
+#    return Path(base)
 
 @transfers.get("/", include_in_schema=False)
 @transfers.get("")
-async def list_transfers(mgr: Manager,
-                         db: Database,
+async def list_transfers(db: Database,
                          index: int = 0,
                          limit: Optional[int] = None,
                          state: Optional[psik.JobState] = None,
@@ -60,28 +60,11 @@ async def list_transfers(mgr: Manager,
     """
 
     out = []
-    #async for job in mgr.ls(): # alternate outer loop
-        #try: entry = db[job.stamp] except KeyError: continue
     for jobid, entry in db.items():
-        #try:
-        #    pre = await get_job(jobid, mgr)
-        #    job = await psik.Job(pre)
-        #except Exception:
-        #    continue
-        #last = job.history[-1]
-        #if last.state.is_final():
-        #    await db.delete(jobid)
-
         cstate = entry.state[ClientName.cache]
         if state is not None and state != cstate:
             continue
-        if entry.log:
-            last = entry.log[-1]
-        else:
-            last = PortTransition(time = -1.0,
-                    client = ClientName.producer,
-                    state = JobState.new,
-                    info = "empty log")
+        last = entry.log[-1]
         out.append(TransferStatus(
                     id = jobid,
                     url = entry.external_url,
@@ -106,7 +89,8 @@ async def new_transfer(request: Parameters,
                        db: Database,
                        bg_tasks: BackgroundTasks,
                        cfg: CachedConfig,
-                       mgr: Manager) -> TransferStatus:
+                       mgr: Manager,
+                       ) -> TransferStatus:
     """
     Submit a transfer to run ASAP.
 
@@ -175,18 +159,12 @@ async def new_transfer(request: Parameters,
 
 @transfers.get('/{jobid}')
 async def get_transfer(jobid: JobID,
-                       db: Database,
-                       mgr: Manager) -> TransferInfo:
+                       db: Database) -> TransferInfo:
     """Read job
       - jobid: the job's ID string
 
       Returns information associated with this transfer.
     """
-   # pre = await get_job(jobid, mgr)
-   # try:
-   #     job = await psik.Job(pre)
-   # except Exception:
-   #     raise HTTPException(status_code=500, detail="Error reading job")
     try:
         entry = db[jobid]
     except KeyError:
@@ -198,18 +176,10 @@ async def get_transfer(jobid: JobID,
 @transfers.delete('/{jobid}')
 async def cancel_transfer(jobid: JobID,
                           bg_tasks: BackgroundTasks,
-                          db: Database,
-                          mgr: Manager) -> None:
+                          db: Database) -> None:
     # Cancel job
     try:
         entry = db[jobid]
     except KeyError:
         raise HTTPException(status_code=404, detail="Transfer is not active.")
     bg_tasks.add_task(db.delete, jobid)
-
-    #pre = await get_job(jobid, mgr)
-    #try:
-    #    job = await psik.Job(pre)
-    #except Exception:
-    #    raise HTTPException(status_code=500, detail="Error reading job")
-    #bg_tasks.add_task(job.cancel)

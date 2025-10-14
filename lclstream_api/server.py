@@ -9,6 +9,7 @@ from fastapi import FastAPI, HTTPException
 
 from .config import load_config
 from .routers.transfer import transfers
+from .routers.callback import callback
 
 description = """
 Access your psana(2) data remotely.
@@ -41,6 +42,11 @@ api = FastAPI(
         responses     = {404: {"description": "Not found"}},
     )
 
+api.include_router(
+    callback,
+    prefix="/callback",
+    tags = ["callback"],
+)
 api.include_router(
     transfers,
     prefix="/transfers",

@@ -71,7 +71,7 @@ cfg_json = """{
       "processes_per_node": 1,
       "cpu_cores_per_process": 1
     },
-    "script": "lclstream push --addr {url} --ndial 1 */*.py"
+    "script": "lclstream push --addr {url} --ndial 1 *.*"
   }
 }
 """

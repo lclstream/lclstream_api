@@ -2,6 +2,9 @@
 
 from typing import Optional
 from pathlib import Path
+from secrets import token_urlsafe
+
+from pydantic import SecretStr
 
 import psik
 
@@ -35,6 +38,8 @@ def create_job(request: Parameters,
         spec = generate_job(request, internal_url, cfg)
     else:
         spec = replay_job(pre, internal_url, cfg)
+
+    spec.cb_secret = SecretStr(token_urlsafe(32))
     return spec
 
 def get_outdir(req: Parameters, cfg: Config) -> Optional[Path]:
@@ -79,22 +84,6 @@ def replay_job(pre: Path,
     job.script = job.script.format(url=url, pre=pre)
     return job
 
-    local_push = """
-    lclstream push --addr {url} --ndial 1 {pre}*.h5
-    """.format(url=url, pre=pre)
-    return psik.JobSpec(
-                name = "lclstream-push",
-                script = local_push,
-                resources = psik.ResourceSpec(
-                    duration = 60,
-                    node_count = 1,
-                    processes_per_node = 1,
-                    cpu_cores_per_process = 1,
-                ),
-                #callback="",
-                #cb_secret="",
-    )
-
 def generate_job(req: Parameters,
                  url: str,
                  cfg: Config) -> psik.JobSpec:
@@ -111,6 +100,4 @@ def generate_job(req: Parameters,
 
     job = cfg.lclstream_job.model_copy()
     job.script = job.script.format(url=url, psana_env=psana_env)
-    #job.callback = 
-    #job.cb_secret = 
     return job
