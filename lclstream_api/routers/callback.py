@@ -15,6 +15,7 @@ from fastapi import (
 import psik
 
 from ..ports import Database
+from ..models import ClientName
 
 callback = APIRouter(responses={
         401: {"description": "Unauthorized"}})
@@ -23,6 +24,7 @@ callback = APIRouter(responses={
 async def post_callback(cb: psik.Callback,
                         db: Database,
                         request: Request,
+                        bg_tasks: BackgroundTasks,
                         x_hub_signature_256: Annotated[Optional[str], Header()]
                                             = None) -> bool:
     try:
@@ -47,7 +49,12 @@ async def post_callback(cb: psik.Callback,
                    job.spec.client_secret.get_secret_value(),
                    x_hub_signature_256)
 
-    ok = await job.reached(cb.jobndx, cb.state, cb.info)
-    if not ok:
-        return False
+    bg_tasks.add_task(entry.transition,
+                      ClientName.producer,
+                      cb.state,
+                      cb.jobndx,
+                      str(cb.info),
+                      job,
+                     )
+
     return True

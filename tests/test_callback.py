@@ -18,6 +18,13 @@ from test_config import config
 ### test fixture for accepting a callback ###
 cb_value = web.AppKey("value", None) # type: ignore[var-annotated]
 
+class MockBackgroundTasks(list):
+    def add_task(self, task, *args):
+        self.append((task, args))
+    async def run_tasks(self):
+        for task, args in self:
+            await task(*args)
+
 async def post_cb(request, config):
     request.app[cb_value] = None
     if request.method != "POST":
@@ -30,11 +37,17 @@ async def post_cb(request, config):
     x_hub_signature_256 = request.headers.get("x_hub_signature_256", None)
     db = get_database(config)
 
+    bg_tasks = MockBackgroundTasks()
+
     try:
         ans = await callback.post_callback(cb, db, request,
+                                           bg_tasks,
                                            x_hub_signature_256)
     except HTTPException as e:
         return web.Response(text='"false"', status=200)
+    assert len(bg_tasks) == 1
+    await bg_tasks.run_tasks()
+
     #return ans
     #body = await request.post()
     #print(f"test cb received: {body}")

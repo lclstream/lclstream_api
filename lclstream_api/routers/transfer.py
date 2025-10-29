@@ -61,7 +61,7 @@ async def list_transfers(db: Database,
 
     out = []
     for jobid, entry in db.items():
-        cstate = entry.state[ClientName.cache]
+        cstate = entry.states[ClientName.cache]
         if state is not None and state != cstate:
             continue
         last = entry.log[-1]

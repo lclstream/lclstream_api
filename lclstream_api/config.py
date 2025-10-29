@@ -11,6 +11,7 @@ class Config(BaseModel):
     lclstream_job: psik.JobSpec
     psik: psik.Config
     run_cache: str
+    callback_url: Optional[str] # no default since None breaks callback functionality
     cache_fmt: Optional[str] = None
     cache_ip: str
     start_port: int = 30001

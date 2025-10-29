@@ -18,6 +18,7 @@ from .lclstreamer_param import (
 def replace_data_handler(req: Parameters, url: str) -> None:
     # Replace data handlers entirely to avoid the user outputting
     # somewhere unanticipated by LCLStream-API.
+    req.lclstreamer.data_handlers = ["BinaryDataStreamingDataHandler"]
     req.data_handlers = DataHandlerParameters(
         BinaryDataStreamingDataHandler =
           BinaryDataStreamingDataHandlerParameters(
@@ -28,6 +29,8 @@ def replace_data_handler(req: Parameters, url: str) -> None:
           )
     )
 
+# note: we could also use domain (FastAPI.Request's req.base_url)
+#       to construct the callback URL...
 def create_job(request: Parameters,
                internal_url: str,
                cfg: Config) -> psik.JobSpec:
@@ -39,7 +42,13 @@ def create_job(request: Parameters,
     else:
         spec = replay_job(pre, internal_url, cfg)
 
-    spec.cb_secret = SecretStr(token_urlsafe(32))
+    spec.callback = cfg.callback_url
+    # psik 1.2.0 is broken (doesn't write the cb_secret), but
+    # if we run with certified, it's possible to check if
+    # the calling username is lclstream_api itself.
+    #
+    #spec.cb_secret = SecretStr(token_urlsafe(32))
+    #spec.cb_secret = token_urlsafe(32) # or change its type, so it will write?
     return spec
 
 def get_outdir(req: Parameters, cfg: Config) -> Optional[Path]:

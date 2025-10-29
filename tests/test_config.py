@@ -12,6 +12,7 @@ cfg_json2 = """{
     "prefix": "%(base)s/psik"
   },
   "run_cache": "/usr/local/bin/nng_cache",
+  "callback_url": null,
   "cache_ip": "127.0.0.1",
   "start_port": 11401,
   "end_port": 11420,
@@ -47,7 +48,8 @@ cfg_json = """{
   "psik": {
     "prefix": "%(base)s/psik"
   },
-  "run_cache": "/usr/local/bin/nng_cache",
+  "run_cache": "/sdf/home/r/rogersdd/src/nng_stream/nng_cache",
+  "callback_url": null,
   "cache_ip": "127.0.0.1",
   "start_port": 11401,
   "end_port": 11420,

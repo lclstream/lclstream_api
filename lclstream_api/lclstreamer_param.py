@@ -1,7 +1,7 @@
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal, Self
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, model_validator, Field, conlist
 
 
 class CustomBaseModel(BaseModel):
@@ -9,12 +9,25 @@ class CustomBaseModel(BaseModel):
         extra="forbid",  # Allows extra attributes during validation
     )
 
+
 class InternalEventSourceParameters(CustomBaseModel):
     number_of_events_to_generate: int
 
+
 class Psana1EventSourceParameters(CustomBaseModel): ...  # noqa: E701
 
+
 class Psana2EventSourceParameters(CustomBaseModel): ...  # noqa: E701
+
+
+class SimplonBinarySerializerParameters(CustomBaseModel):
+    data_source_to_serialize: str
+    polarization_fraction: float
+    polarization_axis: list[float]
+    data_collection_rate: str
+    detector_name: str
+    detector_type: str
+
 
 class HDF5BinarySerializerParameters(CustomBaseModel):
     compression_level: int = 3
@@ -30,16 +43,10 @@ class HDF5BinarySerializerParameters(CustomBaseModel):
     ) = None
     fields: dict[str, str]
 
+
 class BatchProcessingPipelineParameters(CustomBaseModel):
     batch_size: int
 
-class PeaknetPreprocessingPipelineParameters(CustomBaseModel):
-    batch_size: int
-    target_height: int
-    target_width: int
-    pad_style: Literal["center", "bottom-right"] = "center"
-    add_channel_dim: bool = True
-    num_channels: int = 1
 
 class BinaryDataStreamingDataHandlerParameters(CustomBaseModel):
     urls: list[str]
@@ -47,14 +54,58 @@ class BinaryDataStreamingDataHandlerParameters(CustomBaseModel):
     library: Literal["zmq", "nng"] = "nng"
     socket_type: Literal["push"] = "push"
 
+
 class BinaryFileWritingDataHandlerParameters(CustomBaseModel):
     file_prefix: str = ""
     file_suffix: str = "h5"
     write_directory: Path = Path.cwd()
 
+
+class TimestampParameters(CustomBaseModel):
+    type: str
+
+
+class DetectorDataParameters(CustomBaseModel):
+    type: str
+    psana_name: str
+    psana_fields: str
+
+class PhotonWavelengthParameters(CustomBaseModel):
+    type: str
+    psana_name: str
+
+
+class DetectorGeometryParameters(CustomBaseModel):
+    type: str
+    psana_name: str
+    psana_fields: list[str] = Field(
+        default_factory = list, min_length=2, max_length=3
+    )
+
+
+class BeamPointingParameters(CustomBaseModel):
+    type: str
+    psana_name: str
+    psana_fields: list[str] = Field(
+        default_factory = list, min_length=4, max_length=4
+    )
+
+
+class RunInfoParameters(CustomBaseModel):
+    type: str
+
+
 class DataSourceParameters(CustomBaseModel):
     type: str
+    timestamp: TimestampParameters | None = None
+    detector_data: DetectorDataParameters | None = None
+    photon_wavelength: PhotonWavelengthParameters | None = None
+    detector_info: DetectorGeometryParameters | None = None
+    beam_pointing: BeamPointingParameters | None = None
+    run_info: RunInfoParameters | None = None
+
     model_config = ConfigDict(extra="allow")
+
 
 class LclstreamerParameters(CustomBaseModel):
     source_identifier: str
@@ -64,23 +115,29 @@ class LclstreamerParameters(CustomBaseModel):
     data_handlers: list[str]
     skip_incomplete_events: bool
 
+
 class EventSourceParameters(CustomBaseModel):
-    InternalEventSource: Optional[InternalEventSourceParameters] = None
-    Psana1EventSource: Optional[Psana1EventSourceParameters] = None
-    Psana2EventSource: Optional[Psana2EventSourceParameters] = None
+    InternalEventSource: InternalEventSourceParameters | None = None
+    Psana1EventSource: Psana1EventSourceParameters | None = None
+    Psana2EventSource: Psana2EventSourceParameters | None = None
+
 
 class ProcessingPipelineParameters(CustomBaseModel):
-    BatchProcessingPipeline: Optional[BatchProcessingPipelineParameters] = None
-    PeaknetPreprocessingPipeline: Optional[PeaknetPreprocessingPipelineParameters] = None
+    BatchProcessingPipeline: BatchProcessingPipelineParameters | None = None
+
 
 class DataSerializerParameters(CustomBaseModel):
-    Hdf5BinarySerializer: Optional[HDF5BinarySerializerParameters] = None
+    Hdf5BinarySerializer: HDF5BinarySerializerParameters | None = None
+    SimplonBinarySerializer: SimplonBinarySerializerParameters | None = None
+
 
 class DataHandlerParameters(CustomBaseModel):
-    BinaryDataStreamingDataHandler: Optional[BinaryDataStreamingDataHandlerParameters] = (
+    BinaryDataStreamingDataHandler: BinaryDataStreamingDataHandlerParameters | None = (
         None
     )
-    BinaryFileWritingDataHandler: Optional[BinaryFileWritingDataHandlerParameters] = None
+
+    BinaryFileWritingDataHandler: BinaryFileWritingDataHandlerParameters | None = None
+
 
 class Parameters(CustomBaseModel):
     lclstreamer: LclstreamerParameters
@@ -91,8 +148,7 @@ class Parameters(CustomBaseModel):
     processing_pipeline: ProcessingPipelineParameters
 
     @model_validator(mode="after")
-    def check_model(self) -> "Parameters":
-      try:
+    def check_model(self) -> Self:
         if getattr(self.event_source, self.lclstreamer.event_source) is None:
             raise ValueError(
                 f"No configuration found for {self.lclstreamer.event_source} event "
@@ -119,7 +175,20 @@ class Parameters(CustomBaseModel):
                 raise ValueError(
                     f"No configuration found for {data_handler_name} data handler"
                 )
-      except Exception:
-          raise ValueError("Bad attribute.")
 
-      return self
+        if self.lclstreamer.data_serializer == "SimplonBinarySerializer":
+            required_sources = [
+                "timestamp",
+                "detector_data",
+                "photon_wavelength",
+                "detector_geometry",
+                "run_info"
+            ]
+            source_missing = [k for k in required_sources if k not in self.data_sources.keys()]
+            if source_missing:
+                raise ValueError(
+                    f"Required field: {source_missing} is missing from data_sources "
+                    " for SimplonBinarySerializer."
+                )
+
+        return self
