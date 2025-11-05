@@ -224,25 +224,50 @@ described above.
 
 ## Comments on psik backend configuration
 
-Note that [backend configuration](https://github.com/frobnitzem/psik/blob/main/psik/models.py) uses a template system, and that builds jobscripts using values from:
+It is simplest to use the SLURM backend to run
+jobs on the psana cluster.
+Additional backend [configuration options](https://github.com/frobnitzem/psik/blob/main/psik/models.py) are documented
+in psik.models.BackendConfig.
 
 - `queue_name     : Optional[str] = None`
 - `project_name   : Optional[str] = None`
 - `reservation_id : Optional[str] = None`
 - `attributes     : Dict[str,str] = {}`
 
-At S3DF, we can use the SLURM job queue on psana by maintaining
-a custom backend to psik that starts jobs with 'ssh psana sbatch'
-instead of 'sbatch', etc.
+These are processed into the `sbatch` command-line
+when a psik job is launched.
+It is possible to use other backends or create
+new ones in order to start/cancel jobs differently.
 
-This works because sdfdtn003 uses the same filesystem as psana,
-so lclstream-api can see the psik job status, and jobs running
-on psana can also run `psik` installed within lclstream-api's
-python environment.
 
-If lclstream-api is run containerized, however, then psik
-should be setup to use psik-api as a backend, and psik-api
-should run on the psana SLURM cluster.
+## Accessing psana from login and dtn nodes
+
+Since we are running the lclstreamer-API from
+sdfdtn003, we need a way to manage SLURM jobs on the psana
+cluster from that system.
+
+I did this with minimal hassle by creating wrapper scripts
+for `sbatch` and `scancel` in `$HOME/swrap`.
+Then my `.bashrc` contains the line
+
+    export PATH=$PATH:$HOME/swrap
+
+This appends the swrap directory to the PATH.
+The wrappers are only visible on hosts without sbatch,
+since (e.g. on a psana node), the system's native sbatch
+command comes earlier in PATH.
+
+```
+#!/bin/bash
+#sbatch
+ssh psana cd $PWD '&&' sbatch $@
+```
+
+```
+#!/bin/bash
+#scancel
+ssh psana scancel $@
+```
 
 
 # Development

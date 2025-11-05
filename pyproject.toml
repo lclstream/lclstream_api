@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "lclstream_api"
-version = "0.7.0"
+version = "0.8.0"
 description = "Image streaming API for psana."
 authors = ["Cong Wang <wangimagine@gmail.com>",
            "David M. Rogers <predictivestatmech@gmail.com>",
