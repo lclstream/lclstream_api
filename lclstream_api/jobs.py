@@ -18,16 +18,13 @@ from .lclstreamer_param import (
 def replace_data_handler(req: Parameters, url: str) -> None:
     # Replace data handlers entirely to avoid the user outputting
     # somewhere unanticipated by LCLStream-API.
-    req.lclstreamer.data_handlers = ["BinaryDataStreamingDataHandler"]
-    req.data_handlers = DataHandlerParameters(
-        BinaryDataStreamingDataHandler =
-          BinaryDataStreamingDataHandlerParameters(
-            urls = [ url ],
-            role = "client",
-            library = "nng",
-            socket_type = "push",
-          )
-    )
+    req.data_handlers = [ BinaryDataStreamingDataHandlerParameters(
+        type = "BinaryDataStreamingDataHandler",
+        urls = [ url ],
+        role = "client",
+        library = "nng",
+        socket_type = "push",
+    ) ]
 
 # note: we could also use domain (FastAPI.Request's req.base_url)
 #       to construct the callback URL...
@@ -102,7 +99,7 @@ def generate_job(req: Parameters,
     """
 
     # Lookup the proper env for the requested event source.
-    if req.lclstreamer.event_source == "Psana1EventSource":
+    if req.event_source.type == "Psana1EventSource":
         psana_env = "psana1"
     else:
         psana_env = "psana2"

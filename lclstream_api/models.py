@@ -84,12 +84,14 @@ class PortEntry:
         if cache_metrics is None:
             self.cache_metrics = empty_metric()
 
+    # TODO: clear, then set timeout events to fire based on
+    # each status transition
     async def transition(self,
                          name: ClientName,
                          state: JobState,
                          jobndx: int = 0,
                          info: str = "",
-                         job: Optional[Job] = None):
+                         job: Optional[Job] = None) -> None:
         self.log.append( PortTransition(time=time.time(),
                                         client=name,
                                         state=state,
@@ -105,16 +107,9 @@ class PortEntry:
                                   self.states[ClientName.cache].value,
                                   str(self.log[-1]))
                     await self.cancel_job()
-            else:
-                try:
-                    info_int = int(info)
-                except ValueError:
-                    info_int = 1 if info else 0
-                if self.job:
-                    await self.job.reached(jobndx, state, info_int)
-                else:
-                    _logger.error("self.job undefined at %s",
-                                    str(self.log[-1]))
+            elif state.is_final():
+                print("FIXME - terminate cache if cache has not received any messages.")
+                pass
 
         if name == ClientName.cache and state.is_final():
             await self.cancel_job()

@@ -1,5 +1,6 @@
 from pathlib import Path
-from typing import Literal, Self
+from typing import Literal, Self, List, Dict, Union
+from typing_extensions import Annotated
 
 from pydantic import BaseModel, ConfigDict, model_validator, Field, conlist
 
@@ -10,56 +11,24 @@ class CustomBaseModel(BaseModel):
     )
 
 
+####### Event Sources ########
 class InternalEventSourceParameters(CustomBaseModel):
+    type: Literal["InternalEventSource"]
     number_of_events_to_generate: int
 
+class Psana1EventSourceParameters(CustomBaseModel):
+    type: Literal["Psana1EventSource"]
 
-class Psana1EventSourceParameters(CustomBaseModel): ...  # noqa: E701
+class Psana2EventSourceParameters(CustomBaseModel):
+    type: Literal["Psana2EventSource"]
 
-
-class Psana2EventSourceParameters(CustomBaseModel): ...  # noqa: E701
-
-
-class SimplonBinarySerializerParameters(CustomBaseModel):
-    data_source_to_serialize: str
-    polarization_fraction: float
-    polarization_axis: list[float]
-    data_collection_rate: str
-    detector_name: str
-    detector_type: str
+EventSource = Annotated[ Union[InternalEventSourceParameters,
+                               Psana1EventSourceParameters,
+                               Psana2EventSourceParameters],
+                         Field(discriminator="type")]
 
 
-class HDF5BinarySerializerParameters(CustomBaseModel):
-    compression_level: int = 3
-    compression: (
-        Literal[
-            "gzip",
-            "gzip_with_shuffle",
-            "bitshuffle_with_lz4",
-            "bitshuffle_with_zstd",
-            "zfp",
-        ]
-        | None
-    ) = None
-    fields: dict[str, str]
-
-
-class BatchProcessingPipelineParameters(CustomBaseModel):
-    batch_size: int
-
-
-class BinaryDataStreamingDataHandlerParameters(CustomBaseModel):
-    urls: list[str]
-    role: Literal["server", "client"] = "server"
-    library: Literal["zmq", "nng"] = "nng"
-    socket_type: Literal["push"] = "push"
-
-
-class BinaryFileWritingDataHandlerParameters(CustomBaseModel):
-    file_prefix: str = ""
-    file_suffix: str = "h5"
-    write_directory: Path = Path.cwd()
-
+###### Data Sources #######
 
 class TimestampParameters(CustomBaseModel):
     type: str
@@ -78,7 +47,7 @@ class PhotonWavelengthParameters(CustomBaseModel):
 class DetectorGeometryParameters(CustomBaseModel):
     type: str
     psana_name: str
-    psana_fields: list[str] = Field(
+    psana_fields: List[str] = Field(
         default_factory = list, min_length=2, max_length=3
     )
 
@@ -86,14 +55,13 @@ class DetectorGeometryParameters(CustomBaseModel):
 class BeamPointingParameters(CustomBaseModel):
     type: str
     psana_name: str
-    psana_fields: list[str] = Field(
+    psana_fields: List[str] = Field(
         default_factory = list, min_length=4, max_length=4
     )
 
 
 class RunInfoParameters(CustomBaseModel):
     type: str
-
 
 class DataSourceParameters(CustomBaseModel):
     type: str
@@ -107,76 +75,93 @@ class DataSourceParameters(CustomBaseModel):
     model_config = ConfigDict(extra="allow")
 
 
-class LclstreamerParameters(CustomBaseModel):
-    source_identifier: str
-    event_source: str
-    processing_pipeline: str
-    data_serializer: str
-    data_handlers: list[str]
-    skip_incomplete_events: bool
+####### Processing Pipelines #########
+
+class BatchProcessingPipelineParameters(CustomBaseModel):
+    type: Literal["BatchProcessingPipeline"]
+    batch_size: int
 
 
-class EventSourceParameters(CustomBaseModel):
-    InternalEventSource: InternalEventSourceParameters | None = None
-    Psana1EventSource: Psana1EventSourceParameters | None = None
-    Psana2EventSource: Psana2EventSourceParameters | None = None
+class PeaknetPreprocessingPipelineParameters(CustomBaseModel):
+    type: Literal["PeaknetPreprocessingPipeline"]
+    batch_size: int
+    target_height: int
+    target_width: int
+    pad_style: Literal["center", "bottom-right"] = "center"
+    add_channel_dim: bool = True
+    num_channels: int = 1
+
+ProcessingPipelineParameters = Annotated[ Union[BatchProcessingPipelineParameters,
+                                                PeaknetPreprocessingPipelineParameters],
+                                          Field(discriminator="type")]
 
 
-class ProcessingPipelineParameters(CustomBaseModel):
-    BatchProcessingPipeline: BatchProcessingPipelineParameters | None = None
+####### Serializers ##########
+
+class SimplonBinarySerializerParameters(CustomBaseModel):
+    type: Literal["SimplonBinarySerializer"]
+    data_source_to_serialize: str
+    polarization_fraction: float
+    polarization_axis: List[float]
+    data_collection_rate: str
+    detector_name: str
+    detector_type: str
 
 
-class DataSerializerParameters(CustomBaseModel):
-    Hdf5BinarySerializer: HDF5BinarySerializerParameters | None = None
-    SimplonBinarySerializer: SimplonBinarySerializerParameters | None = None
+class HDF5BinarySerializerParameters(CustomBaseModel):
+    type: Literal["HDF5BinarySerializer"]
+    compression_level: int = 3
+    compression: (
+        Literal[
+            "gzip",
+            "gzip_with_shuffle",
+            "bitshuffle_with_lz4",
+            "bitshuffle_with_zstd",
+            "zfp",
+        ]
+        | None
+    ) = None
+    fields: Dict[str, str]
+
+DataSerializerParameters = Annotated[ Union[HDF5BinarySerializerParameters,
+                                            SimplonBinarySerializerParameters],
+                                      Field(discriminator="type")]
 
 
-class DataHandlerParameters(CustomBaseModel):
-    BinaryDataStreamingDataHandler: BinaryDataStreamingDataHandlerParameters | None = (
-        None
-    )
+######### Data Handlers #################
 
-    BinaryFileWritingDataHandler: BinaryFileWritingDataHandlerParameters | None = None
+class BinaryDataStreamingDataHandlerParameters(CustomBaseModel):
+    type: Literal["BinaryDataStreamingDataHandler"]
+    urls: List[str]
+    role: Literal["server", "client"] = "server"
+    library: Literal["zmq", "nng"] = "nng"
+    socket_type: Literal["push"] = "push"
+
+
+class BinaryFileWritingDataHandlerParameters(CustomBaseModel):
+    type: Literal["BinaryFileWritingDataHandler"]
+    file_prefix: str = ""
+    file_suffix: str = "h5"
+    write_directory: Path = Path.cwd()
+
+DataHandlerParameters = Annotated[ Union[BinaryDataStreamingDataHandlerParameters,
+                                         BinaryFileWritingDataHandlerParameters],
+                                   Field(discriminator="type")]
 
 
 class Parameters(CustomBaseModel):
-    lclstreamer: LclstreamerParameters
-    event_source: EventSourceParameters
-    data_sources: dict[str, DataSourceParameters]
-    data_serializer: DataSerializerParameters
-    data_handlers: DataHandlerParameters
+    source_identifier: str
+    skip_incomplete_events: bool
+
+    event_source: EventSource
+    data_sources: Dict[str, DataSourceParameters]
     processing_pipeline: ProcessingPipelineParameters
+    data_serializer: DataSerializerParameters
+    data_handlers: List[DataHandlerParameters]
 
     @model_validator(mode="after")
     def check_model(self) -> Self:
-        if getattr(self.event_source, self.lclstreamer.event_source) is None:
-            raise ValueError(
-                f"No configuration found for {self.lclstreamer.event_source} event "
-                "source"
-            )
-        if (
-            getattr(self.processing_pipeline, self.lclstreamer.processing_pipeline)
-            is None
-        ):
-            raise ValueError(
-                f"No configuration found for {self.lclstreamer.processing_pipeline} "
-                "processing pipeline"
-            )
-
-        if getattr(self.data_serializer, self.lclstreamer.data_serializer) is None:
-            raise ValueError(
-                f"No configuration found for {self.lclstreamer.data_serializer} data "
-                "serializer"
-            )
-
-        data_handler_name: str
-        for data_handler_name in self.lclstreamer.data_handlers:
-            if getattr(self.data_handlers, data_handler_name) is None:
-                raise ValueError(
-                    f"No configuration found for {data_handler_name} data handler"
-                )
-
-        if self.lclstreamer.data_serializer == "SimplonBinarySerializer":
+        if self.data_serializer.type == "SimplonBinarySerializer":
             required_sources = [
                 "timestamp",
                 "detector_data",
@@ -187,7 +172,7 @@ class Parameters(CustomBaseModel):
             source_missing = [k for k in required_sources if k not in self.data_sources.keys()]
             if source_missing:
                 raise ValueError(
-                    f"Required field: {source_missing} is missing from data_sources "
+                    f"Required fields: {source_missing} is missing from data_sources "
                     " for SimplonBinarySerializer."
                 )
 
