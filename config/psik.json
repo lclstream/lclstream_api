@@ -1,0 +1,11 @@
+{ "prefix": "/sdf/home/r/rogersdd/psik",
+  "backends": {
+    "default": {
+        "type": "local"
+    },
+    "slurm": {
+        "type": "slurm",
+        "project_name": "lcls:tmox42619",
+        "queue_name": "milano"
+    }
+}

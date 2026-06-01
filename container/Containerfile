@@ -1,0 +1,34 @@
+# Install uv
+FROM python:3.14-slim AS builder
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+# Use the system Python across both stages
+ENV UV_PYTHON_DOWNLOADS=0
+
+# Change the working directory to the `app` directory
+WORKDIR /app
+
+# Install dependencies
+RUN --mount=type=cache,target=/root/.cache/uvi,Z \
+    --mount=type=bind,source=uv.lock,target=uv.lock,Z \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml,Z \
+    uv sync --locked --no-install-project --no-editable
+
+# Copy the project into the intermediate image
+COPY . /app
+
+# Sync the project
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked --no-editable
+
+FROM python:3.14-slim
+
+# Copy the environment, but not the source code
+COPY --from=builder /app/.venv /app/.venv
+
+# Copy the configuration files
+COPY config/lclstream_api.json  /etc/lclstream_api.json
+COPY config/psik.json  /etc/psik.json
+
+# Run the application
+CMD ["/app/.venv/bin/uvicorn", "lclstream_api.server:app", "--reload"]

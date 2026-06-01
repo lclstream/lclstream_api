@@ -1,0 +1,46 @@
+{
+  "cache_fmt": "/sdf/home/r/rogersdd/lclstream_cache/%s",
+  "psik": {
+    "prefix": "/sdf/home/r/rogersdd/psik",
+    "backends": {
+      "default": {
+        "type": "local"
+      },
+      "slurm": {
+        "type": "slurm",
+        "project_name": "lcls:tmox42619",
+        "queue_name": "milano"
+      }
+    }
+  },
+  "run_cache": "/sdf/home/r/rogersdd/src/nng_stream/nng_cache",
+  "callback_url": "https://134.79.23.43:4433/v1/callback",
+  "cache_ip": "134.79.23.43",
+  "start_port": 30001,
+  "end_port": 31000,
+  "replay_job": {
+    "name": "lclstream-push",
+    "backend": "default",
+    "resources": {
+      "duration": 60,
+      "node_count": 1,
+      "processes_per_node": 1,
+      "cpu_cores_per_process": 1
+    },
+    "script": "lclstream push --addr {url} --ndial 8 {pre}*.h5"
+  },
+  "lclstream_job": {
+    "name": "lclstreamer",
+    "backend": "slurm",
+    "resources": {
+      "duration": 60,
+      "node_count": 1,
+      "processes_per_node": 120,
+      "cpu_cores_per_process": 1
+    },
+    "environment": {
+      "CERTIFIED_CONFIG": "/sdf/home/r/rogersdd/venvs/lclstream_api/etc/certified"
+    },
+    "script": "pixi run --manifest-path /sdf/home/r/rogersdd/src/lclstreamer -e {psana_env} /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/mpirun lclstreamer --config lclstreamer.json"
+  }
+}
