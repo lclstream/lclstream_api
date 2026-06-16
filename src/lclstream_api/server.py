@@ -3,14 +3,14 @@ from contextlib import asynccontextmanager
 from importlib.metadata import version
 from typing import Any
 
-_logger = logging.getLogger(__name__)
-version_tag = version(__package__)
-
 from fastapi import FastAPI
 
 from .config import load_config
 from .routers.callback import callback
 from .routers.transfer import transfers
+
+_logger = logging.getLogger(__name__)
+version_tag = version(__package__)
 
 description = """
 Access your psana(2) data remotely.

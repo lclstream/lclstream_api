@@ -2,8 +2,6 @@ import logging
 from pathlib import Path
 from typing import Annotated
 
-_logger = logging.getLogger(__name__)
-
 import psik
 from fastapi import (
     APIRouter,
@@ -23,6 +21,8 @@ from ..models import (
     TransferStatus,
 )
 from ..ports import Database
+
+_logger = logging.getLogger(__name__)
 
 CachedConfig = Annotated[Config, Depends(load_config)]
 

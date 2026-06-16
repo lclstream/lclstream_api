@@ -2,13 +2,13 @@ import asyncio
 import logging
 from typing import Annotated
 
-_logger = logging.getLogger(__name__)
-
 from fastapi import Depends
 
 from .cache import cache_process
 from .config import Config, load_config
 from .models import PortEntry
+
+_logger = logging.getLogger(__name__)
 
 CachedConfig = Annotated[Config, Depends(load_config)]
 

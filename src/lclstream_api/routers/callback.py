@@ -1,8 +1,6 @@
 import logging
 from typing import Annotated
 
-_logger = logging.getLogger(__name__)
-
 import psik
 from fastapi import (
     APIRouter,
@@ -14,6 +12,8 @@ from fastapi import (
 
 from ..models import ClientName
 from ..ports import Database
+
+_logger = logging.getLogger(__name__)
 
 callback = APIRouter(responses={401: {"description": "Unauthorized"}})
 
