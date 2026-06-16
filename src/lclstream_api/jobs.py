@@ -19,7 +19,7 @@ def replace_data_handler(req: Parameters, url: str) -> None:
             type="BinaryDataStreamingDataHandler",
             urls=[url],
             role="client",
-            library="nng",
+            library="zmq",
             socket_type="push",
         )
     ]

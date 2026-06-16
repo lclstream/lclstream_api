@@ -8,7 +8,7 @@ from .models import CacheMetrics, ClientName, JobState, PortEntry
 
 
 async def parse_logs(s: asyncio.StreamReader, port: PortEntry) -> None:
-    """Parse the logs present in nng_cache's stdout.
+    """Parse the logs present in fastcache's stdout.
     Update port object with these metrics/transitions.
     """
     await port.transition(ClientName.cache, JobState.active)
@@ -73,9 +73,8 @@ async def watch_cmd(*args, **kws) -> None:
 
 
 async def cache_process(run_cache: str, port: PortEntry) -> asyncio.Task:
-    """Start the cache (usu. run_cache = nng_cache or nz_cache)
-    process in the background and collect its status
-    inside port.cache_*.
+    """Start the cache (fastcache) process in the background
+    and collect its status inside port.cache_*.
 
     Returns a running Task.
     """

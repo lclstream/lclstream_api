@@ -173,10 +173,10 @@ async def stream_job(fname, port):
     3. monitor the joint process
 
     fname: name of file to send from psana node
-    port:  port on this server to serve TCP nng-push stream
+    port:  port on this server to serve TCP zmq-push stream
     """
 
-    # /sdf/home/r/rogersdd/src/nng_stream/nng_cache -vv tcp://$addr:$recv tcp://$addr:$send &
+    # fastcache -vv tcp://$addr:$recv tcp://$addr:$send &
 
     # submit_job() {
     #  ssh psana sbatch /sdf/home/r/rogersdd/venvs/run_file_push $fname \
@@ -185,11 +185,9 @@ async def stream_job(fname, port):
     #
     recv = port - 1
     proc = await asyncio.create_subprocess_exec(
-        # ["/sdf/home/r/rogersdd/src/nng_stream/nng_cache", "-v",
-        #   f"tcp://134.79.23.43:{recv}",
-        #   f"tcp://134.79.23.43:{port}"],
+        # TODO: update path to fastcache binary
         [
-            "/home/99r/src/microservices/nng_stream/nng_cache",
+            "fastcache",
             "-v",
             f"tcp://127.0.0.1:{recv}",
             f"tcp://127.0.0.1:{port}",
