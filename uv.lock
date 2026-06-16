@@ -952,6 +952,7 @@ dev = [
     { name = "pytest" },
     { name = "pytest-aiohttp" },
     { name = "pytest-asyncio" },
+    { name = "pyzmq" },
     { name = "ruff" },
 ]
 
@@ -972,6 +973,7 @@ dev = [
     { name = "pytest", specifier = ">=9.0.3" },
     { name = "pytest-aiohttp", specifier = ">=1.1.0" },
     { name = "pytest-asyncio", specifier = ">=1.4.0" },
+    { name = "pyzmq", specifier = ">=26.0.0" },
     { name = "ruff", specifier = ">=0.15.17" },
 ]
 
