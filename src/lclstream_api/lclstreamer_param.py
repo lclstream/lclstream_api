@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 class CustomBaseModel(BaseModel):
     model_config = ConfigDict(
-        extra="forbid",  # Allows extra attributes during validation
+        extra="forbid",  # Forbids extra attributes during validation
     )
 
 
