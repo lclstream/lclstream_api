@@ -25,7 +25,9 @@ class Psana2EventSourceParameters(CustomBaseModel):
 
 
 EventSource = Annotated[
-    InternalEventSourceParameters | Psana1EventSourceParameters | Psana2EventSourceParameters,
+    InternalEventSourceParameters
+    | Psana1EventSourceParameters
+    | Psana2EventSourceParameters,
     Field(discriminator="type"),
 ]
 

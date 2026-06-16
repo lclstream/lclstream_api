@@ -47,9 +47,7 @@ class PortDatabase:  # singleton
         # External ports are internal+1
         return f"tcp://{self.host}:{port + 1}"
 
-    async def create(
-        self, jobid: str, user: str, port: int | None = None
-    ) -> PortEntry:
+    async def create(self, jobid: str, user: str, port: int | None = None) -> PortEntry:
         if jobid in self.jobs:
             entry = self.jobs[jobid]
             # Make create idempotent

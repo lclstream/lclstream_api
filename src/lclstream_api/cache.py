@@ -63,7 +63,7 @@ async def watch_cmd(*args, **kws) -> None:
             # Give it a moment to terminate (optional)
             try:
                 await asyncio.wait_for(proc.wait(), timeout=1.0)
-            except (TimeoutError, ProcessLookupError):
+            except TimeoutError, ProcessLookupError:
                 # Force kill if it didn't terminate in time
                 # TODO: send to _logger.
                 print("Subprocess did not terminate quickly. Killing.")
