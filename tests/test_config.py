@@ -78,16 +78,19 @@ cfg_json = """{
 }
 """
 
+
 @pytest.fixture
 def config(tmpdir) -> Config:
-    return Config.model_validate_json(cfg_json%{"base": str(tmpdir)})
+    return Config.model_validate_json(cfg_json % {"base": str(tmpdir)})
+
 
 @pytest.fixture
 def setup_lclstream_api(config, tmp_path) -> Path:
-    fname = tmp_path/"lclstream_api.json"
+    fname = tmp_path / "lclstream_api.json"
     fname.write_text(config.model_dump_json())
     os.environ["LCLSTREAM_API_CONFIG"] = str(fname)
     return fname
+
 
 def test_config(config):
     assert isinstance(config, Config)

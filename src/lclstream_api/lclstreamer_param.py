@@ -16,19 +16,27 @@ class InternalEventSourceParameters(CustomBaseModel):
     type: Literal["InternalEventSource"]
     number_of_events_to_generate: int
 
+
 class Psana1EventSourceParameters(CustomBaseModel):
     type: Literal["Psana1EventSource"]
+
 
 class Psana2EventSourceParameters(CustomBaseModel):
     type: Literal["Psana2EventSource"]
 
-EventSource = Annotated[ Union[InternalEventSourceParameters,
-                               Psana1EventSourceParameters,
-                               Psana2EventSourceParameters],
-                         Field(discriminator="type")]
+
+EventSource = Annotated[
+    Union[
+        InternalEventSourceParameters,
+        Psana1EventSourceParameters,
+        Psana2EventSourceParameters,
+    ],
+    Field(discriminator="type"),
+]
 
 
 ###### Data Sources #######
+
 
 class TimestampParameters(CustomBaseModel):
     type: str
@@ -39,6 +47,7 @@ class DetectorDataParameters(CustomBaseModel):
     psana_name: str
     psana_fields: str
 
+
 class PhotonWavelengthParameters(CustomBaseModel):
     type: str
     psana_name: str
@@ -47,21 +56,18 @@ class PhotonWavelengthParameters(CustomBaseModel):
 class DetectorGeometryParameters(CustomBaseModel):
     type: str
     psana_name: str
-    psana_fields: List[str] = Field(
-        default_factory = list, min_length=2, max_length=3
-    )
+    psana_fields: List[str] = Field(default_factory=list, min_length=2, max_length=3)
 
 
 class BeamPointingParameters(CustomBaseModel):
     type: str
     psana_name: str
-    psana_fields: List[str] = Field(
-        default_factory = list, min_length=4, max_length=4
-    )
+    psana_fields: List[str] = Field(default_factory=list, min_length=4, max_length=4)
 
 
 class RunInfoParameters(CustomBaseModel):
     type: str
+
 
 class DataSourceParameters(CustomBaseModel):
     type: str
@@ -77,6 +83,7 @@ class DataSourceParameters(CustomBaseModel):
 
 ####### Processing Pipelines #########
 
+
 class BatchProcessingPipelineParameters(CustomBaseModel):
     type: Literal["BatchProcessingPipeline"]
     batch_size: int
@@ -91,12 +98,15 @@ class PeaknetPreprocessingPipelineParameters(CustomBaseModel):
     add_channel_dim: bool = True
     num_channels: int = 1
 
-ProcessingPipelineParameters = Annotated[ Union[BatchProcessingPipelineParameters,
-                                                PeaknetPreprocessingPipelineParameters],
-                                          Field(discriminator="type")]
+
+ProcessingPipelineParameters = Annotated[
+    Union[BatchProcessingPipelineParameters, PeaknetPreprocessingPipelineParameters],
+    Field(discriminator="type"),
+]
 
 
 ####### Serializers ##########
+
 
 class SimplonBinarySerializerParameters(CustomBaseModel):
     type: Literal["SimplonBinarySerializer"]
@@ -123,12 +133,15 @@ class HDF5BinarySerializerParameters(CustomBaseModel):
     ) = None
     fields: Dict[str, str]
 
-DataSerializerParameters = Annotated[ Union[HDF5BinarySerializerParameters,
-                                            SimplonBinarySerializerParameters],
-                                      Field(discriminator="type")]
+
+DataSerializerParameters = Annotated[
+    Union[HDF5BinarySerializerParameters, SimplonBinarySerializerParameters],
+    Field(discriminator="type"),
+]
 
 
 ######### Data Handlers #################
+
 
 class BinaryDataStreamingDataHandlerParameters(CustomBaseModel):
     type: Literal["BinaryDataStreamingDataHandler"]
@@ -144,9 +157,13 @@ class BinaryFileWritingDataHandlerParameters(CustomBaseModel):
     file_suffix: str = "h5"
     write_directory: Path = Path.cwd()
 
-DataHandlerParameters = Annotated[ Union[BinaryDataStreamingDataHandlerParameters,
-                                         BinaryFileWritingDataHandlerParameters],
-                                   Field(discriminator="type")]
+
+DataHandlerParameters = Annotated[
+    Union[
+        BinaryDataStreamingDataHandlerParameters, BinaryFileWritingDataHandlerParameters
+    ],
+    Field(discriminator="type"),
+]
 
 
 class Parameters(CustomBaseModel):
@@ -167,9 +184,11 @@ class Parameters(CustomBaseModel):
                 "detector_data",
                 "photon_wavelength",
                 "detector_geometry",
-                "run_info"
+                "run_info",
             ]
-            source_missing = [k for k in required_sources if k not in self.data_sources.keys()]
+            source_missing = [
+                k for k in required_sources if k not in self.data_sources.keys()
+            ]
             if source_missing:
                 raise ValueError(
                     f"Required fields: {source_missing} is missing from data_sources "

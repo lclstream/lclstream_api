@@ -1,8 +1,6 @@
 import psik
 
-from lclstream_api.lclstreamer_param import (
-    Parameters
-)
+from lclstream_api.lclstreamer_param import Parameters
 from lclstream_api.jobs import (
     create_job,
     has_cache,
@@ -85,6 +83,7 @@ param2 = """{
 }
 """
 
+
 def test_outdir(config):
     req1 = Parameters.model_validate_json(param1)
     req2 = Parameters.model_validate_json(param2)
@@ -95,16 +94,19 @@ def test_outdir(config):
     assert out1 == out3
     assert out1 != out2
 
+
 def test_create(config):
     req = Parameters.model_validate_json(param1)
     spec = create_job(req, "tcp://127.0.0.1:5001", config)
     assert isinstance(spec, psik.JobSpec)
+
 
 def test_generate(config):
     req = Parameters.model_validate_json(param1)
     spec = generate_job(req, "tcp://127.0.0.1:5001", config)
     assert isinstance(spec, psik.JobSpec)
 
+
 def test_replay(config, tmpdir):
-    spec = replay_job(tmpdir/"cache", "tcp://127.0.0.1:5001", config)
+    spec = replay_job(tmpdir / "cache", "tcp://127.0.0.1:5001", config)
     assert isinstance(spec, psik.JobSpec)
