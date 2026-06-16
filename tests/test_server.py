@@ -1,21 +1,14 @@
 import asyncio
-
-from typing import List
-import pytest
-import os
 import json
 
 import pytest
 import pytest_asyncio
-
 from fastapi.testclient import TestClient
 from lclstream.zmqsock import puller
-
-from lclstream_api.server import api
-from lclstream_api.models import TransferStatus, CacheMetrics, TransferInfo
-
-from test_config import config, setup_lclstream_api
 from test_jobs import param2
+
+from lclstream_api.models import TransferInfo, TransferStatus
+from lclstream_api.server import api
 
 ADDR = "tcp://127.0.0.1:28451"
 

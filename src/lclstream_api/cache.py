@@ -1,10 +1,10 @@
 # Functions to manage a locally running cache process.
 
 import asyncio
+
 from pydantic import ValidationError
 
-from .models import PortEntry, CacheMetrics, JobState, ClientName
-from .config import Config
+from .models import CacheMetrics, ClientName, JobState, PortEntry
 
 
 async def parse_logs(s: asyncio.StreamReader, port: PortEntry) -> None:
@@ -63,7 +63,7 @@ async def watch_cmd(*args, **kws) -> None:
             # Give it a moment to terminate (optional)
             try:
                 await asyncio.wait_for(proc.wait(), timeout=1.0)
-            except asyncio.TimeoutError, ProcessLookupError:
+            except (TimeoutError, ProcessLookupError):
                 # Force kill if it didn't terminate in time
                 # TODO: send to _logger.
                 print("Subprocess did not terminate quickly. Killing.")

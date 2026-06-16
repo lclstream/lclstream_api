@@ -1,22 +1,19 @@
-from typing import Optional, List
-from typing_extensions import Annotated
-from pathlib import Path
 import logging
+from typing import Annotated
 
 _logger = logging.getLogger(__name__)
 
+import psik
 from fastapi import (
     APIRouter,
-    HTTPException,
     BackgroundTasks,
-    Depends,
-    Request,
     Header,
+    HTTPException,
+    Request,
 )
-import psik
 
-from ..ports import Database
 from ..models import ClientName
+from ..ports import Database
 
 callback = APIRouter(responses={401: {"description": "Unauthorized"}})
 
@@ -27,7 +24,7 @@ async def post_callback(
     db: Database,
     request: Request,
     bg_tasks: BackgroundTasks,
-    x_hub_signature_256: Annotated[Optional[str], Header()] = None,
+    x_hub_signature_256: Annotated[str | None, Header()] = None,
 ) -> bool:
     try:
         entry = db[cb.jobid]

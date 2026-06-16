@@ -1,18 +1,13 @@
 # Helpers for creating job payload.
 
-from typing import Optional
 from pathlib import Path
-from secrets import token_urlsafe
-
-from pydantic import SecretStr
 
 import psik
 
 from .config import Config
 from .lclstreamer_param import (
-    Parameters,
-    DataHandlerParameters,
     BinaryDataStreamingDataHandlerParameters,
+    Parameters,
 )
 
 
@@ -51,7 +46,7 @@ def create_job(request: Parameters, internal_url: str, cfg: Config) -> psik.JobS
     return spec
 
 
-def get_outdir(req: Parameters, cfg: Config) -> Optional[Path]:
+def get_outdir(req: Parameters, cfg: Config) -> Path | None:
     """Compute the output directory name for this
     experiment / req.config pair.
     """
@@ -65,7 +60,7 @@ def get_outdir(req: Parameters, cfg: Config) -> Optional[Path]:
     return Path(cfg.cache_fmt % expt) / cfg_hash
 
 
-def has_cache(req: Parameters, cfg: Config) -> Optional[Path]:
+def has_cache(req: Parameters, cfg: Config) -> Path | None:
     """Return directory+filename prefix containing
     cached h5 files created for this request.
 

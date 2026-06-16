@@ -1,15 +1,12 @@
 import psik
 
-from lclstream_api.lclstreamer_param import Parameters
 from lclstream_api.jobs import (
     create_job,
-    has_cache,
-    replay_job,
     generate_job,
     get_outdir,
+    replay_job,
 )
-
-from test_config import config
+from lclstream_api.lclstreamer_param import Parameters
 
 param1 = """{
   "lclstreamer": {

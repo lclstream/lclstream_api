@@ -1,22 +1,18 @@
 import asyncio
-import pytest
 from pathlib import Path
 
 from lclstream.zmqsock import puller
 
 from lclstream_api.cache import cache_process, watch_cmd
-from lclstream_api.jobs import create_job
-from lclstream_api.models import (
-    PortEntry,
-    CacheMetrics,
-    JobState,
-    ClientName,
-)
-from lclstream_api.lclstreamer_param import Parameters
 from lclstream_api.config import to_mgr
-
-from test_config import config
-from test_jobs import param2
+from lclstream_api.jobs import create_job
+from lclstream_api.lclstreamer_param import Parameters
+from lclstream_api.models import (
+    CacheMetrics,
+    ClientName,
+    JobState,
+    PortEntry,
+)
 
 
 @pytest.mark.asyncio()

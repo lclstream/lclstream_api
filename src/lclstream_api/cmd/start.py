@@ -1,13 +1,10 @@
-import sys
-import re
-from typing import List
 import asyncio
+import re
+import sys
+
 # from aiowire import EventLoop, Wire, Call
-
-import psik
-
-from psik.models import JobState
 from psik.job import runcmd
+from psik.models import JobState
 
 
 def get_state(ss) -> JobState:

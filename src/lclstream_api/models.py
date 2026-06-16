@@ -1,14 +1,12 @@
+import logging
 import time
 from enum import Enum
-from typing import Optional, List, Dict, Tuple
-import logging
 
 _logger = logging.getLogger(__name__)
 
-from pydantic import BaseModel, Field
-
 from psik import Job
-from psik.models import Transition, JobID, JobState
+from psik.models import JobID, JobState
+from pydantic import BaseModel
 
 
 class TransferStatus(BaseModel):
@@ -49,7 +47,7 @@ class PortTransition(BaseModel):
 
 class TransferInfo(BaseModel):
     user: str
-    log: List[PortTransition]
+    log: list[PortTransition]
     metrics: CacheMetrics
 
 
@@ -59,9 +57,9 @@ class PortEntry:
     internal_url: str
     external_url: str
 
-    states: Dict[ClientName, JobState]
-    log: List[PortTransition]
-    job: Optional[Job]
+    states: dict[ClientName, JobState]
+    log: list[PortTransition]
+    job: Job | None
 
     cache_metrics: CacheMetrics
 
@@ -71,10 +69,10 @@ class PortEntry:
         port: int,
         internal_url: str,
         external_url: str,
-        states: Dict[ClientName, JobState] = {},
-        log: List[PortTransition] = [],
-        cache_metrics: Optional[CacheMetrics] = None,
-        job: Optional[Job] = None,
+        states: dict[ClientName, JobState] = {},
+        log: list[PortTransition] = [],
+        cache_metrics: CacheMetrics | None = None,
+        job: Job | None = None,
     ):
         self.user = user
         self.port = port
@@ -108,7 +106,7 @@ class PortEntry:
         state: JobState,
         jobndx: int = 0,
         info: str = "",
-        job: Optional[Job] = None,
+        job: Job | None = None,
     ) -> None:
         self.log.append(
             PortTransition(time=time.time(), client=name, state=state, info=info)

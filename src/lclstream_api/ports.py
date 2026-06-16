@@ -1,16 +1,14 @@
-from typing import Optional, Dict
-from typing_extensions import Annotated
 import asyncio
 import logging
+from typing import Annotated
 
 _logger = logging.getLogger(__name__)
 
-from pydantic import BaseModel
 from fastapi import Depends
 
-from .models import PortEntry
 from .cache import cache_process
 from .config import Config, load_config
+from .models import PortEntry
 
 CachedConfig = Annotated[Config, Depends(load_config)]
 
@@ -23,13 +21,13 @@ class PortDatabase:  # singleton
 
         self.open_ports = list(range(start, end, 2))
         # Mapping from jobid to user, port pairs.
-        self.jobs: Dict[str, PortEntry] = {}
-        self.tasks: Dict[str, asyncio.Task] = {}
+        self.jobs: dict[str, PortEntry] = {}
+        self.tasks: dict[str, asyncio.Task] = {}
 
     def items(self):
         return self.jobs.items()
 
-    def alloc(self) -> Optional[int]:
+    def alloc(self) -> int | None:
         """Allocate a port -- usually called automagically
         during create().
         """
@@ -50,7 +48,7 @@ class PortDatabase:  # singleton
         return f"tcp://{self.host}:{port + 1}"
 
     async def create(
-        self, jobid: str, user: str, port: Optional[int] = None
+        self, jobid: str, user: str, port: int | None = None
     ) -> PortEntry:
         if jobid in self.jobs:
             entry = self.jobs[jobid]

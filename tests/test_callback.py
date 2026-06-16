@@ -1,19 +1,15 @@
 import json
 
+import psik
 import pytest
 import pytest_asyncio
-
-from fastapi import HTTPException
-
 from aiohttp import web
-from psik.web import post_json
+from fastapi import HTTPException
 from psik.models import Callback, JobState
-import psik
+from psik.web import post_json
 
-from lclstream_api.routers import callback
 from lclstream_api.ports import get_database
-
-from test_config import config
+from lclstream_api.routers import callback
 
 ### test fixture for accepting a callback ###
 cb_value = web.AppKey("value", None)  # type: ignore[var-annotated]
@@ -46,7 +42,7 @@ async def post_cb(request, config):
         ans = await callback.post_callback(
             cb, db, request, bg_tasks, x_hub_signature_256
         )
-    except HTTPException as e:
+    except HTTPException:
         return web.Response(text='"false"', status=200)
     assert len(bg_tasks) == 1
     await bg_tasks.run_tasks()

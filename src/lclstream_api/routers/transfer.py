@@ -1,31 +1,28 @@
-from typing import Optional, List
-from typing_extensions import Annotated
-from pathlib import Path
 import logging
+from pathlib import Path
+from typing import Annotated
 
 _logger = logging.getLogger(__name__)
 
+import psik
 from fastapi import (
     APIRouter,
-    HTTPException,
     BackgroundTasks,
     Depends,
+    HTTPException,
 )
-import psik
 
-from ..config import to_mgr, load_config, Config
+from ..config import Config, load_config, to_mgr
+from ..jobs import create_job
+from ..lclstreamer_param import Parameters
 from ..models import (
-    TransferStatus,
-    TransferInfo,
-    CacheMetrics,
+    ClientName,
     JobID,
     JobState,
-    ClientName,
-    PortTransition,
+    TransferInfo,
+    TransferStatus,
 )
-from ..jobs import create_job
 from ..ports import Database
-from ..lclstreamer_param import Parameters
 
 CachedConfig = Annotated[Config, Depends(load_config)]
 
@@ -52,9 +49,9 @@ transfers = APIRouter(responses={401: {"description": "Unauthorized"}})
 async def list_transfers(
     db: Database,
     index: int = 0,
-    limit: Optional[int] = None,
-    state: Optional[psik.JobState] = None,
-) -> List[TransferStatus]:
+    limit: int | None = None,
+    state: psik.JobState | None = None,
+) -> list[TransferStatus]:
     """
     Get information about transfers.
 

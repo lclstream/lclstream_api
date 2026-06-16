@@ -1,10 +1,10 @@
-from typing import Union, Optional
 import os
 from functools import cache
 from pathlib import Path
+from typing import Union
 
-from pydantic import BaseModel
 import psik
+from pydantic import BaseModel
 
 
 class Config(BaseModel):
@@ -12,8 +12,8 @@ class Config(BaseModel):
     lclstream_job: psik.JobSpec
     psik: psik.Config
     run_cache: str
-    callback_url: Optional[str]  # no default since None breaks callback functionality
-    cache_fmt: Optional[str] = None
+    callback_url: str | None  # no default since None breaks callback functionality
+    cache_fmt: str | None = None
     cache_ip: str
     start_port: int = 30001
     end_port: int = 34000
@@ -34,7 +34,7 @@ Pstr = Union[str, os.PathLike]
 
 
 @cache
-def load_config(config_name: Optional[Pstr] = None) -> Config:
+def load_config(config_name: Pstr | None = None) -> Config:
     """Load lclstream_api's configuration file.
 
     Priority order is:

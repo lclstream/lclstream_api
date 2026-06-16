@@ -1,16 +1,16 @@
-from typing import Dict, List, Any, Optional
 import logging
 from contextlib import asynccontextmanager
 from importlib.metadata import version
+from typing import Any
 
 _logger = logging.getLogger(__name__)
 version_tag = version(__package__)
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 
 from .config import load_config
-from .routers.transfer import transfers
 from .routers.callback import callback
+from .routers.transfer import transfers
 
 description = """
 Access your psana(2) data remotely.
@@ -18,7 +18,7 @@ Configure detectors, and request a download of packed,
 assembled events computed at S3DF.
 """
 
-tags_metadata: List[Dict[str, Any]] = [
+tags_metadata: list[dict[str, Any]] = [
     {"name": "transfers", "description": "LCLStreamer data transfers"},
 ]
 

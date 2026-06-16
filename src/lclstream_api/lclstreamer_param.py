@@ -1,8 +1,7 @@
 from pathlib import Path
-from typing import Literal, Self, List, Dict, Union
-from typing_extensions import Annotated
+from typing import Annotated, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, model_validator, Field, conlist
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class CustomBaseModel(BaseModel):
@@ -26,11 +25,7 @@ class Psana2EventSourceParameters(CustomBaseModel):
 
 
 EventSource = Annotated[
-    Union[
-        InternalEventSourceParameters,
-        Psana1EventSourceParameters,
-        Psana2EventSourceParameters,
-    ],
+    InternalEventSourceParameters | Psana1EventSourceParameters | Psana2EventSourceParameters,
     Field(discriminator="type"),
 ]
 
@@ -56,13 +51,13 @@ class PhotonWavelengthParameters(CustomBaseModel):
 class DetectorGeometryParameters(CustomBaseModel):
     type: str
     psana_name: str
-    psana_fields: List[str] = Field(default_factory=list, min_length=2, max_length=3)
+    psana_fields: list[str] = Field(default_factory=list, min_length=2, max_length=3)
 
 
 class BeamPointingParameters(CustomBaseModel):
     type: str
     psana_name: str
-    psana_fields: List[str] = Field(default_factory=list, min_length=4, max_length=4)
+    psana_fields: list[str] = Field(default_factory=list, min_length=4, max_length=4)
 
 
 class RunInfoParameters(CustomBaseModel):
@@ -100,7 +95,7 @@ class PeaknetPreprocessingPipelineParameters(CustomBaseModel):
 
 
 ProcessingPipelineParameters = Annotated[
-    Union[BatchProcessingPipelineParameters, PeaknetPreprocessingPipelineParameters],
+    BatchProcessingPipelineParameters | PeaknetPreprocessingPipelineParameters,
     Field(discriminator="type"),
 ]
 
@@ -112,7 +107,7 @@ class SimplonBinarySerializerParameters(CustomBaseModel):
     type: Literal["SimplonBinarySerializer"]
     data_source_to_serialize: str
     polarization_fraction: float
-    polarization_axis: List[float]
+    polarization_axis: list[float]
     data_collection_rate: str
     detector_name: str
     detector_type: str
@@ -131,11 +126,11 @@ class HDF5BinarySerializerParameters(CustomBaseModel):
         ]
         | None
     ) = None
-    fields: Dict[str, str]
+    fields: dict[str, str]
 
 
 DataSerializerParameters = Annotated[
-    Union[HDF5BinarySerializerParameters, SimplonBinarySerializerParameters],
+    HDF5BinarySerializerParameters | SimplonBinarySerializerParameters,
     Field(discriminator="type"),
 ]
 
@@ -145,7 +140,7 @@ DataSerializerParameters = Annotated[
 
 class BinaryDataStreamingDataHandlerParameters(CustomBaseModel):
     type: Literal["BinaryDataStreamingDataHandler"]
-    urls: List[str]
+    urls: list[str]
     role: Literal["server", "client"] = "server"
     library: Literal["zmq", "nng"] = "nng"
     socket_type: Literal["push"] = "push"
@@ -159,9 +154,7 @@ class BinaryFileWritingDataHandlerParameters(CustomBaseModel):
 
 
 DataHandlerParameters = Annotated[
-    Union[
-        BinaryDataStreamingDataHandlerParameters, BinaryFileWritingDataHandlerParameters
-    ],
+    BinaryDataStreamingDataHandlerParameters | BinaryFileWritingDataHandlerParameters,
     Field(discriminator="type"),
 ]
 
@@ -171,10 +164,10 @@ class Parameters(CustomBaseModel):
     skip_incomplete_events: bool
 
     event_source: EventSource
-    data_sources: Dict[str, DataSourceParameters]
+    data_sources: dict[str, DataSourceParameters]
     processing_pipeline: ProcessingPipelineParameters
     data_serializer: DataSerializerParameters
-    data_handlers: List[DataHandlerParameters]
+    data_handlers: list[DataHandlerParameters]
 
     @model_validator(mode="after")
     def check_model(self) -> Self:
