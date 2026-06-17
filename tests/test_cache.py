@@ -2,7 +2,7 @@ import asyncio
 import pytest
 from pathlib import Path
 
-from lclstream.nng import puller
+from lclstream.zmqsock import puller
 
 from lclstream_api.cache import cache_process, watch_cmd
 from lclstream_api.jobs import create_job

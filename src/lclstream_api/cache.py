@@ -19,7 +19,7 @@ async def parse_logs(s: asyncio.StreamReader, port: PortEntry) -> None:
         print(data)
         if not consumer and "Consumer connected" in data:
             consumer = True
-            port.transition(ClientName.consumer, JobState.active)
+            await port.transition(ClientName.consumer, JobState.active)
     #async for data in s:
         #print(f"read: {data.decode('utf-8')}", flush=True)
         # TODO: parse and log client connection events?

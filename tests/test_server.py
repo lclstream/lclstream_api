@@ -9,7 +9,7 @@ import pytest
 import pytest_asyncio
 
 from fastapi.testclient import TestClient
-from lclstream.nng import puller
+from lclstream.zmqsock import puller
 
 from lclstream_api.server import api
 from lclstream_api.models import TransferStatus, CacheMetrics, TransferInfo
