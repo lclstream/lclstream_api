@@ -35,7 +35,7 @@ async def post_callback(
     if job is None:
         return False
 
-    if job.spec.client_secret:
+    if job.spec.cb_secret:
         if x_hub_signature_256 is None:
             raise HTTPException(
                 status_code=403, detail="x-hub-signature-256 header is missing!"
@@ -46,7 +46,7 @@ async def post_callback(
             body = (await request.read()).decode("utf-8")  # type: ignore[attr-defined]
             # body = cb.model_dump_json()
         psik.web.verify_signature(
-            body, job.spec.client_secret.get_secret_value(), x_hub_signature_256
+            body, job.spec.cb_secret.get_secret_value(), x_hub_signature_256
         )
 
     bg_tasks.add_task(

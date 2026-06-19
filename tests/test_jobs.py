@@ -8,48 +8,37 @@ from lclstream_api.jobs import (
 )
 from lclstream_api.lclstreamer_param import Parameters
 
+from test_config import config
+
 param1 = """{
-  "lclstreamer": {
-    "source_identifier": "exp1,run2",
-    "event_source": "Psana1EventSource",
-    "processing_pipeline": "BatchProcessingPipeline",
-    "data_serializer": "Hdf5BinarySerializer",
-    "data_handlers": ["BinaryDataStreamingDataHandler"],
-    "skip_incomplete_events": false
+  "source_identifier": "exp1:run2",
+  "skip_incomplete_events": false,
+  "event_source": {
+      "type": "Psana1EventSource"
   },
-  "event_source": {"Psana1EventSource":{}},
   "data_sources": {},
-  "data_serializer": {
-    "Hdf5BinarySerializer": {
-      "fields": { }
-    }
-  },
-  "data_handlers": {
-    "BinaryDataStreamingDataHandler": {
-      "urls": []
-    }
-  },
   "processing_pipeline": {
-    "BatchProcessingPipeline": {
-      "batch_size": 10
+    "type": "BatchProcessingPipeline",
+    "batch_size": 10
+  },
+  "data_serializer": {
+    "type": "HDF5BinarySerializer",
+    "fields": {}
+  },
+  "data_handlers": [
+    {"type": "BinaryDataStreamingDataHandler",
+     "urls": []
     }
-  }
+  ]
 }
 """
 
 param2 = """{
-  "lclstreamer": {
-    "source_identifier": "none",
-    "event_source": "InternalEventSource",
-    "processing_pipeline": "BatchProcessingPipeline",
-    "data_serializer": "Hdf5BinarySerializer",
-    "data_handlers": ["BinaryDataStreamingDataHandler"],
-    "skip_incomplete_events": false
-  },
+  "source_identifier": "none",
+  "skip_incomplete_events": false,
   "event_source": {
-    "InternalEventSource": {
-      "number_of_events_to_generate": 1001
-    }
+    "type": "InternalEventSource",
+    "number_of_events_to_generate": 1001
   },
   "data_sources": {
     "random": {
@@ -58,25 +47,23 @@ param2 = """{
       "array_dtype": "float32"
     }
   },
+  "processing_pipeline": {
+    "type": "BatchProcessingPipeline",
+    "batch_size": 10
+  },
   "data_serializer": {
-    "Hdf5BinarySerializer": {
-      "compression_level": 3,
-      "compression": "zfp",
-      "fields": {
+    "type": "HDF5BinarySerializer",
+    "compression_level": 3,
+    "compression": "zfp",
+    "fields": {
         "random": "/data/random"
-      }
     }
   },
-  "data_handlers": {
-    "BinaryDataStreamingDataHandler": {
+  "data_handlers": [
+    { "type": "BinaryDataStreamingDataHandler",
       "urls": []
     }
-  },
-  "processing_pipeline": {
-    "BatchProcessingPipeline": {
-      "batch_size": 10
-    }
-  }
+  ]
 }
 """
 
