@@ -4,8 +4,7 @@ from typing import Annotated
 
 from fastapi import Depends
 
-from .cache import cache_process
-from .config import Config, load_config
+from .config import Config, load_config, ForwarderConfig
 from .models import PortEntry
 
 _logger = logging.getLogger(__name__)
@@ -14,12 +13,11 @@ CachedConfig = Annotated[Config, Depends(load_config)]
 
 
 class PortDatabase:  # singleton
-    def __init__(self, host: str, run_cache: str, start=30001, end=34000) -> None:
-        assert end > start + 1, "Need at least 2 ports"
-        self.host = host
-        self.run_cache = run_cache
+    def __init__(self, forwarder: ForwarderConfig) -> None:
+        assert forwarder.end > forwarder.start + 1, "Need at least 2 ports"
+        self.host = forwarder.ip
 
-        self.open_ports = list(range(start, end, 2))
+        self.open_ports = list(range(forwarder.start, forwarder.end, 2))
         # Mapping from jobid to user, port pairs.
         self.jobs: dict[str, PortEntry] = {}
         self.tasks: dict[str, asyncio.Task] = {}
@@ -66,7 +64,6 @@ class PortDatabase:  # singleton
             external_url=self.external_url(port),
         )
         self.jobs[jobid] = entry
-        self.tasks[jobid] = await cache_process(self.run_cache, entry)
         return entry
 
     def __getitem__(self, jobid: str) -> PortEntry:
@@ -95,9 +92,7 @@ def get_database(config: CachedConfig) -> PortDatabase:
     # initialize on first access (allows db to be configurable)
     global DB
     if DB is None:
-        DB = PortDatabase(
-            config.cache_ip, config.run_cache, config.start_port, config.end_port
-        )
+        DB = PortDatabase(config.forwarder)
     return DB
 
 

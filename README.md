@@ -24,83 +24,102 @@ on command.  The steps run as follows,
 7. The pipeline terminates naturally, or the user can DELETE
    the transfer-id to cancel the producer.
 
-# Configuration
+## Configuration
 
-Create a configuration file in `/etc/lclstream_api.json` or
-`$VIRTUAL_ENV/etc/lclstream_api.json` like:
+Create a configuration file in `/etc/lclstream_api.yaml` or
+`$VIRTUAL_ENV/etc/lclstream_api.yaml` like:
 
 ```
-{
-  "cache_fmt": "/sdf/home/r/rogersdd/lclstream_cache/%s",
-  "psik": {
-    "prefix": "/sdf/home/r/rogersdd/psik",
-    "backends": {
-      "default": {
-        "type": "local"
-      },
-      "slurm": {
-        "type": "slurm",
-        "project_name": "lcls:tmox42619",
-        "queue_name": "milano"
-      }
-    }
-  },
-  "run_cache": "/sdf/home/r/rogersdd/src/nng_stream/nng_cache",
-  "callback_url": "https://134.79.23.43:4433/v1/callback",
-  "cache_ip": "134.79.23.43",
-  "start_port": 30001,
-  "end_port": 31000,
-  "replay_job": {
-    "name": "lclstream-push",
-    "backend": "default",
-    "resources": {
-      "duration": 60,
-      "node_count": 1,
-      "processes_per_node": 1,
-      "cpu_cores_per_process": 1
-    },
-    "script": "lclstream push --addr {url} --ndial 8 {pre}*.h5"
-  },
-  "lclstream_job": {
-    "name": "lclstreamer",
-    "backend": "slurm",
-    "resources": {
-      "duration": 60,
-      "node_count": 1,
-      "processes_per_node": 120,
-      "cpu_cores_per_process": 1
-    },
-    "environment": {
-      "CERTIFIED_CONFIG": "/sdf/home/r/rogersdd/venvs/lclstream_api/etc/certified"
-    },
-    "script": "pixi run --manifest-path /sdf/home/r/rogersdd/src/lclstreamer -e {psana_env} /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/mpirun lclstreamer --config lclstreamer.json"
-  }
-}
+psik:
+  prefix: "/sdf/home/r/rogersdd/psik"
+  backends:
+    default:
+      type: "local"
+    slurm:
+      type: "slurm"
+      project_name: "lcls:tmox42619"
+      queue_name: "milano"
+
+callback_url: "https://134.79.23.43:4433/v1/callback"
+
+forwarder:
+  ip: "134.79.23.43"
+  start_port: 30001
+  end_port: 31000
+
+  jobspec:
+    name: "fastcache"
+    backend: "dtn"
+    resources:
+      duration: 360
+      node_count: 1
+      processes_per_node: 1
+      cpu_cores_per_process: 1
+    script: "/sdf/home/r/rogersdd/src/nng_stream/nng_cache"
+
+replay:
+  cache_fmt: None # disabled.
+  #cache_fmt: "/sdf/home/r/rogersdd/lclstream_cache/%s"
+  jobspec:
+    name: "lclstream-push"
+    backend: "default"
+    resources:
+      duration: 60
+      node_count: 1
+      processes_per_node: 1
+      cpu_cores_per_process: 1
+    script: "lclstream push --addr {url} --ndial 8 {pre}*.h5"
+
+lclstreamer:
+  jobspec:
+    name: "lclstreamer"
+    backend: "slurm"
+    resources:
+      duration: 60
+      node_count: 1
+      processes_per_node: 120
+      cpu_cores_per_process: 1
+    environment:
+      CERTIFIED_CONFIG: "/sdf/home/r/rogersdd/venvs/lclstream_api/etc/certified"
+    script: |
+      pixi run --manifest-path /sdf/home/r/rogersdd/src/lclstreamer -e {psana_env} /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/mpirun lclstreamer --config lclstreamer.json
 ```
 
-Most of the important configuration parameters are system paths
-at which various executables and data directories should live.
-
-- `cache_fmt`: not used at present, it could be a server-side
-  cache. This pairs with `replay_job`
-
-- `replay_job`: not used at present, this is a jobspec
-  to replay files cached server-side.
-
-- `run_cache`: executable to run the nng\_cache program
-  `lclstream_api/cache.py` runs this process on the same
-  host where lclstream\_api is running.
+Most of the important configuration parameters are [psik.JobSpec](https://github.com/frobnitzem/psik/blob/main/psik/models.py) objects explaining how to run producer and message forwarder processes.
 
 - `callback_url`: The URL to which psik jobs should post their
   progress.  This has to be accessible from the host running
   the lclstreamer job.
 
-- `cache_ip`: The IP address used to construct the cache URIs
-  (`tcp://IP:port`)
+- `psik`: Configuration information for the [psik client](https://github.com/frobnitzem/psik/blob/main/psik/config.py).
+  This defines the local directory on the host running `lclstream_api` used
+  to track jobs, as well as job execution backends for running
+  the producer and message forwarder processes.
 
-- `start_port`/`end_port`: The range of ports that will be used to
-  start nng\_cache servers locally.  Cache servers always allocate
-  two ports at once (receive,send -- in that order).
+- `lclstreamer`: Setup information for the data source.
+
+  * jobspec Defines the spec used to start the producers.
+    SLURM configuration parameters go into the psik.backend definitions.
+
+- `forwarder`: The API needs the following information to start
+  message-forwarding processes:
+
+  * jobspec Defines the spec used to start the message-forwarding
+    process.  This is usually run on a data transfer node.
+
+  * `ip`: The IP address used to construct the message forwarder URLs
+    (`tcp://IP:port`)
+
+  * `start_port`/`end_port`: The range of ports that will be used to
+    start message forwarding servers on the ip above.
+    Forwarding services always allocate two ports at once
+    (receive,send -- in that order).  Thus, each transfer is bound to
+    a `PortPair` object at creation time.
+
+- `replay`: if setup, can be used to implement a call to `lclstream push`
+  which will forward all the h5 files in a given prefix.
+  This is not tested at present due to the need to check file paths, but
+  can be a future optimization when the the same data is requested twice.
 
 The '{}' variables within the scripts are substituted with the
 appropriate values by `lclstream_api` during job creation.
@@ -118,7 +137,8 @@ The psik package is invoked by lclstream\_api to run the
 producer job.  Before running transfers through the API,
 these two should be tested.
 
-Create a `$VIRTUAL_ENV/etc/psik.json` file with backend
+For setting up backends,
+create a `$VIRTUAL_ENV/etc/psik.json` file with backend
 configuration information,
 
 ```
@@ -222,7 +242,7 @@ Once this is working, both of the two pieces of information above
 should be pasted into `$VIRTUAL_ENV/etc/lclstream_api.json`
 described above.
 
-## Comments on psik backend configuration
+### Comments on psik backend configuration
 
 It is simplest to use the SLURM backend to run
 jobs on the psana cluster.
@@ -240,7 +260,7 @@ It is possible to use other backends or create
 new ones in order to start/cancel jobs differently.
 
 
-## Accessing psana from login and dtn nodes
+### Accessing psana from login and dtn nodes
 
 Since we are running the lclstreamer-API from
 sdfdtn003, we need a way to manage SLURM jobs on the psana
@@ -270,9 +290,9 @@ ssh psana scancel $@
 ```
 
 
-# Development
+## Development
 
-Install the code using `poetry install` or `pip install -e .`.
+Install the code using `uv sync --group dev` or `pip install -e .`.
 
 Create a configuration file as explaned above, or in a local
 directory.  If you set the `LCLSTREAM_API_CONFIG`
@@ -282,15 +302,15 @@ will override the one in `$VIRTUAL_ENV/etc`.
 For testing, you can create a self-signed identity
 using
 
-    poetry run certified init --host 127.0.0.1 lclstream-api
+    uv run certified init --host 127.0.0.1 test-cert
 
 Manually run the server code with:
 
-    poetry run uvicorn lclstream_api.server:app --reload
+    uv run uvicorn lclstream_api.server:app --reload
 
 or
 
-    poetry run certified serve lclstream_api.server:app https://127.0.0.1:4433
+    uv run certified serve lclstream_api.server:app https://127.0.0.1:4433
 
 It is helpful to create a minimal `$VIRTUAL_ENV/etc/psik.json`
 setting 
@@ -299,7 +319,7 @@ setting
 
 so you can use `psik ls`.
 
-# Deployment Instructions
+## Deployment Instructions
 
 Install this package and its dependencies
 using `pip install .` (for deployment)

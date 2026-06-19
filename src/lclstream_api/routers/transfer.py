@@ -11,7 +11,7 @@ from fastapi import (
 )
 
 from ..config import Config, load_config, to_mgr
-from ..jobs import create_job
+from ..jobs import create_producer, create_forwarder
 from ..lclstreamer_param import Parameters
 from ..models import (
     ClientName,
@@ -21,6 +21,7 @@ from ..models import (
     TransferStatus,
 )
 from ..ports import Database
+from ..transfer_mgr import Transfer
 
 _logger = logging.getLogger(__name__)
 
@@ -97,74 +98,62 @@ async def new_transfer(
     bg_tasks: BackgroundTasks,
     cfg: CachedConfig,
     mgr: Manager,
+    user: str = "none",
 ) -> TransferStatus:
     """
     Submit a transfer to run ASAP.
 
     If successful this will return the jobid created.
 
-    FIXME: lookup user following certified docs.
+    FIXME: lookup user following certified docs
+    or using a FastAPI User mixin using token-auth.
     """
 
-    user = "none"
+    # 0. TODO: any additional validation of request/user goes here.
+    # e.g. user can access requested dataset and has permissions to
+    # start lclstreamer on psana
+
     port = db.alloc()
     if port is None:
         _logger.error("Out of ports.")
         raise HTTPException(status_code=500, detail="Out of ports.")
 
-    # TODO: periodically, check on jobs and reap completed jobs
-    # from the db using await db.delete(jobid)
-
-    internal_url = db.internal_url(port)
-    # TODO: additional validation of request should go here.
-    spec = create_job(request, internal_url, cfg)  # create the JobSpec
-
     try:
-        job = await mgr.create(spec)
-    except AssertionError as e:
+        trs, forwarder_job, producer_job = await create_transfer(db, port, request, mgr, cfg)
+        db.add( Transfer.new() )
+    except Exception:
         db.free(port)
-        raise HTTPException(status_code=400, detail=f"Error creating job: {str(e)}")
+        raise
 
-    if job.spec.directory is None:
-        db.free(port)
-        raise HTTPException(status_code=500, detail="Error creating job directory.")
+    # all these error states mean the transfer never started
+    # and jobs are either un-created or stuck at "new" state
+    if isinstance(producer_job, str):
+        raise HTTPException(status_code=400, detail=f"Error creating producer job: {str(e)}")
+    if producer_job.spec.directory is None:
+        raise HTTPException(status_code=500, detail="Error creating producer job directory.")
 
-    # Write lclstreamer spec file to the job directory.
-    # NOTE: this file must be thoroughly validated
-    # before we should run based on it.
-    try:
-        (Path(job.spec.directory) / "lclstreamer.json").write_text(
-            request.model_dump_json(indent=2)
-        )
+    if forwarder_job is None:
+        raise HTTPException(status_code=400, detail=f"Error creating forwarder job: {str(e)}")
+    if forwarder_job.spec.directory is None:
+        raise HTTPException(status_code=500, detail="Error creating forwarder job directory.")
 
-        entry = await db.create(job.stamp, user, port)
-        # This new transition is necessary so entry can cache
-        # the job.
-        jobndx = job.history[-1].jobndx
-        await entry.transition(
-            ClientName.producer,
-            JobState.new,
-            jobndx=jobndx,
-            info=str(job.history[-1].info),
-            job=job,
-        )
-        last = entry.log[-1]
-        bg_tasks.add_task(job.submit)
-    except Exception as e:
-        db.free(port)  # Not db.delete, since db.create
-        # does not create a job entry on failure,
-        # and add_task should not fail.
-        raise HTTPException(status_code=400, detail=f"Error writing job: {str(e)}")
+    if isinstance(trs, str):
+        raise HTTPException(status_code=400, detail=f"Error creating port pair: {trs}")
+
+    # Submit jobs to the queue
+    bg_tasks.add_task(forwarder_job.submit)
+    bg_tasks.add_task(producer_job.submit)
+
+    last = trs.log[-1]
     return TransferStatus(
-        id=job.stamp,
-        url=entry.external_url,
-        user=entry.user,
+        id=producer_job.stamp,
+        url=external_url,
+        user=trs.user,
         time=last.time,
-        jobndx=jobndx,
+        jobndx=last.jobndx,
         state=last.state,
         info=last.info,
     )
-
 
 @transfers.get("/{jobid}")
 async def get_transfer(jobid: JobID, db: Database) -> TransferInfo:

@@ -17,9 +17,8 @@ _logger = logging.getLogger(__name__)
 
 callback = APIRouter(responses={401: {"description": "Unauthorized"}})
 
-
-@callback.post("")
-async def post_callback(
+async def handle_callback(
+    client: ClientName,
     cb: psik.Callback,
     db: Database,
     request: Request,
@@ -31,7 +30,11 @@ async def post_callback(
     except KeyError:
         raise HTTPException(404, "Job not found.")
 
-    job = entry.job
+    job = None
+    if client == ClientName.producer:
+        job = entry.producer_job
+    elif client == ClientName.cache:
+        job = entry.forwarder_job
     if job is None:
         return False
 
@@ -51,11 +54,30 @@ async def post_callback(
 
     bg_tasks.add_task(
         entry.transition,
-        ClientName.producer,
+        client,
         cb.state,
         cb.jobndx,
-        str(cb.info),
-        job,
+        cb.info,
     )
 
     return True
+
+@callback.post("producer")
+async def post_callback(
+    cb: psik.Callback,
+    db: Database,
+    request: Request,
+    bg_tasks: BackgroundTasks,
+    x_hub_signature_256: Annotated[str | None, Header()] = None,
+) -> bool:
+    return await handle_callback(ClientName.producer, cb, db, request, bg_tasks, x_hub_signature_256)
+
+@callback.post("forwarder")
+async def post_callback(
+    cb: psik.Callback,
+    db: Database,
+    request: Request,
+    bg_tasks: BackgroundTasks,
+    x_hub_signature_256: Annotated[str | None, Header()] = None,
+) -> bool:
+    return await handle_callback(ClientName.cache, cb, db, request, bg_tasks, x_hub_signature_256)

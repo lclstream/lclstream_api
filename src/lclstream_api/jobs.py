@@ -1,6 +1,9 @@
 # Helpers for creating job payload.
 
 from pathlib import Path
+from secrets import token_urlsafe
+
+from pydantic import SecretStr
 
 import psik
 
@@ -27,7 +30,7 @@ def replace_data_handler(req: Parameters, url: str) -> None:
 
 # note: we could also use domain (FastAPI.Request's req.base_url)
 #       to construct the callback URL...
-def create_job(request: Parameters, internal_url: str, cfg: Config) -> psik.JobSpec:
+def create_producer(request: Parameters, internal_url: str, cfg: Config) -> psik.JobSpec:
     replace_data_handler(request, internal_url)
 
     pre = has_cache(request, cfg)
@@ -36,28 +39,35 @@ def create_job(request: Parameters, internal_url: str, cfg: Config) -> psik.JobS
     else:
         spec = replay_job(pre, internal_url, cfg)
 
-    spec.callback = cfg.callback_url
-    # psik 1.2.0 is broken (doesn't write the cb_secret), but
-    # if we run with certified, it's possible to check if
-    # the calling username is lclstream_api itself.
-    #
-    # spec.cb_secret = SecretStr(token_urlsafe(32))
-    # spec.cb_secret = token_urlsafe(32) # or change its type, so it will write?
+    spec.callback = cfg.callback_url + "/producer"
+    spec.cb_secret = SecretStr(token_urlsafe(32))
     return spec
 
+def create_forwarder(port: int, internal_url: str, external_url: str,
+                     cfg: Config) -> psik.JobSpec:
+    """Create the message forwarder jobspec for launching with psik.
+    """
+    spec = cfg.forwarder.jobspec.model_copy()
+    spec.script = spec.script.format(internal_url = internal_url,
+                                     external_url = external_url,
+                                     port=port)
+    spec.callback = cfg.callback_url + "/forwarder"
+    spec.cb_secret = SecretStr(token_urlsafe(32))
+    return spec
+    return asyncio.create_task(cache, name=run_cache)
 
 def get_outdir(req: Parameters, cfg: Config) -> Path | None:
     """Compute the output directory name for this
     experiment / req.config pair.
     """
-    if cfg.cache_fmt is None:
+    if cfg.replay.cache_fmt is None:
         return None
     # TODO: back-port hash function from tmo-prefex
     cfg_hash = str(hash(req.model_dump_json()))
     expt = "tmo_unknown"
     # TODO: check for exact equality of cache_path / lclstreamer.json
     # and search through a sequence of dir-s if not...
-    return Path(cfg.cache_fmt % expt) / cfg_hash
+    return Path(cfg.replay.cache_fmt % expt) / cfg_hash
 
 
 def has_cache(req: Parameters, cfg: Config) -> Path | None:
@@ -83,7 +93,7 @@ def replay_job(pre: Path, url: str, cfg: Config) -> psik.JobSpec:
     """Create the psik.JobSpec that, when run,
     will transfer cached h5 data to the url.
     """
-    job = cfg.replay_job.model_copy()
+    job = cfg.replay.jobspec.model_copy()
     job.script = job.script.format(url=url, pre=pre)
     return job
 
@@ -100,6 +110,6 @@ def generate_job(req: Parameters, url: str, cfg: Config) -> psik.JobSpec:
     else:
         psana_env = "psana2"
 
-    job = cfg.lclstream_job.model_copy()
+    job = cfg.lclstreamer.jobspec.model_copy()
     job.script = job.script.format(url=url, psana_env=psana_env)
     return job
