@@ -1,9 +1,9 @@
 import asyncio
+
 import pytest
 
 from lclstream_api.ports import get_database
 
-from test_config import config
 
 @pytest.mark.asyncio
 async def test_db(config):
@@ -11,10 +11,10 @@ async def test_db(config):
 
     with pytest.raises(KeyError):
         await DB.delete("123")
-    
+
     nopen = len(DB.open_ports)
     ent = await DB.create("job1", "tester")
-    assert len(DB.open_ports) == nopen-1
+    assert len(DB.open_ports) == nopen - 1
 
     assert ent.user == "tester"
     assert ent.port > 1024

@@ -1,28 +1,30 @@
-from typing import Union, Optional
 import os
 from functools import cache
 from pathlib import Path
+from typing import Union
 
-from pydantic import BaseModel
 import psik
+from pydantic import BaseModel
+
 
 class Config(BaseModel):
     replay_job: psik.JobSpec
     lclstream_job: psik.JobSpec
     psik: psik.Config
     run_cache: str
-    callback_url: Optional[str] # no default since None breaks callback functionality
-    cache_fmt: Optional[str] = None
+    callback_url: str | None  # no default since None breaks callback functionality
+    cache_fmt: str | None = None
     cache_ip: str
     start_port: int = 30001
     end_port: int = 34000
 
-#database_url: str = "sqlite+pysqlite:///:memory:"
-#cache_fmt: str = "/sdf/scratch/lcls/ds/tmo/%s/scratch/lclstream_api"
-#authz: str = "psik_api.authz:BaseAuthz"
+
+# database_url: str = "sqlite+pysqlite:///:memory:"
+# cache_fmt: str = "/sdf/scratch/lcls/ds/tmo/%s/scratch/lclstream_api"
+# authz: str = "psik_api.authz:BaseAuthz"
 # script="/home/99r/.cache/pypoetry/virtualenvs/lclstream-wj83ZDDz-py3.10/bin/lclstream push --addr {url} --ndial 1 {pre}*.h5",
-#script="pixi run -e {psana_env} mpirun -n120 lclstreamer --config lclstreamer.json",
-#resources = psik.ResourceSpec(duration=60,
+# script="pixi run -e {psana_env} mpirun -n120 lclstreamer --config lclstreamer.json",
+# resources = psik.ResourceSpec(duration=60,
 #            node_count=1,
 #            processes_per_node = 120,
 #            cpu_cores_per_process = 1),
@@ -30,8 +32,9 @@ class Config(BaseModel):
 
 Pstr = Union[str, os.PathLike]
 
+
 @cache
-def load_config(config_name: Optional[Pstr] = None) -> Config:
+def load_config(config_name: Pstr | None = None) -> Config:
     """Load lclstream_api's configuration file.
 
     Priority order is:
@@ -55,8 +58,9 @@ def load_config(config_name: Optional[Pstr] = None) -> Config:
         path = Path(os.environ["LCLSTREAM_API_CONFIG"])
     else:
         path = Path(os.environ.get("VIRTUAL_ENV", "/")) / "etc" / cfg_name
-    cfg = path.read_text(encoding='utf-8')
+    cfg = path.read_text(encoding="utf-8")
     return Config.model_validate_json(cfg)
+
 
 def to_mgr(cfg: Config) -> psik.JobManager:
     cfg.psik.prefix.mkdir(exist_ok=True, parents=True)
