@@ -6,12 +6,12 @@ import pytest
 from lclstream_api.config import Config
 
 # this config only works if lclstreamer is setup...
-cfg_json2 = """{
+cfg_json = """{
   "cache_fmt": "%(base)s/lclstream_cache/%%s",
   "psik": {
     "prefix": "%(base)s/psik"
   },
-  "run_cache": "/usr/local/bin/nng_cache",
+  "run_cache": "/home/99r/src/microservices/nng_stream/zmqbuf",
   "callback_url": null,
   "cache_ip": "127.0.0.1",
   "start_port": 11401,
@@ -43,12 +43,12 @@ cfg_json2 = """{
 
 # this config uses lclstream (client) to mimick lclstreamer
 # in order to make a self-contained package testable
-cfg_json = """{
+cfg_json2 = """{
   "cache_fmt": "%(base)s/lclstream_cache/%%s",
   "psik": {
     "prefix": "%(base)s/psik"
   },
-  "run_cache": "/sdf/home/r/rogersdd/src/nng_stream/nng_cache",
+  "run_cache": "zmqbuf",
   "callback_url": null,
   "cache_ip": "127.0.0.1",
   "start_port": 11401,

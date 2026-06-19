@@ -4,6 +4,7 @@ import pytest
 
 from lclstream_api.ports import get_database
 
+from test_config import config
 
 @pytest.mark.asyncio
 async def test_db(config):

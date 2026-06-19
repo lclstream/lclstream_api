@@ -14,6 +14,7 @@ from lclstream_api.routers import callback
 ### test fixture for accepting a callback ###
 cb_value = web.AppKey("value", None)  # type: ignore[var-annotated]
 
+from test_config import config
 
 class MockBackgroundTasks(list):
     def add_task(self, task, *args):
@@ -77,7 +78,7 @@ async def test_local_cb(cb_client):
     assert ans is None  # failed parse
     assert cb_server.app[cb_value] is None
 
-    cb = Callback(jobid="123.456", jobndx=0, state=JobState.queued, info=0)
+    cb = Callback(jobid="123.456", jobndx=0, state=JobState.queued, info="ok")
     ans = await post_json(str(cb_server.make_url("/callback")), cb.model_dump_json())
     print(ans)
     assert ans is not None
