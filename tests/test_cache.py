@@ -1,8 +1,6 @@
 import asyncio
 from pathlib import Path
 
-from lclstream.zmqsock import puller
-
 from lclstream_api.cache import cache_process, watch_cmd
 from lclstream_api.config import to_mgr
 from lclstream_api.jobs import create_job
@@ -72,10 +70,20 @@ async def test_cache_job_complete(unused_tcp_port_factory, config):
 
     async def run_pull(addr):
         await asyncio.sleep(0.1)
-        pull = puller(addr, 1)
+        ctx = zmq.Context()
+        sock = ctx.socket(zmq.PULL)
+        sock.setsockopt(zmq.RCVTIMEO, 5000)
+        sock.connect(addr)
         nmsg = 0
-        for data in pull:
-            nmsg += 1
+        try:
+            while True:
+                sock.recv()
+                nmsg += 1
+        except zmq.Again:
+            pass
+        finally:
+            sock.close()
+            ctx.term()
         print(f"pull_server: received {nmsg} messages")
 
     await run_pull(entry.external_url)
