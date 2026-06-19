@@ -4,7 +4,7 @@ version = "0.9.0"
 authors = [
   { name = "David M. Rogers", email ="predictivestatmech@gmail.com" },
   { name = "Cong Wang", email ="wangimagine@gmail.com" },
-  { name = "David M. Rogers", email ="valmar@slac.stanford.edu" },
+  { name = "Valerio Mariani", email ="valmar@slac.stanford.edu" },
 ]
 description = "Image streaming API for psana."
 readme = "README.md"
