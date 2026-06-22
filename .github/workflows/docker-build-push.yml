@@ -62,7 +62,8 @@ jobs:
         with:
           context: .
           file: container/Containerfile
-          push: ${{ github.event_name != 'pull_request' }}
+          # Push on non-PR events, and on PRs that originate from this repo (not external forks). 
+          push: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
