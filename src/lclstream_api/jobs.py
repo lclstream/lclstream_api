@@ -8,6 +8,7 @@ from pydantic import SecretStr
 import psik
 
 from .config import Config
+from .models import PortEntry
 from .lclstreamer_param import (
     BinaryDataStreamingDataHandlerParameters,
     Parameters,
@@ -39,26 +40,27 @@ def create_producer(request: Parameters, internal_url: str, cfg: Config) -> psik
     else:
         spec = replay_job(pre, internal_url, cfg)
 
-    spec.callback = cfg.callback_url + "/producer"
-    spec.cb_secret = SecretStr(token_urlsafe(32))
+    if cfg.callback_url:
+        spec.callback = cfg.callback_url + "/producer"
+        spec.cb_secret = SecretStr(token_urlsafe(32))
     return spec
 
-def create_forwarder(port: int, internal_url: str, external_url: str,
-                     cfg: Config) -> psik.JobSpec:
+def create_forwarder(entry: PortEntry, cfg: Config) -> psik.JobSpec:
     """Create the message forwarder jobspec for launching with psik.
     """
     spec = cfg.forwarder.jobspec.model_copy()
-    spec.script = spec.script.format(internal_url = internal_url,
-                                     external_url = external_url,
-                                     port=port)
-    spec.callback = cfg.callback_url + "/forwarder"
-    spec.cb_secret = SecretStr(token_urlsafe(32))
+    spec.script = spec.script.format(internal_url = entry.internal_url,
+                                     external_url = entry.external_url,
+                                     port = entry.port)
+
+    if cfg.callback_url:
+        spec.callback = cfg.callback_url + "/forwarder"
+        spec.cb_secret = SecretStr(token_urlsafe(32))
     return spec
-    return asyncio.create_task(cache, name=run_cache)
 
 def get_outdir(req: Parameters, cfg: Config) -> Path | None:
     """Compute the output directory name for this
-    experiment / req.config pair.
+       experiment / req.config pair.
     """
     if cfg.replay.cache_fmt is None:
         return None

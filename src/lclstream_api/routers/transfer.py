@@ -15,13 +15,13 @@ from ..jobs import create_producer, create_forwarder
 from ..lclstreamer_param import Parameters
 from ..models import (
     ClientName,
-    JobID,
     JobState,
     TransferInfo,
     TransferStatus,
 )
-from ..ports import Database
-from ..transfer_mgr import Transfer
+from ..ports import PortUsage
+from ..transfer_mgr import Transfer, Database
+from ..xfer_db import Database
 
 _logger = logging.getLogger(__name__)
 
@@ -36,14 +36,6 @@ Manager = Annotated[psik.JobManager, Depends(default_mgr)]
 
 
 transfers = APIRouter(responses={401: {"description": "Unauthorized"}})
-
-# Not needed, since the db stores the job.
-# async def get_job(jobid: JobID, mgr: Manager) -> Path:
-#    base = mgr.prefix / jobid
-#    if not await base.is_dir():
-#        raise HTTPException(status_code=404, detail="Transfer not found")
-#    return Path(base)
-
 
 @transfers.get("/", include_in_schema=False)
 @transfers.get("")
@@ -63,16 +55,16 @@ async def list_transfers(
     """
 
     out = []
-    for jobid, entry in db.items():
-        cstate = entry.states[ClientName.cache]
+    for ed, xfer in db.items():
+        cstate = xfer.states[ClientName.cache]
         if state is not None and state != cstate:
             continue
-        last = entry.log[-1]
+        last = xfer.log[-1]
         out.append(
             TransferStatus(
-                id=jobid,
-                url=entry.external_url,
-                user=entry.user,
+                id=eid,
+                url=xfer.entry.external_url,
+                user=xfer.entry.user,
                 time=last.time,
                 jobndx=0,
                 state=cstate,
@@ -95,6 +87,7 @@ async def list_transfers(
 async def new_transfer(
     request: Parameters,
     db: Database,
+    ports: PortUsage,
     bg_tasks: BackgroundTasks,
     cfg: CachedConfig,
     mgr: Manager,
@@ -103,7 +96,7 @@ async def new_transfer(
     """
     Submit a transfer to run ASAP.
 
-    If successful this will return the jobid created.
+    If successful this will return the eid created.
 
     FIXME: lookup user following certified docs
     or using a FastAPI User mixin using token-auth.
@@ -113,31 +106,37 @@ async def new_transfer(
     # e.g. user can access requested dataset and has permissions to
     # start lclstreamer on psana
 
-    port = db.alloc()
-    if port is None:
+    try:
+        entry = ports.create(user)
+    except RuntimeError:
         _logger.error("Out of ports.")
         raise HTTPException(status_code=500, detail="Out of ports.")
+    on_complete = lambda: ports.delete(entry.eid)
 
     try:
-        xfer, forwarder_job, producer_job = await create_transfer(db, port, request, mgr, cfg)
-        db.add( Transfer.new() )
+        xfer, forwarder_job, producer_job = await create_transfer(db, entry, request, mgr, cfg, on_complete)
     except Exception:
-        db.free(port)
+        on_complete()
         raise
 
     # all these error states mean the transfer never started
     # and jobs are either un-created or stuck at "new" state
-    if isinstance(producer_job, str):
+    if isinstance(producer_job, Exception):
+        on_complete()
         raise HTTPException(status_code=400, detail=f"Error creating producer job: {str(e)}")
     if producer_job.spec.directory is None:
+        on_complete()
         raise HTTPException(status_code=500, detail="Error creating producer job directory.")
 
-    if forwarder_job is None:
+    if isinstance(forwarder_job, Exception):
+        on_complete()
         raise HTTPException(status_code=400, detail=f"Error creating forwarder job: {str(e)}")
     if forwarder_job.spec.directory is None:
+        on_complete()
         raise HTTPException(status_code=500, detail="Error creating forwarder job directory.")
 
-    if isinstance(xfer, str):
+    if isinstance(xfer, Exception):
+        on_complete()
         raise HTTPException(status_code=400, detail=f"Error creating port pair: {xfer}")
 
     # Submit jobs to the queue
@@ -155,27 +154,27 @@ async def new_transfer(
         info=last.info,
     )
 
-@transfers.get("/{jobid}")
-async def get_transfer(jobid: JobID, db: Database) -> TransferInfo:
+@transfers.get("/{id}")
+async def get_transfer(eid: int, db: Database) -> TransferInfo:
     """Read job
-    - jobid: the job's ID string
+    - eid: The transfer/entry ID
 
     Returns information associated with this transfer.
     """
     try:
-        entry = db[jobid]
+        xfer = db[eid]
     except KeyError:
         raise HTTPException(status_code=404, detail="Transfer is not active.")
-    return TransferInfo(user=entry.user, log=entry.log, metrics=entry.cache_metrics)
+    return TransferInfo(user=xfer.entry.user, log=xfer.log, metrics=xfer.cache_metrics)
 
 
-@transfers.delete("/{jobid}")
+@transfers.delete("/{id}")
 async def cancel_transfer(
-    jobid: JobID, bg_tasks: BackgroundTasks, db: Database
+    eid: int, bg_tasks: BackgroundTasks, db: Database
 ) -> None:
     # Cancel job
     try:
-        entry = db[jobid]
+        xfer = db[eid]
     except KeyError:
         raise HTTPException(status_code=404, detail="Transfer is not active.")
-    bg_tasks.add_task(db.delete, jobid)
+    bg_tasks.add_task(xfer.cancel_job)

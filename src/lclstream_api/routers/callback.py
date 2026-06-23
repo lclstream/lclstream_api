@@ -11,7 +11,7 @@ from fastapi import (
 )
 
 from ..models import ClientName
-from ..ports import Database
+from ..xfer_db import Database
 
 _logger = logging.getLogger(__name__)
 
@@ -26,17 +26,9 @@ async def handle_callback(
     x_hub_signature_256: Annotated[str | None, Header()] = None,
 ) -> bool:
     try:
-        entry = db[cb.jobid]
+        xfer, job = db.lookup_job(client, cb.jobid)
     except KeyError:
         raise HTTPException(404, "Job not found.")
-
-    job = None
-    if client == ClientName.producer:
-        job = entry.producer_job
-    elif client == ClientName.cache:
-        job = entry.forwarder_job
-    if job is None:
-        return False
 
     if job.spec.cb_secret:
         if x_hub_signature_256 is None:
@@ -53,7 +45,7 @@ async def handle_callback(
         )
 
     bg_tasks.add_task(
-        entry.transition,
+        xfer.transition,
         client,
         cb.state,
         cb.jobndx,

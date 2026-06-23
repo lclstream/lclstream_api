@@ -1,6 +1,7 @@
 import logging
 from pathlib import Path
-from typing import Annotated, Optional, Awaitable, Callable
+from typing import Annotated, Optional, Awaitable, Callable, Tuple
+import time
 
 from psik import Job, JobManager
 
@@ -9,23 +10,22 @@ from .jobs import create_producer, create_forwarder
 from .lclstreamer_param import Parameters
 from .models import (
     ClientName,
-    JobID,
     JobState,
     TransferInfo,
     TransferStatus,
-    PortEntry,
+    PortTransition,
+    CacheMetrics,
     empty_metric,
 )
-from .ports import Database
 
-# TODO: use timers to reap completed jobs from the db
-# using await db.delete(jobid)
+_logger = logging.getLogger(__name__)
+
 class Transfer:
     """ Transfer implements a finite-state machine that tracks the
         status of a given transfer.
     """
 
-    entry: PortEntry
+    eid: int
     states: dict[ClientName, JobState]
     log: list[PortTransition]
     producer_job:  Job | None
@@ -33,26 +33,21 @@ class Transfer:
 
     cache_metrics: CacheMetrics
 
-    def __init__(self, db: Database, entry: PortEntry):
-        self.entry = entry
-        self.db = db # back-ref
+    def __init__(self, eid: int, on_complete: Optional[Callable] = None):
+        self.eid = eid
+        self.on_complete = on_complete
         self.states = {}
 
         # ensure all clients are in some state.
         for name in ClientName:
             if name not in self.states:
-                states[name] = JobState.new
-        self.log = log
+                self.states[name] = JobState.new
+        self.log = []
         self.producer_job = None
         self.forwarder_job = None
         self.cache_metrics = empty_metric()
 
         # TODO: setup a timer here
-
-    @classmethod
-    async def new(self, db: Database, stamp: JobID, user: str, port: int|None):
-        entry = await db.create(stamp, user, port)
-        return cls(db, entry)
 
     def transition(
         self,
@@ -63,6 +58,8 @@ class Transfer:
         job: Job | None = None,
     ) -> Optional[Callable[[], Awaitable[None]]]:
         # TODO: reset timer.
+        # TODO: wire up the last timer tick to call self.cancel()
+        #       so that naturally terminating jobs ensure on_complete called.
         def end_producer():
             job = self.producer_job
             if job is None:
@@ -93,6 +90,9 @@ class Transfer:
                     )
                     return end_producer()
             elif state.is_final():
+                # "Normal" termination path.
+                # This is a little excessive, since
+                # the forwarder *should* shut down on its own...
                 return end_forwarder()
 
         elif name == ClientName.cache:
@@ -107,6 +107,7 @@ class Transfer:
 
         # TODO: handle user-initiated transitions here.
         # (e.g. cancel, which currently calls cancel_job directly.)
+        return None
 
     async def cancel_job(self):
         """Cancel the job associated with this port.
@@ -127,12 +128,16 @@ class Transfer:
                 self.states[name] = JobState.canceled
                 await job.cancel()
 
+        if self.on_complete:
+            self.on_complete()
+            self.on_complete = None
+
     def metrics(self, metric: CacheMetrics):
         self.cache_metrics = metric
 
-async def create_transfer(db: Database, port, request: Parameters, mgr: JobManager, cfg: Config) -> Tuple[Job|Exception, Job|Exception, Transfer|Exception]:
-    internal_url = db.internal_url(port)
-    external_url = db.external_url(port)
+async def create_transfer(db: "XferDatabase", entry: PortEntry, request: Parameters, mgr: JobManager, cfg: Config, on_complete: Optional[Callable]) -> Tuple[Job|Exception, Job|Exception, Transfer|Exception]:
+    internal_url = entry.internal_url
+    external_url = entry.external_url
 
     # 1. Create the producer job
     producer_spec = create_producer(request, internal_url, cfg)
@@ -146,12 +151,13 @@ async def create_transfer(db: Database, port, request: Parameters, mgr: JobManag
     #   1b. Write lclstreamer spec file to the job directory.
     # The caller must ensure request has been thoroughly
     # validated before calling.
+    assert producer_job.spec.directory is not None
     (Path(producer_job.spec.directory) / "lclstreamer.json").write_text(
         request.model_dump_json(indent=2)
     )
 
     # 2. Create the forwarder job
-    forwarder_spec = await create_forwarder(port, internal_url, external_url, cfg)
+    forwarder_spec = create_forwarder(entry, cfg)
 
     #   2a. Persist the forwarder job to disk.
     try:
@@ -161,7 +167,7 @@ async def create_transfer(db: Database, port, request: Parameters, mgr: JobManag
 
     # 3. Create the formal PortEntry structure
     try:
-        trs = await Transfer.new(db, producer_job.stamp, user, port)
+        trs = Transfer(entry.eid, on_complete)
     except Exception as e:
         return producer_job, forwarder_job, e
 
