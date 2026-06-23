@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Optional, Awaitable, Callable
 
 from psik import Job, JobManager
 
@@ -50,19 +50,31 @@ class Transfer:
         # TODO: setup a timer here
 
     @classmethod
-    async def new(self, db, stamp, user, port):
+    async def new(self, db: Database, stamp: JobID, user: str, port: int|None):
         entry = await db.create(stamp, user, port)
         return cls(db, entry)
 
-    async def transition(
+    def transition(
         self,
         name: ClientName,
         state: JobState,
         jobndx: int = 0,
         info: str = "",
         job: Job | None = None,
-    ) -> None:
+    ) -> Optional[Callable[[], Awaitable[None]]]:
         # TODO: reset timer.
+        def end_producer():
+            job = self.producer_job
+            if job is None:
+                return
+            self.producer_job = None
+            self.states[ClientName.producer] = JobState.canceled
+            return lambda: job.cancel()
+        def end_forwarder():
+            job = self.forwarder_job
+            self.forwarder_job = None
+            self.states[ClientName.cache] = JobState.canceled
+            return lambda: job.cancel()
 
         self.log.append(
             PortTransition(time=time.time(), client=name, state=state, info=info)
@@ -79,9 +91,9 @@ class Transfer:
                         self.states[ClientName.cache].value,
                         str(self.log[-1]),
                     )
-                    await self.cancel_job()
+                    return end_producer()
             elif state.is_final():
-                await self.cancel_job()
+                return end_forwarder()
 
         elif name == ClientName.cache:
             if state == JobState.new:
@@ -89,7 +101,9 @@ class Transfer:
                 self.forwarder_job = job
 
             if state.is_final():
-                await self.cancel_job()
+                if not self.states[ClientName.producer].is_final():
+                    _logger.warning("Cache completed while producer is %s - canceling.", self.states[ClientName.producer].value)
+                    return end_producer()
 
         # TODO: handle user-initiated transitions here.
         # (e.g. cancel, which currently calls cancel_job directly.)
@@ -99,17 +113,19 @@ class Transfer:
         """
         if self.producer_job:
             name = ClientName.producer
-            if not self.states[name].is_final():
-                await self.producer_job.cancel()
-            self.states[name] = JobState.canceled
+            job = self.producer_job
             self.producer_job = None
+            if not self.states[name].is_final():
+                self.states[name] = JobState.canceled
+                await job.cancel()
 
         if self.forwarder_job:
             name = ClientName.cache
-            if not self.states[name].is_final():
-                await self.forwarder_job.cancel()
-            self.states[name] = JobState.canceled
+            job = self.forwarder_job
             self.forwarder_job = None
+            if not self.states[name].is_final():
+                self.states[name] = JobState.canceled
+                await job.cancel()
 
     def metrics(self, metric: CacheMetrics):
         self.cache_metrics = metric
@@ -153,12 +169,14 @@ async def create_transfer(db: Database, port, request: Parameters, mgr: JobManag
     for client, job in [(ClientName.cache, forwarder_job),
                         (ClientName.producer, producer_job)]:
         jobndx = job.history[-1].jobndx
-        await trs.transition(
+        action = trs.transition(
             client,
             JobState.new,
             jobndx=jobndx,
             info="ok",
             job=job,
         )
+        if action:
+            await action()
 
     return producer_job, forwarder_job, trs

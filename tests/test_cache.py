@@ -71,9 +71,11 @@ async def test_cache_job_complete(unused_tcp_port_factory, config):
         req.model_dump_json(indent=2)
     )
 
-    await entry.transition(
+    action = entry.transition(
         ClientName.producer, JobState.new, jobndx=0, info="", job=job
     )
+    if action:
+        await action()
     await job.submit()
 
     async def run_pull(addr):

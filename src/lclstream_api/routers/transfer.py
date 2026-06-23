@@ -119,7 +119,7 @@ async def new_transfer(
         raise HTTPException(status_code=500, detail="Out of ports.")
 
     try:
-        trs, forwarder_job, producer_job = await create_transfer(db, port, request, mgr, cfg)
+        xfer, forwarder_job, producer_job = await create_transfer(db, port, request, mgr, cfg)
         db.add( Transfer.new() )
     except Exception:
         db.free(port)
@@ -137,18 +137,18 @@ async def new_transfer(
     if forwarder_job.spec.directory is None:
         raise HTTPException(status_code=500, detail="Error creating forwarder job directory.")
 
-    if isinstance(trs, str):
-        raise HTTPException(status_code=400, detail=f"Error creating port pair: {trs}")
+    if isinstance(xfer, str):
+        raise HTTPException(status_code=400, detail=f"Error creating port pair: {xfer}")
 
     # Submit jobs to the queue
     bg_tasks.add_task(forwarder_job.submit)
     bg_tasks.add_task(producer_job.submit)
 
-    last = trs.log[-1]
+    last = xfer.log[-1]
     return TransferStatus(
         id=producer_job.stamp,
         url=external_url,
-        user=trs.user,
+        user=xfer.user,
         time=last.time,
         jobndx=last.jobndx,
         state=last.state,

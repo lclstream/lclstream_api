@@ -63,7 +63,7 @@ async def handle_callback(
     return True
 
 @callback.post("producer")
-async def post_callback(
+async def producer_callback(
     cb: psik.Callback,
     db: Database,
     request: Request,
@@ -73,7 +73,7 @@ async def post_callback(
     return await handle_callback(ClientName.producer, cb, db, request, bg_tasks, x_hub_signature_256)
 
 @callback.post("forwarder")
-async def post_callback(
+async def forwarder_callback(
     cb: psik.Callback,
     db: Database,
     request: Request,
