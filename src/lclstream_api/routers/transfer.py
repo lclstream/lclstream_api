@@ -138,10 +138,10 @@ async def new_transfer(
         on_complete()
         raise HTTPException(status_code=400, detail=f"Error creating port pair: {str(xfer)}")
 
+    db.add(entry.eid, xfer)
     # Submit jobs to the queue
     bg_tasks.add_task(forwarder_job.submit)
     bg_tasks.add_task(producer_job.submit)
-    db.add(entry.eid, xfer)
 
     last = xfer.log[-1]
     return TransferStatus(

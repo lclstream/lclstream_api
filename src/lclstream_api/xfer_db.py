@@ -1,10 +1,9 @@
 """ This file implements a "Transfers" table, which essentially has
     the format:
 
-    - jobid
+    - eid [foreign_key] (same key as PortEntry table)
     ++ foreign key to state transition log (id, xfer, **PortTransition)
     ++ foreign key to current state table (id, xfer, ClientName, state)
-    - entry [foreign_key] (linking to PortEntry table)
 """
 
 import logging

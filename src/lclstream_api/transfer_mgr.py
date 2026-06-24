@@ -50,6 +50,26 @@ class Transfer:
 
         # TODO: setup a timer here
 
+    async def _cancel_producer(self, finalize=True):
+        job = self.producer_job
+        if job is None or self.states[ClientName.producer].is_final():
+            return
+        if finalize:
+            self.done()
+
+        self.states[ClientName.producer] = JobState.canceled
+        await job.cancel()
+
+    async def _cancel_forwarder(self, finalize=True):
+        job = self.forwarder_job
+        if job is None or self.states[ClientName.cache].is_final():
+            return
+        if finalize:
+            self.done()
+
+        self.states[ClientName.cache] = JobState.canceled
+        await job.cancel()
+
     def transition(
         self,
         name: ClientName,
@@ -61,18 +81,6 @@ class Transfer:
         # TODO: reset timer.
         # TODO: wire up the last timer tick to call self.cancel()
         #       so that naturally terminating jobs ensure on_complete called.
-        def end_producer():
-            job = self.producer_job
-            if job is None:
-                return
-            self.producer_job = None
-            self.states[ClientName.producer] = JobState.canceled
-            return lambda: job.cancel()
-        def end_forwarder():
-            job = self.forwarder_job
-            self.forwarder_job = None
-            self.states[ClientName.cache] = JobState.canceled
-            return lambda: job.cancel()
 
         self.log.append(
             PortTransition(time=time.time(), client=name, state=state, jobndx=jobndx, info=info)
@@ -85,16 +93,17 @@ class Transfer:
                 # cancel job if cache is not yet alive
                 if self.states[ClientName.cache].is_final():
                     _logger.error(
-                        "cache is %s at %s",
+                        "Transfer(%d): cache is %s at %s",
+                        self.eid,
                         self.states[ClientName.cache].value,
                         str(self.log[-1]),
                     )
-                    return end_producer()
+                    return self._cancel_producer
             elif state.is_final():
                 # "Normal" termination path.
                 # This is a little excessive, since
                 # the forwarder *should* shut down on its own...
-                return end_forwarder()
+                return self._cancel_forwarder
 
         elif name == ClientName.cache:
             if state == JobState.new:
@@ -103,35 +112,28 @@ class Transfer:
 
             if state.is_final():
                 if not self.states[ClientName.producer].is_final():
-                    _logger.warning("Cache completed while producer is %s - canceling.", self.states[ClientName.producer].value)
-                    return end_producer()
+                    _logger.warning("Transfer(%d): Cache completed while producer is %s - canceling.", self.eid, self.states[ClientName.producer].value)
+                    return self._cancel_producer
+
+                # both finalized - normal completion path.
+                _logger.info("Transfer(%d): Successful completion.", self.eid)
+                self.done()
 
         # TODO: handle user-initiated transitions here.
         # (e.g. cancel, which currently calls cancel_job directly.)
         return None
 
-    async def cancel_job(self):
-        """Cancel the job associated with this port.
-        """
-        if self.producer_job:
-            name = ClientName.producer
-            job = self.producer_job
-            self.producer_job = None
-            if not self.states[name].is_final():
-                self.states[name] = JobState.canceled
-                await job.cancel()
-
-        if self.forwarder_job:
-            name = ClientName.cache
-            job = self.forwarder_job
-            self.forwarder_job = None
-            if not self.states[name].is_final():
-                self.states[name] = JobState.canceled
-                await job.cancel()
-
+    def done(self) -> None:
         if self.on_complete:
             self.on_complete()
             self.on_complete = None
+
+    async def cancel_job(self):
+        """Cancel the job associated with this port.
+        """
+        await self._cancel_producer(False)
+        await self._cancel_forwarder(False)
+        self.done()
 
     def metrics(self, metric: CacheMetrics):
         self.cache_metrics = metric
