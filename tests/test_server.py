@@ -9,8 +9,7 @@ from test_jobs import param2
 
 from lclstream_api.models import TransferInfo, TransferStatus
 from lclstream_api.server import api
-
-from test_config import setup_lclstream_api, config
+from test_config import config, setup_lclstream_api  # noqa: F401
 
 ADDR = "tcp://127.0.0.1:28451"
 
@@ -24,7 +23,7 @@ async def pull_server():
         await asyncio.sleep(0.1)
         pull = puller(addr, 1)
         nmsg = 0
-        for data in pull:
+        for _data in pull:
             nmsg += 1
         print(f"pull_server: received {nmsg} messages")
 
@@ -37,7 +36,7 @@ async def pull_server():
     finally:
         task.cancel()
         try:
-            ans = await task
+            await task
         except asyncio.CancelledError:
             pass
 

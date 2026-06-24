@@ -122,7 +122,7 @@ class SlurmJob:
         jobid = await start_slurm(cmd)
         self.jobid = jobid
         dt = 0.0
-        for i in range(33):  # wait 60 seconds for job start
+        for _i in range(33):  # wait 60 seconds for job start
             await asyncio.sleep(dt)
             dt = min(2.0, dt + 0.5)
             self.state = await slurm_state(jobid)
@@ -137,7 +137,7 @@ class SlurmJob:
         # print(f"Job {jobid} is {self.state.value}.")
 
         dt = 5.0
-        for i in range(1000):  # max time ~ hrs.
+        for _i in range(1000):  # max time ~ hrs.
             await asyncio.sleep(dt)
             # poll logarithmically up to 2 minute intervals for job completion
             dt = min(120.0, dt * 2.0)

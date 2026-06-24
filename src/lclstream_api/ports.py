@@ -1,21 +1,20 @@
-""" This file implements a "PortEntry" table, which essentially has
-    the format:
+"""This file implements a "PortEntry" table, which essentially has
+the format:
 
-    - id (tracked with self.sequence)
-    - user
-    - port
-    - internal_url
-    - external_url
-    ++ foreign_key to xfer (not present here, linked FROM xfer_db)
+- id (tracked with self.sequence)
+- user
+- port
+- internal_url
+- external_url
+++ foreign_key to xfer (not present here, linked FROM xfer_db)
 """
 
-import asyncio
 import logging
 from typing import Annotated
 
 from fastapi import Depends
 
-from .config import Config, load_config, ForwarderConfig
+from .config import Config, ForwarderConfig, load_config
 from .models import PortEntry
 
 _logger = logging.getLogger(__name__)
@@ -27,7 +26,7 @@ class PortDatabase:  # singleton
     def __init__(self, forwarder: ForwarderConfig) -> None:
         assert forwarder.end_port > forwarder.start_port + 1, "Need at least 2 ports"
         self.host = forwarder.ip
-        self.sequence = 1 # sequential index number
+        self.sequence = 1  # sequential index number
 
         self.open_ports = list(range(forwarder.start_port, forwarder.end_port, 2))
         # Mapping from eid to user, port pairs.
@@ -37,8 +36,8 @@ class PortDatabase:  # singleton
         return self.entries.items()
 
     def alloc(self) -> int | None:
-        """ Allocate a port -- usually called automagically
-            during create().
+        """Allocate a port -- usually called automagically
+        during create().
         """
         if len(self.open_ports) == 0:
             _logger.error("No more open ports!")
@@ -60,7 +59,7 @@ class PortDatabase:  # singleton
         eid = self.sequence
         self.sequence += 1
 
-        #if eid in self.entries:
+        # if eid in self.entries:
         #    entry = self.entries[eid]
         #    # Make create idempotent
         #    if entry.user == user:
