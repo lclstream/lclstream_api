@@ -1,7 +1,7 @@
 """This file implements a "PortEntry" table, which essentially has
 the format:
 
-- id (tracked with self.sequence)
+- id (a UUID)
 - user
 - port
 - internal_url
@@ -11,6 +11,7 @@ the format:
 
 import logging
 from typing import Annotated
+from uuid import UUID, uuid4
 
 from fastapi import Depends
 
@@ -26,11 +27,10 @@ class PortDatabase:  # singleton
     def __init__(self, forwarder: ForwarderConfig) -> None:
         assert forwarder.end_port > forwarder.start_port + 1, "Need at least 2 ports"
         self.host = forwarder.ip
-        self.sequence = 1  # sequential index number
 
         self.open_ports = list(range(forwarder.start_port, forwarder.end_port, 2))
-        # Mapping from eid to user, port pairs.
-        self.entries: dict[int, PortEntry] = {}
+        # Mapping from id to PortEntry.
+        self.entries: dict[UUID, PortEntry] = {}
 
     def items(self):
         return self.entries.items()
@@ -56,35 +56,34 @@ class PortDatabase:  # singleton
         return f"tcp://{self.host}:{port + 1}"
 
     def create(self, user: str) -> PortEntry:
-        eid = self.sequence
-        self.sequence += 1
+        id = uuid4()
 
-        # if eid in self.entries:
-        #    entry = self.entries[eid]
+        # if id in self.entries:
+        #    entry = self.entries[id]
         #    # Make create idempotent
         #    if entry.user == user:
         #        return entry
-        #    raise KeyError(f"PortEntry {eid} already created by another user!")
+        #    raise KeyError(f"PortEntry {id} already created by another user!")
         port = self.alloc()
         if port is None:
             raise RuntimeError("No available ports.")
 
         entry = PortEntry(
-            eid=eid,
+            id=id,
             user=user,
             port=port,
             internal_url=self.internal_url(port),
             external_url=self.external_url(port),
         )
-        self.entries[eid] = entry
+        self.entries[id] = entry
 
         return entry
 
-    def __getitem__(self, eid: int) -> PortEntry:
-        return self.entries[eid]
+    def __getitem__(self, id: UUID) -> PortEntry:
+        return self.entries[id]
 
-    def delete(self, eid: int) -> PortEntry:
-        entry = self.entries.pop(eid)
+    def delete(self, id: UUID) -> PortEntry:
+        entry = self.entries.pop(id)
         self.free(entry.port)
         return entry
 

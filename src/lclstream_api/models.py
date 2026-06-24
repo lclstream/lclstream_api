@@ -1,6 +1,7 @@
 import logging
 import time
 from enum import StrEnum
+from uuid import UUID
 
 from psik.models import JobState
 from pydantic import BaseModel
@@ -14,7 +15,7 @@ class TransferStatus(BaseModel):
     state: JobState
     info: str
 
-    id: int
+    id: UUID
     url: str
     user: str
 
@@ -52,7 +53,7 @@ class TransferInfo(BaseModel):
 
 
 class PortEntry(BaseModel):
-    eid: int  # serial number
+    id: UUID
     user: str
     port: int
     internal_url: str

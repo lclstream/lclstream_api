@@ -1,15 +1,16 @@
 import asyncio
 import json
+from uuid import uuid4
 
 import pytest
 import pytest_asyncio
 from fastapi.testclient import TestClient
 from lclstream.zmqsock import puller
+from test_config import config, setup_lclstream_api  # noqa: F401
 from test_jobs import param2
 
 from lclstream_api.models import TransferInfo, TransferStatus
 from lclstream_api.server import api
-from test_config import config, setup_lclstream_api  # noqa: F401
 
 ADDR = "tcp://127.0.0.1:28451"
 
@@ -78,6 +79,6 @@ async def test_mk_transfer(pull_server, setup_lclstream_api):
 
 
 def test_read_transfer(setup_lclstream_api):
-    response = client.get("/transfers/12")
+    response = client.get(f"/transfers/{uuid4()}")
     print(response.text)
     assert response.status_code == 404

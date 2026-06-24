@@ -2,6 +2,7 @@ import logging
 import time
 from collections.abc import Awaitable, Callable
 from pathlib import Path
+from uuid import UUID
 
 from psik import Job, JobManager
 
@@ -25,7 +26,7 @@ class Transfer:
     status of a given transfer.
     """
 
-    eid: int
+    id: UUID
     states: dict[ClientName, JobState]
     log: list[PortTransition]
     producer_job: Job | None
@@ -33,8 +34,8 @@ class Transfer:
 
     cache_metrics: CacheMetrics
 
-    def __init__(self, eid: int, on_complete: Callable | None = None):
-        self.eid = eid
+    def __init__(self, id: UUID, on_complete: Callable | None = None):
+        self.id = id
         self.on_complete = on_complete
         self.states = {}
 
@@ -95,8 +96,8 @@ class Transfer:
                 # cancel job if cache is not yet alive
                 if self.states[ClientName.cache].is_final():
                     _logger.error(
-                        "Transfer(%d): cache is %s at %s",
-                        self.eid,
+                        "Transfer(%s): cache is %s at %s",
+                        self.id,
                         self.states[ClientName.cache].value,
                         str(self.log[-1]),
                     )
@@ -115,14 +116,14 @@ class Transfer:
             if state.is_final():
                 if not self.states[ClientName.producer].is_final():
                     _logger.warning(
-                        "Transfer(%d): Cache completed while producer is %s - canceling.",
-                        self.eid,
+                        "Transfer(%s): Cache completed while producer is %s - canceling.",
+                        self.id,
                         self.states[ClientName.producer].value,
                     )
                     return self._cancel_producer
 
                 # both finalized - normal completion path.
-                _logger.info("Transfer(%d): Successful completion.", self.eid)
+                _logger.info("Transfer(%s): Successful completion.", self.id)
                 self.done()
 
         # TODO: handle user-initiated transitions here.
@@ -184,7 +185,7 @@ async def create_transfer(
 
     # 3. Create the formal PortEntry structure
     try:
-        xfer = Transfer(entry.eid, on_complete)
+        xfer = Transfer(entry.id, on_complete)
     except Exception as e:
         return producer_job, forwarder_job, e
 

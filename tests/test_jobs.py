@@ -1,4 +1,7 @@
+from uuid import uuid4
+
 import psik
+from test_config import config  # noqa: F401
 
 from lclstream_api.jobs import (
     create_forwarder,
@@ -9,7 +12,6 @@ from lclstream_api.jobs import (
 )
 from lclstream_api.lclstreamer_param import Parameters
 from lclstream_api.models import PortEntry
-from test_config import config  # noqa: F401
 
 param1 = """{
   "source_identifier": "exp1:run2",
@@ -88,7 +90,7 @@ def test_create_producer(config):
 
 def test_create_forwarder(config):
     entry = PortEntry(
-        eid=1,
+        id=uuid4(),
         user="tester",
         port=10000,
         internal_url="tcp://a:10000",

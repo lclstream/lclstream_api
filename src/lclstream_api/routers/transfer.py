@@ -1,5 +1,6 @@
 import logging
 from typing import Annotated
+from uuid import UUID
 
 import psik
 from fastapi import (
@@ -54,9 +55,9 @@ async def list_transfers(
     """
 
     out = []
-    for eid, entry in ports.items():
+    for id, entry in ports.items():
         try:
-            xfer = db[eid]
+            xfer = db[id]
         except KeyError:
             continue
         # TODO: filter by entry.user here (or list all for admin)
@@ -67,7 +68,7 @@ async def list_transfers(
         last = xfer.log[-1]
         out.append(
             TransferStatus(
-                id=eid,
+                id=id,
                 url=entry.external_url,
                 user=entry.user,
                 time=last.time,
@@ -76,7 +77,7 @@ async def list_transfers(
                 info=last.info,
             )
         )
-    out.sort(key=lambda x: -float(x.id))
+    out.sort(key=lambda x: -x.time)
     if index is not None and index > 0:
         if index >= len(out):
             out = []
@@ -101,7 +102,7 @@ async def new_transfer(
     """
     Submit a transfer to run ASAP.
 
-    If successful this will return the eid created.
+    If successful this will return the id created.
 
     FIXME: lookup user following certified docs
     or using a FastAPI User mixin using token-auth.
@@ -116,8 +117,9 @@ async def new_transfer(
     except RuntimeError:
         _logger.error("Out of ports.")
         raise HTTPException(status_code=500, detail="Out of ports.")
+
     def on_complete():
-        return ports.delete(entry.eid)
+        return ports.delete(entry.id)
 
     try:
         forwarder_job, producer_job, xfer = await create_transfer(
@@ -158,14 +160,14 @@ async def new_transfer(
             status_code=400, detail=f"Error creating port pair: {str(xfer)}"
         )
 
-    db.add(entry.eid, xfer)
+    db.add(entry.id, xfer)
     # Submit jobs to the queue
     bg_tasks.add_task(forwarder_job.submit)
     bg_tasks.add_task(producer_job.submit)
 
     last = xfer.log[-1]
     return TransferStatus(
-        id=entry.eid,
+        id=entry.id,
         url=entry.external_url,
         user=entry.user,
         time=last.time,
@@ -176,7 +178,7 @@ async def new_transfer(
 
 
 @transfers.get("/{id}")
-async def get_transfer(id: int, ports: PortUsage, db: Database) -> TransferInfo:
+async def get_transfer(id: UUID, ports: PortUsage, db: Database) -> TransferInfo:
     """Read job
     - id: The transfer ID
 
@@ -191,7 +193,7 @@ async def get_transfer(id: int, ports: PortUsage, db: Database) -> TransferInfo:
 
 
 @transfers.delete("/{id}")
-async def cancel_transfer(id: int, bg_tasks: BackgroundTasks, db: Database) -> None:
+async def cancel_transfer(id: UUID, bg_tasks: BackgroundTasks, db: Database) -> None:
     # Cancel job
     try:
         xfer = db[id]
