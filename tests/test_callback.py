@@ -8,17 +8,15 @@ from fastapi import HTTPException
 from psik.models import Callback, JobState
 from psik.web import post_json
 
-from lclstream_api.xfer_db import get_database
-from lclstream_api.routers.callback import (
-    producer_callback,
-    forwarder_callback,
-)
 from lclstream_api.models import ClientName
+from lclstream_api.routers.callback import (
+    forwarder_callback,
+    producer_callback,
+)
+from lclstream_api.xfer_db import get_database
 
 ### test fixture for accepting a callback ###
 cb_value = web.AppKey("value", None)  # type: ignore[var-annotated]
-
-from test_config import config
 
 
 class MockBackgroundTasks(list):
@@ -45,9 +43,13 @@ async def post_cb(name: ClientName, request, config):
 
     try:
         if name == ClientName.producer:
-            ans = await producer_callback( cb, db, request, bg_tasks, x_hub_signature_256) # type: ignore[arg-type]
+            ans = await producer_callback(
+                cb, db, request, bg_tasks, x_hub_signature_256
+            )  # type: ignore[arg-type]
         else:
-            ans = await forwarder_callback( cb, db, request, bg_tasks, x_hub_signature_256) # type: ignore[arg-type]
+            ans = await forwarder_callback(
+                cb, db, request, bg_tasks, x_hub_signature_256
+            )  # type: ignore[arg-type]
     except HTTPException:
         return web.Response(text='"false"', status=200)
     assert len(bg_tasks) == 1
@@ -67,6 +69,7 @@ async def cb_client(aiohttp_client, config):
 
     async def run_prod_cb(request):
         return await post_cb(ClientName.producer, request, config)
+
     async def run_fwd_cb(request):
         return await post_cb(ClientName.cache, request, config)
 
@@ -89,6 +92,8 @@ async def test_local_cb(cb_client):
     assert cb_server.app[cb_value] is None
 
     cb = Callback(jobid="123.456", jobndx=0, state=JobState.queued, info="ok")
-    ans = await post_json(str(cb_server.make_url("/callback/producer")), cb.model_dump_json())
+    ans = await post_json(
+        str(cb_server.make_url("/callback/producer")), cb.model_dump_json()
+    )
     print(ans)
     assert ans is not None
