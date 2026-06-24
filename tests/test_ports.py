@@ -2,39 +2,35 @@ import asyncio
 
 import pytest
 
-from lclstream_api.ports import get_database
+from lclstream_api.ports import get_portusage
 
 from test_config import config
 
-@pytest.mark.asyncio
-async def test_db(config):
-    DB = get_database(config)
+def test_db(config):
+    DB = get_portusage(config)
 
     with pytest.raises(KeyError):
-        await DB.delete("123")
+        DB.delete(123)
 
     nopen = len(DB.open_ports)
-    ent = await DB.create("job1", "tester")
+    ent = DB.create("user1")
     assert len(DB.open_ports) == nopen - 1
 
-    assert ent.user == "tester"
+    assert ent.user == "user1"
     assert ent.port > 1024
     assert ent.internal_url.startswith("tcp")
     assert ent.external_url.startswith("tcp")
 
     with pytest.raises(KeyError):
-        job = DB["111"]
+        job = DB[111]
 
-    with pytest.raises(KeyError):
-        ent2 = await DB.create("job1", "not_tester")
-    ent2 = await DB.create("job1", "tester")
-    assert ent == ent2
+    ent1 = DB[ent.eid]
+    assert ent1 == ent
 
-    await asyncio.sleep(0.2)
-    print(DB["job1"])
+    ent2 = DB.create("user2")
+    assert len(DB.open_ports) == nopen - 2
+    assert ent2.eid != ent1.eid
+    print(DB[ent2.eid])
 
-    ans = await DB.delete("job1")
-    assert len(DB.open_ports) == nopen
-    print(ans.log)
-
-    assert ans.states["cache"].is_final()
+    ans = DB.delete(ent.eid)
+    assert len(DB.open_ports) == nopen - 1

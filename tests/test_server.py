@@ -50,8 +50,6 @@ def test_get_list(setup_lclstream_api):
         assert isinstance(resp, list)
 
 
-# Doesn't work because of zmq threading / async incompat.
-@pytest.mark.skip
 @pytest.mark.asyncio
 async def test_mk_transfer(pull_server, setup_lclstream_api):
     response = client.post("/transfers", json={"abc": 2})
@@ -82,4 +80,5 @@ async def test_mk_transfer(pull_server, setup_lclstream_api):
 
 def test_read_transfer(setup_lclstream_api):
     response = client.get("/transfers/12")
+    print(response.text)
     assert response.status_code == 404

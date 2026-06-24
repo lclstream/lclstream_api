@@ -1,24 +1,36 @@
 import os
 from functools import cache
 from pathlib import Path
-from typing import Union
+from typing import Union, Optional
+
+import yaml
 
 import psik
 from pydantic import BaseModel
 
+class LCLStreamerConfig(BaseModel):
+    jobspec: psik.JobSpec
 
-class Config(BaseModel):
-    replay_job: psik.JobSpec
-    lclstream_job: psik.JobSpec
-    psik: psik.Config
-    run_cache: str
-    callback_url: str | None  # no default since None breaks callback functionality
-    cache_fmt: str | None = None
-    cache_ip: str
+class ForwarderConfig(BaseModel):
+    ip: str
     start_port: int = 30001
     end_port: int = 34000
+    jobspec: psik.JobSpec
 
+class ReplayConfig(BaseModel):
+    cache_fmt: Optional[str] = None
+    jobspec: psik.JobSpec = psik.JobSpec(script="")
 
+class Config(BaseModel):
+    psik: psik.Config
+    callback_url: str | None  # no default since None breaks callback functionality
+
+    forwarder: ForwarderConfig
+    replay: ReplayConfig = ReplayConfig()
+    lclstreamer: LCLStreamerConfig
+
+# Other config options we could add...
+#
 # database_url: str = "sqlite+pysqlite:///:memory:"
 # cache_fmt: str = "/sdf/scratch/lcls/ds/tmo/%s/scratch/lclstream_api"
 # authz: str = "psik_api.authz:BaseAuthz"
@@ -40,8 +52,8 @@ def load_config(config_name: Pstr | None = None) -> Config:
     Priority order is:
       1. config_name (if not None)
       2. $LCLSTREAM_API_CONFIG (if defined)
-      3. $VIRTUAL_ENV/etc/lclstream_api.json (if VIRTUAL_ENV defined)
-      4. /etc/lclstream_api.json
+      3. $VIRTUAL_ENV/etc/lclstream_api.yaml (if VIRTUAL_ENV defined)
+      4. /etc/lclstream_api.yaml
 
     Args:
       config_name: if defined, the configuration is read from this file
@@ -51,15 +63,15 @@ def load_config(config_name: Pstr | None = None) -> Config:
       IsADirectoryError: Path does not point to a file.
       PermissionError:   If the file cannot be read.
     """
-    cfg_name = "lclstream_api.json"
+    cfg_name = "lclstream_api.yaml"
     if config_name is not None:
         path = Path(config_name)
     elif "LCLSTREAM_API_CONFIG" in os.environ:
         path = Path(os.environ["LCLSTREAM_API_CONFIG"])
     else:
         path = Path(os.environ.get("VIRTUAL_ENV", "/")) / "etc" / cfg_name
-    cfg = path.read_text(encoding="utf-8")
-    return Config.model_validate_json(cfg)
+    cfg = yaml.safe_load( path.read_text(encoding="utf-8") )
+    return Config.model_validate(cfg)
 
 
 def to_mgr(cfg: Config) -> psik.JobManager:

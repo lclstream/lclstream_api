@@ -1,11 +1,21 @@
+""" This file implements a "PortEntry" table, which essentially has
+    the format:
+
+    - id (tracked with self.sequence)
+    - user
+    - port
+    - internal_url
+    - external_url
+    ++ foreign_key to xfer (not present here, linked FROM xfer_db)
+"""
+
 import asyncio
 import logging
 from typing import Annotated
 
 from fastapi import Depends
 
-from .cache import cache_process
-from .config import Config, load_config
+from .config import Config, load_config, ForwarderConfig
 from .models import PortEntry
 
 _logger = logging.getLogger(__name__)
@@ -14,22 +24,21 @@ CachedConfig = Annotated[Config, Depends(load_config)]
 
 
 class PortDatabase:  # singleton
-    def __init__(self, host: str, run_cache: str, start=30001, end=34000) -> None:
-        assert end > start + 1, "Need at least 2 ports"
-        self.host = host
-        self.run_cache = run_cache
+    def __init__(self, forwarder: ForwarderConfig) -> None:
+        assert forwarder.end_port > forwarder.start_port + 1, "Need at least 2 ports"
+        self.host = forwarder.ip
+        self.sequence = 1 # sequential index number
 
-        self.open_ports = list(range(start, end, 2))
-        # Mapping from jobid to user, port pairs.
-        self.jobs: dict[str, PortEntry] = {}
-        self.tasks: dict[str, asyncio.Task] = {}
+        self.open_ports = list(range(forwarder.start_port, forwarder.end_port, 2))
+        # Mapping from eid to user, port pairs.
+        self.entries: dict[int, PortEntry] = {}
 
     def items(self):
-        return self.jobs.items()
+        return self.entries.items()
 
     def alloc(self) -> int | None:
-        """Allocate a port -- usually called automagically
-        during create().
+        """ Allocate a port -- usually called automagically
+            during create().
         """
         if len(self.open_ports) == 0:
             _logger.error("No more open ports!")
@@ -47,43 +56,36 @@ class PortDatabase:  # singleton
         # External ports are internal+1
         return f"tcp://{self.host}:{port + 1}"
 
-    async def create(self, jobid: str, user: str, port: int | None = None) -> PortEntry:
-        if jobid in self.jobs:
-            entry = self.jobs[jobid]
-            # Make create idempotent
-            if entry.user == user:
-                return entry
-            raise KeyError(f"Job {jobid} already created by another user!")
-        if port is None:
-            port = self.alloc()
+    def create(self, user: str) -> PortEntry:
+        eid = self.sequence
+        self.sequence += 1
+
+        #if eid in self.entries:
+        #    entry = self.entries[eid]
+        #    # Make create idempotent
+        #    if entry.user == user:
+        #        return entry
+        #    raise KeyError(f"PortEntry {eid} already created by another user!")
+        port = self.alloc()
         if port is None:
             raise RuntimeError("No available ports.")
 
         entry = PortEntry(
+            eid=eid,
             user=user,
             port=port,
             internal_url=self.internal_url(port),
             external_url=self.external_url(port),
         )
-        self.jobs[jobid] = entry
-        self.tasks[jobid] = await cache_process(self.run_cache, entry)
+        self.entries[eid] = entry
+
         return entry
 
-    def __getitem__(self, jobid: str) -> PortEntry:
-        return self.jobs[jobid]
+    def __getitem__(self, eid: int) -> PortEntry:
+        return self.entries[eid]
 
-    async def delete(self, jobid: str) -> PortEntry:
-        entry = self.jobs.pop(jobid)
-
-        task = self.tasks[jobid]
-        if not task.done():
-            task.cancel()  # this will invoke entry.transition("cache", JobState.canceled)
-            # which will cancel the job (if running)
-        try:
-            await task
-        except asyncio.CancelledError:
-            pass
-
+    def delete(self, eid: int) -> PortEntry:
+        entry = self.entries.pop(eid)
         self.free(entry.port)
         return entry
 
@@ -91,14 +93,12 @@ class PortDatabase:  # singleton
 DB: PortDatabase = None  # type: ignore[assignment]
 
 
-def get_database(config: CachedConfig) -> PortDatabase:
+def get_portusage(config: CachedConfig) -> PortDatabase:
     # initialize on first access (allows db to be configurable)
     global DB
     if DB is None:
-        DB = PortDatabase(
-            config.cache_ip, config.run_cache, config.start_port, config.end_port
-        )
+        DB = PortDatabase(config.forwarder)
     return DB
 
 
-Database = Annotated[PortDatabase, Depends(get_database)]
+PortUsage = Annotated[PortDatabase, Depends(get_portusage)]

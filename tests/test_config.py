@@ -2,86 +2,93 @@ import os
 from pathlib import Path
 
 import pytest
+import yaml
 
 from lclstream_api.config import Config
 
 # this config only works if lclstreamer is setup...
-cfg_json = """{
-  "cache_fmt": "%(base)s/lclstream_cache/%%s",
-  "psik": {
-    "prefix": "%(base)s/psik"
-  },
-  "run_cache": "/home/99r/src/microservices/nng_stream/zmqbuf",
-  "callback_url": null,
-  "cache_ip": "127.0.0.1",
-  "start_port": 11401,
-  "end_port": 11420,
-  "replay_job": {
-    "name": "lclstream-push",
-    "backend": "default",
-    "resources": {
-      "duration": 60,
-      "node_count": 1,
-      "processes_per_node": 1,
-      "cpu_cores_per_process": 1
-    },
-    "script": "lclstream push --addr {url} --ndial 1 {pre}*.h5"
-  },
-  "lclstream_job": {
-    "name": "lclstreamer",
-    "backend": "default",
-    "resources": {
-      "duration": 60,
-      "node_count": 1,
-      "processes_per_node": 1,
-      "cpu_cores_per_process": 1
-    },
-    "script": "lclstreamer --config lclstreamer.json"
-  }
-}
+cfg_yaml = """
+psik:
+  prefix: "%(base)s/psik"
+
+callback_url: null
+forwarder:
+  ip: "127.0.0.1"
+  start_port: 11401
+  end_port: 11420
+  jobspec:
+    name: "zmqbuf"
+    backend: "default"
+    script: "/home/99r/src/microservices/nng_stream/zmqbuf"
+
+replay:
+  cache_fmt: "%(base)s/lclstream_cache/%%s"
+  jobspec:
+    name: "lclstream-push"
+    backend: "default"
+    resources:
+      duration: 60
+      node_count: 1
+      processes_per_node: 1
+      cpu_cores_per_process: 1
+    script: |
+      lclstream push --addr {url} --ndial 1 {pre}*.h5
+
+lclstreamer:
+  jobspec:
+    name: "lclstreamer"
+    backend: "default"
+    resources:
+      duration: 60
+      node_count: 1
+      processes_per_node: 1
+      cpu_cores_per_process: 1
+    script: "lclstreamer --config lclstreamer.json"
 """
 
 # this config uses lclstream (client) to mimick lclstreamer
 # in order to make a self-contained package testable
-cfg_json2 = """{
-  "cache_fmt": "%(base)s/lclstream_cache/%%s",
-  "psik": {
-    "prefix": "%(base)s/psik"
-  },
-  "run_cache": "zmqbuf",
-  "callback_url": null,
-  "cache_ip": "127.0.0.1",
-  "start_port": 11401,
-  "end_port": 11420,
-  "replay_job": {
-    "name": "lclstream-push",
-    "backend": "default",
-    "resources": {
-      "duration": 60,
-      "node_count": 1,
-      "processes_per_node": 1,
-      "cpu_cores_per_process": 1
-    },
-    "script": "lclstream push --addr {url} --ndial 1 {pre}*.h5"
-  },
-  "lclstream_job": {
-    "name": "lclstreamer",
-    "backend": "default",
-    "resources": {
-      "duration": 60,
-      "node_count": 1,
-      "processes_per_node": 1,
-      "cpu_cores_per_process": 1
-    },
-    "script": "lclstream push --addr {url} --ndial 1 *.*"
-  }
-}
+cfg_yaml2 = """
+callback_url: null
+
+psik:
+  prefix: "%(base)s/psik"
+
+replay:
+  cache_fmt: "%(base)s/lclstream_cache/%%s"
+  jobspec:
+    name: "lclstream-push"
+    backend: "default"
+    resources:
+      duration: 60
+      node_count: 1
+      processes_per_node: 1
+      cpu_cores_per_process: 1
+    script: "lclstream push --addr {url} --ndial 1 {pre}*.h5"
+
+forwarder:
+  run_cache: "zmqbuf"
+  cache_ip: "127.0.0.1"
+  start_port: 11401
+  end_port: 11420
+
+lclstreamer:
+  jobspec:
+    name: "lclstreamer"
+    backend: "default"
+    resources:
+      duration: 60
+      node_count: 1
+      processes_per_node: 1
+      cpu_cores_per_process: 1
+    script: "lclstream push --addr {url} --ndial 1 *.*"
 """
 
 
 @pytest.fixture
 def config(tmpdir) -> Config:
-    return Config.model_validate_json(cfg_json % {"base": str(tmpdir)})
+    x = yaml.safe_load(cfg_yaml % {"base": str(tmpdir)})
+    return Config.model_validate(x)
 
 
 @pytest.fixture

@@ -1,0 +1,38 @@
+# Example configuration for testing all services
+# on the same a local machine (default execution backend = "local").
+psik:
+  prefix: "/tmp/psik"
+  backends:
+    default:
+      type: "local"
+
+callback_url: "http://127.0.0.1:8000/v1/callback"
+
+forwarder:
+  ip: "127.0.0.1"
+  start_port: 42001
+  end_port:   42100
+
+  jobspec:
+    name: "fastcache"
+    backend: "default"
+    resources:
+      duration: 360
+      node_count: 1
+      processes_per_node: 1
+      cpu_cores_per_process: 1
+    script: "/home/99r/src/microservices/nng_stream/zmqbuf"
+
+lclstreamer:
+  jobspec:
+    name: "lclstreamer"
+    backend: "default"
+    resources:
+      duration: 60
+      node_count: 1
+      processes_per_node: 120
+      cpu_cores_per_process: 1
+   #environment:
+   #  CERTIFIED_CONFIG: "/sdf/home/r/rogersdd/venvs/lclstream_api/etc/certified"
+    script: |
+      pixi run --manifest-path /home/99r/src/lclstreamer -e {psana_env} lclstreamer --config lclstreamer.json
