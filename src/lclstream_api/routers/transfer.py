@@ -11,7 +11,6 @@ from fastapi import (
 )
 
 from ..config import Config, load_config, to_mgr
-from ..jobs import create_producer, create_forwarder
 from ..lclstreamer_param import Parameters
 from ..models import (
     ClientName,
@@ -20,7 +19,7 @@ from ..models import (
     TransferStatus,
 )
 from ..ports import PortUsage
-from ..transfer_mgr import Transfer, Database
+from ..transfer_mgr import Transfer, create_transfer
 from ..xfer_db import Database
 
 _logger = logging.getLogger(__name__)
@@ -55,7 +54,7 @@ async def list_transfers(
     """
 
     out = []
-    for ed, xfer in db.items():
+    for eid, xfer in db.items():
         cstate = xfer.states[ClientName.cache]
         if state is not None and state != cstate:
             continue
@@ -66,7 +65,7 @@ async def list_transfers(
                 url=xfer.entry.external_url,
                 user=xfer.entry.user,
                 time=last.time,
-                jobndx=0,
+                jobndx=last.jobndx,
                 state=cstate,
                 info=last.info,
             )
@@ -114,7 +113,7 @@ async def new_transfer(
     on_complete = lambda: ports.delete(entry.eid)
 
     try:
-        xfer, forwarder_job, producer_job = await create_transfer(db, entry, request, mgr, cfg, on_complete)
+        forwarder_job, producer_job, xfer = await create_transfer(db, entry, request, mgr, cfg, on_complete)
     except Exception:
         on_complete()
         raise
@@ -123,21 +122,21 @@ async def new_transfer(
     # and jobs are either un-created or stuck at "new" state
     if isinstance(producer_job, Exception):
         on_complete()
-        raise HTTPException(status_code=400, detail=f"Error creating producer job: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Error creating producer job: {str(producer_job,)}")
     if producer_job.spec.directory is None:
         on_complete()
         raise HTTPException(status_code=500, detail="Error creating producer job directory.")
 
     if isinstance(forwarder_job, Exception):
         on_complete()
-        raise HTTPException(status_code=400, detail=f"Error creating forwarder job: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Error creating forwarder job: {str(forwarder_job,)}")
     if forwarder_job.spec.directory is None:
         on_complete()
         raise HTTPException(status_code=500, detail="Error creating forwarder job directory.")
 
     if isinstance(xfer, Exception):
         on_complete()
-        raise HTTPException(status_code=400, detail=f"Error creating port pair: {xfer}")
+        raise HTTPException(status_code=400, detail=f"Error creating port pair: {str(xfer)}")
 
     # Submit jobs to the queue
     bg_tasks.add_task(forwarder_job.submit)
@@ -146,8 +145,8 @@ async def new_transfer(
     last = xfer.log[-1]
     return TransferStatus(
         id=producer_job.stamp,
-        url=external_url,
-        user=xfer.user,
+        url=entry.external_url,
+        user=entry.user,
         time=last.time,
         jobndx=last.jobndx,
         state=last.state,
@@ -155,17 +154,18 @@ async def new_transfer(
     )
 
 @transfers.get("/{id}")
-async def get_transfer(eid: int, db: Database) -> TransferInfo:
+async def get_transfer(eid: int, ports: PortUsage, db: Database) -> TransferInfo:
     """Read job
     - eid: The transfer/entry ID
 
     Returns information associated with this transfer.
     """
     try:
-        xfer = db[eid]
+        xfer  = db[eid]
+        entry = ports[eid]
     except KeyError:
         raise HTTPException(status_code=404, detail="Transfer is not active.")
-    return TransferInfo(user=xfer.entry.user, log=xfer.log, metrics=xfer.cache_metrics)
+    return TransferInfo(user=entry.user, log=xfer.log, metrics=xfer.cache_metrics)
 
 
 @transfers.delete("/{id}")

@@ -15,6 +15,7 @@ from .models import (
     TransferStatus,
     PortTransition,
     CacheMetrics,
+    PortEntry,
     empty_metric,
 )
 
@@ -74,7 +75,7 @@ class Transfer:
             return lambda: job.cancel()
 
         self.log.append(
-            PortTransition(time=time.time(), client=name, state=state, info=info)
+            PortTransition(time=time.time(), client=name, state=state, jobndx=jobndx, info=info)
         )
         self.states[name] = state
         if name == ClientName.producer:
@@ -135,7 +136,8 @@ class Transfer:
     def metrics(self, metric: CacheMetrics):
         self.cache_metrics = metric
 
-async def create_transfer(db: "XferDatabase", entry: PortEntry, request: Parameters, mgr: JobManager, cfg: Config, on_complete: Optional[Callable]) -> Tuple[Job|Exception, Job|Exception, Transfer|Exception]:
+#async def create_transfer(db: "XferDatabase", entry: PortEntry, request: Parameters, mgr: JobManager, cfg: Config, on_complete: Optional[Callable]) -> Tuple[Job|Exception, Job|Exception, Transfer|Exception]:
+async def create_transfer(db, entry: PortEntry, request: Parameters, mgr: JobManager, cfg: Config, on_complete: Optional[Callable]) -> Tuple[Job|Exception, Job|Exception, Transfer|Exception]:
     internal_url = entry.internal_url
     external_url = entry.external_url
 
@@ -146,7 +148,7 @@ async def create_transfer(db: "XferDatabase", entry: PortEntry, request: Paramet
     try:
         producer_job = await mgr.create(producer_spec)
     except AssertionError as e:
-        return e, None, None
+        return e, Exception(), Exception()
 
     #   1b. Write lclstreamer spec file to the job directory.
     # The caller must ensure request has been thoroughly
@@ -163,7 +165,7 @@ async def create_transfer(db: "XferDatabase", entry: PortEntry, request: Paramet
     try:
         forwarder_job = await mgr.create(forwarder_spec)
     except AssertionError as e:
-        return producer_job, e, None
+        return producer_job, e, Exception()
 
     # 3. Create the formal PortEntry structure
     try:

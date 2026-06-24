@@ -42,6 +42,7 @@ class PortTransition(BaseModel):
     client: ClientName
     state: JobState
     info: str
+    jobndx: int
 
 
 class TransferInfo(BaseModel):

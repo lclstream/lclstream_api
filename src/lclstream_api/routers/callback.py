@@ -29,6 +29,9 @@ async def handle_callback(
         xfer, job = db.lookup_job(client, cb.jobid)
     except KeyError:
         raise HTTPException(404, "Job not found.")
+    if job is None:
+        # xfer found, but job is terminated already
+        raise HTTPException(404, "Job not found.")
 
     if job.spec.cb_secret:
         if x_hub_signature_256 is None:

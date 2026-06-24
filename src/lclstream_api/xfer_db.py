@@ -31,7 +31,7 @@ class XferDatabase:  # singleton
     def items(self):
         return self.jobs.items()
 
-    def lookup_job(self, client: ClientName, jobid: JobID) -> Tuple[Transfer, Job]:
+    def lookup_job(self, client: ClientName, jobid: JobID) -> Tuple[Transfer, Job|None]:
         eid = self.jobids[(client, jobid)]
         xfer = self.jobs[eid]
         if client == ClientName.producer:
