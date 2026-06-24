@@ -53,15 +53,14 @@ class XferDatabase:  # singleton
     def __getitem__(self, eid: int) -> Transfer:
         return self.jobs[eid]
 
-    def delete(self, eid: int) -> Transfer:
+    async def delete(self, eid: int) -> Transfer:
         xfer = self.jobs.pop(eid)
+        # this removes callbacks
         if xfer.producer_job:
             self.jobids.pop((ClientName.producer, xfer.producer_job.stamp))
         if xfer.forwarder_job:
             self.jobids.pop((ClientName.cache, xfer.forwarder_job.stamp))
-        if xfer.on_complete:
-            xfer.on_complete()
-            xfer.on_complete = None
+        await xfer.cancel_job()
         return xfer
 
 DB: XferDatabase = None  # type: ignore[assignment]

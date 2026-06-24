@@ -40,6 +40,7 @@ transfers = APIRouter(responses={401: {"description": "Unauthorized"}})
 @transfers.get("")
 async def list_transfers(
     db: Database,
+    ports: PortUsage,
     index: int = 0,
     limit: int | None = None,
     state: psik.JobState | None = None,
@@ -54,7 +55,13 @@ async def list_transfers(
     """
 
     out = []
-    for eid, xfer in db.items():
+    for eid, entry in ports.items():
+        try:
+            xfer = db[eid]
+        except KeyError:
+            continue
+        # TODO: filter by entry.user here (or list all for admin)
+
         cstate = xfer.states[ClientName.cache]
         if state is not None and state != cstate:
             continue
@@ -62,8 +69,8 @@ async def list_transfers(
         out.append(
             TransferStatus(
                 id=eid,
-                url=xfer.entry.external_url,
-                user=xfer.entry.user,
+                url=entry.external_url,
+                user=entry.user,
                 time=last.time,
                 jobndx=last.jobndx,
                 state=cstate,
@@ -154,28 +161,28 @@ async def new_transfer(
         info=last.info,
     )
 
-@transfers.get("/{eid}")
-async def get_transfer(eid: int, ports: PortUsage, db: Database) -> TransferInfo:
+@transfers.get("/{id}")
+async def get_transfer(id: int, ports: PortUsage, db: Database) -> TransferInfo:
     """Read job
-    - eid: The transfer/entry ID
+    - id: The transfer ID
 
     Returns information associated with this transfer.
     """
     try:
-        xfer  = db[eid]
-        entry = ports[eid]
+        xfer  = db[id]
+        entry = ports[id]
     except KeyError:
         raise HTTPException(status_code=404, detail="Transfer is not active.")
     return TransferInfo(user=entry.user, log=xfer.log, metrics=xfer.cache_metrics)
 
 
-@transfers.delete("/{eid}")
+@transfers.delete("/{id}")
 async def cancel_transfer(
-    eid: int, bg_tasks: BackgroundTasks, db: Database
+    id: int, bg_tasks: BackgroundTasks, db: Database
 ) -> None:
     # Cancel job
     try:
-        xfer = db[eid]
+        xfer = db[id]
     except KeyError:
         raise HTTPException(status_code=404, detail="Transfer is not active.")
     bg_tasks.add_task(xfer.cancel_job)
