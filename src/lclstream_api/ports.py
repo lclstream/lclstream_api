@@ -37,8 +37,8 @@ class PortDatabase:  # singleton
         return self.entries.items()
 
     def alloc(self) -> int | None:
-        """Allocate a port -- usually called automagically
-        during create().
+        """ Allocate a port -- usually called automagically
+            during create().
         """
         if len(self.open_ports) == 0:
             _logger.error("No more open ports!")
@@ -77,6 +77,8 @@ class PortDatabase:  # singleton
             internal_url=self.internal_url(port),
             external_url=self.external_url(port),
         )
+        self.entries[eid] = entry
+
         return entry
 
     def __getitem__(self, eid: int) -> PortEntry:

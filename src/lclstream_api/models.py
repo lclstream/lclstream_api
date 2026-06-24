@@ -2,7 +2,7 @@ import logging
 import time
 from enum import Enum
 
-from psik.models import JobID, JobState
+from psik.models import JobState
 from pydantic import BaseModel
 
 _logger = logging.getLogger(__name__)
@@ -14,7 +14,7 @@ class TransferStatus(BaseModel):
     state: JobState
     info: str
 
-    id: JobID
+    id: int
     url: str
     user: str
 

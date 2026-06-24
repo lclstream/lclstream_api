@@ -136,8 +136,10 @@ class Transfer:
     def metrics(self, metric: CacheMetrics):
         self.cache_metrics = metric
 
-#async def create_transfer(db: "XferDatabase", entry: PortEntry, request: Parameters, mgr: JobManager, cfg: Config, on_complete: Optional[Callable]) -> Tuple[Job|Exception, Job|Exception, Transfer|Exception]:
-async def create_transfer(db, entry: PortEntry, request: Parameters, mgr: JobManager, cfg: Config, on_complete: Optional[Callable]) -> Tuple[Job|Exception, Job|Exception, Transfer|Exception]:
+async def create_transfer(entry: PortEntry, request: Parameters, mgr: JobManager, cfg: Config, on_complete: Optional[Callable]) -> Tuple[Job|Exception, Job|Exception, Transfer|Exception]:
+    """ Create the transfer.
+        Does not start jobs or add to the DB!
+    """
     internal_url = entry.internal_url
     external_url = entry.external_url
 
@@ -169,15 +171,15 @@ async def create_transfer(db, entry: PortEntry, request: Parameters, mgr: JobMan
 
     # 3. Create the formal PortEntry structure
     try:
-        trs = Transfer(entry.eid, on_complete)
+        xfer = Transfer(entry.eid, on_complete)
     except Exception as e:
         return producer_job, forwarder_job, e
 
-    #   3a. Record "new" transitions so trs can cache the job-s.
+    #   3a. Record "new" transitions so xfer can cache the job-s.
     for client, job in [(ClientName.cache, forwarder_job),
                         (ClientName.producer, producer_job)]:
         jobndx = job.history[-1].jobndx
-        action = trs.transition(
+        action = xfer.transition(
             client,
             JobState.new,
             jobndx=jobndx,
@@ -187,4 +189,4 @@ async def create_transfer(db, entry: PortEntry, request: Parameters, mgr: JobMan
         if action:
             await action()
 
-    return producer_job, forwarder_job, trs
+    return producer_job, forwarder_job, xfer

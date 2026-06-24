@@ -113,7 +113,7 @@ async def new_transfer(
     on_complete = lambda: ports.delete(entry.eid)
 
     try:
-        forwarder_job, producer_job, xfer = await create_transfer(db, entry, request, mgr, cfg, on_complete)
+        forwarder_job, producer_job, xfer = await create_transfer(entry, request, mgr, cfg, on_complete)
     except Exception:
         on_complete()
         raise
@@ -141,10 +141,11 @@ async def new_transfer(
     # Submit jobs to the queue
     bg_tasks.add_task(forwarder_job.submit)
     bg_tasks.add_task(producer_job.submit)
+    db.add(entry.eid, xfer)
 
     last = xfer.log[-1]
     return TransferStatus(
-        id=producer_job.stamp,
+        id=entry.eid,
         url=entry.external_url,
         user=entry.user,
         time=last.time,
@@ -153,7 +154,7 @@ async def new_transfer(
         info=last.info,
     )
 
-@transfers.get("/{id}")
+@transfers.get("/{eid}")
 async def get_transfer(eid: int, ports: PortUsage, db: Database) -> TransferInfo:
     """Read job
     - eid: The transfer/entry ID
@@ -168,7 +169,7 @@ async def get_transfer(eid: int, ports: PortUsage, db: Database) -> TransferInfo
     return TransferInfo(user=entry.user, log=xfer.log, metrics=xfer.cache_metrics)
 
 
-@transfers.delete("/{id}")
+@transfers.delete("/{eid}")
 async def cancel_transfer(
     eid: int, bg_tasks: BackgroundTasks, db: Database
 ) -> None:
