@@ -28,7 +28,6 @@ dev = [
     "pytest>=9.0.3",
     "pytest-aiohttp>=1.1.0",
     "pytest-asyncio>=1.4.0",
-    "lclstream @ git+https://github.com/lclstream/lclstream.git",
     "ruff>=0.15.17",
     "types-pyyaml>=6.0.12.20260518",
 ]
