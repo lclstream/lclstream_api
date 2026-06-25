@@ -12,6 +12,7 @@ readme = "README.md"
 requires-python = ">=3.10,<4.0"
 license = "MIT"
 dependencies = [
+    "amscrot-py @ git+https://github.com/doe-iri/iri-facility-api-toolkit@577a6e6d668ce743fb4f09486f21f2b8260193f2",
     "fastapi>=0.136.3",
     "lclstream @ git+https://github.com/lclstream/lclstream.git",
     "psik>=3.1.0",
