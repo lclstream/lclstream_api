@@ -12,6 +12,10 @@ readme = "README.md"
 requires-python = ">=3.10,<4.0"
 license = "MIT"
 dependencies = [
+    # amscrot is consumed directly (facility API): submit/status/cancel +
+    # resource-scoped filesystem. Pinned to a fork branch that threads the
+    # `historical` flag through job reads (PR feat/historical-job-reads).
+    "amscrot-py",
     "fastapi>=0.136.3",
     "lclstream @ git+https://github.com/lclstream/lclstream.git",
     "psik>=3.1.0",
@@ -36,6 +40,9 @@ dev = [
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
+
+[tool.uv.sources]
+amscrot-py = { git = "https://github.com/swelborn/iri-facility-api-toolkit", rev = "07e9a54aa2c0" }
 
 [tool.setuptools]
 include-package-data = false
