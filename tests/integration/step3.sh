@@ -16,5 +16,5 @@ fi
 echo "OK: API Accessible"
 
 # post a transfer with lclstream
-uv run lclstream get --server http://127.0.0.1:8000 --ndial 1 tests/integration/generic_source.yaml
+uv run lclstream get --server http://127.0.0.1:8000 --ndial 1 tests/integration/generic_source.yaml | tar tf -
 
