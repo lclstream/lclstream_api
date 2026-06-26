@@ -58,8 +58,7 @@ async def handle_callback(
 
     return True
 
-
-@callback.post("producer")
+@callback.post("/producer")
 async def producer_callback(
     cb: psik.Callback,
     db: Database,
@@ -72,7 +71,7 @@ async def producer_callback(
     )
 
 
-@callback.post("forwarder")
+@callback.post("/forwarder")
 async def forwarder_callback(
     cb: psik.Callback,
     db: Database,

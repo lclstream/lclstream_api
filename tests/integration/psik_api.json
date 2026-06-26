@@ -1,0 +1,6 @@
+{ "prefix": "/tmp/psik_api",
+  "backends": {
+    "default": { "type": "local"}
+  },
+  "authz": "local"
+}

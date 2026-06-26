@@ -86,6 +86,7 @@ class Transfer:
                 time=time.time(), client=name, state=state, jobndx=jobndx, info=info
             )
         )
+        _logger.debug("Transfer(%d) %s: %s -> %s", self.eid, name.value, self.states[name].value, state.value)
         self.states[name] = state
         if name == ClientName.producer:
             if state == JobState.new:

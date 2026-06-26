@@ -1,7 +1,8 @@
 from pathlib import Path
-from typing import Annotated, Literal, Self
+from typing import Dict, List, Literal, Self, Union
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from typing_extensions import Annotated
 
 
 class _CustomBaseModel(BaseModel):
@@ -65,9 +66,11 @@ class Psana2EventSourceParameters(_CustomBaseModel):
 
 
 EventSourceParameters = Annotated[
-    InternalEventSourceParameters
-    | Psana1EventSourceParameters
-    | Psana2EventSourceParameters,
+    Union[
+        InternalEventSourceParameters,
+        Psana1EventSourceParameters,
+        Psana2EventSourceParameters,
+    ],
     Field(discriminator="type"),
 ]
 
@@ -90,6 +93,23 @@ class DataSourceParameters(_CustomBaseModel):
     type: str
     model_config = ConfigDict(extra="allow")
 
+class GenericRandomNumpyArrayParameters(_CustomBaseModel):
+    """
+    Parameters for the GenericRandomNumpyArray class
+
+    """
+
+    array_shape: tuple[int]
+    array_dtype: str
+    always_random: bool = True
+
+class ConstValueParameters(_CustomBaseModel):
+    """
+    Parameters for ConstValue class
+    """
+
+    value: int | float
+    dtype: str
 
 ####### Processing Pipelines #########
 
@@ -152,7 +172,7 @@ class PeaknetPreprocessingPipelineParameters(_CustomBaseModel):
 
 
 ProcessingPipelineParameters = Annotated[
-    BatchProcessingPipelineParameters | PeaknetPreprocessingPipelineParameters,
+    Union[BatchProcessingPipelineParameters, PeaknetPreprocessingPipelineParameters],
     Field(discriminator="type"),
 ]
 
@@ -191,7 +211,7 @@ class SimplonBinarySerializerParameters(_CustomBaseModel):
     type: Literal["SimplonBinarySerializer"]
     data_source_to_serialize: str
     polarization_fraction: float
-    polarization_axis: list[float]
+    polarization_axis: List[float]
     data_collection_rate: str
     detector_name: str
     detector_type: str
@@ -232,11 +252,10 @@ class HDF5BinarySerializerParameters(_CustomBaseModel):
         ]
         | None
     ) = None
-    fields: dict[str, str]
 
 
 DataSerializerParameters = Annotated[
-    HDF5BinarySerializerParameters | SimplonBinarySerializerParameters,
+    Union[HDF5BinarySerializerParameters, SimplonBinarySerializerParameters],
     Field(discriminator="type"),
 ]
 
@@ -258,6 +277,10 @@ class BinaryDataStreamingDataHandlerParameters(_CustomBaseModel):
         urls: List of endpoint URLs to bind to (server mode) or connect to
             (client mode)
 
+        distribute: Boolean, if True: round robin connect the ranks, False: all ranks connect to all urls and send the same data
+
+        buffer: buffer size, if set to 0 the OS default is used
+
         role: Whether this node acts as the ZMQ ``"server"`` (binds) or
             ``"client"`` (connects). Defaults to ``"server"``
 
@@ -269,7 +292,9 @@ class BinaryDataStreamingDataHandlerParameters(_CustomBaseModel):
     """
 
     type: Literal["BinaryDataStreamingDataHandler"]
-    urls: list[str]
+    urls: List[str]
+    distribute: bool = False
+    buffer: int = 0
     role: Literal["server", "client"] = "server"
     library: Literal["zmq"] = "zmq"
     socket_type: Literal["push"] = "push"
@@ -305,7 +330,9 @@ class BinaryFileWritingDataHandlerParameters(_CustomBaseModel):
 
 
 DataHandlerParameters = Annotated[
-    BinaryDataStreamingDataHandlerParameters | BinaryFileWritingDataHandlerParameters,
+    Union[
+        BinaryDataStreamingDataHandlerParameters, BinaryFileWritingDataHandlerParameters
+    ],
     Field(discriminator="type"),
 ]
 
@@ -343,10 +370,10 @@ class Parameters(_CustomBaseModel):
     skip_incomplete_events: bool
 
     event_source: EventSourceParameters
-    data_sources: dict[str, DataSourceParameters]
+    data_sources: Dict[str, DataSourceParameters]
     processing_pipeline: ProcessingPipelineParameters
     data_serializer: DataSerializerParameters
-    data_handlers: list[DataHandlerParameters]
+    data_handlers: List[DataHandlerParameters]
 
     @model_validator(mode="after")
     def _check_model(self) -> Self:

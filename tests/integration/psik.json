@@ -1,0 +1,15 @@
+{ "prefix": "/tmp/psik",
+  "backends": {
+    "default": {
+      "type": "local"
+    },
+    "psik_local": {
+      "type": "psik",
+      "attributes": {
+        "remote_url": "http://localhost:5555",
+        "remote_backend": "default",
+        "next": "{}"
+      }
+    }
+  }
+}

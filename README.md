@@ -292,7 +292,7 @@ ssh psana scancel $@
 
 ## Development
 
-Install the code using `uv sync --group dev` or `pip install -e .`.
+Install the code using `uv sync --all-extras` or `pip install -e .[*]`.
 
 Create a configuration file as explaned above, or in a local
 directory.  If you set the `LCLSTREAM_API_CONFIG`

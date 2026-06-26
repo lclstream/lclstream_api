@@ -21,7 +21,8 @@ forwarder:
       node_count: 1
       processes_per_node: 1
       cpu_cores_per_process: 1
-    script: "/home/99r/src/microservices/nng_stream/zmqbuf"
+    script: |
+      /home/99r/src/microservices/nng_stream/zmqbuf -v {internal_url} {external_url} 1
 
 lclstreamer:
   jobspec:
@@ -35,4 +36,4 @@ lclstreamer:
    #environment:
    #  CERTIFIED_CONFIG: "/sdf/home/r/rogersdd/venvs/lclstream_api/etc/certified"
     script: |
-      pixi run --manifest-path /home/99r/src/lclstreamer -e {psana_env} lclstreamer --config lclstreamer.json
+      pixi run --manifest-path /home/99r/src/lclstreamer -e default lclstreamer --config lclstreamer.json
