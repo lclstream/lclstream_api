@@ -1,10 +1,8 @@
-import asyncio
-
 import pytest
 
 from lclstream_api.ports import get_portusage
+from test_config import config  # noqa: F401
 
-from test_config import config
 
 def test_db(config):
     DB = get_portusage(config)
@@ -22,7 +20,7 @@ def test_db(config):
     assert ent.external_url.startswith("tcp")
 
     with pytest.raises(KeyError):
-        job = DB[111]
+        DB[111]
 
     ent1 = DB[ent.eid]
     assert ent1 == ent
@@ -32,5 +30,5 @@ def test_db(config):
     assert ent2.eid != ent1.eid
     print(DB[ent2.eid])
 
-    ans = DB.delete(ent.eid)
+    DB.delete(ent.eid)
     assert len(DB.open_ports) == nopen - 1

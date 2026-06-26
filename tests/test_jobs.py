@@ -1,17 +1,15 @@
 import psik
 
 from lclstream_api.jobs import (
-    create_producer,
     create_forwarder,
+    create_producer,
     generate_job,
     get_outdir,
     replay_job,
 )
-from lclstream_api.models import PortEntry
-
 from lclstream_api.lclstreamer_param import Parameters
-
-from test_config import config
+from lclstream_api.models import PortEntry
+from test_config import config  # noqa: F401
 
 param1 = """{
   "source_identifier": "exp1:run2",
@@ -87,10 +85,18 @@ def test_create_producer(config):
     spec = create_producer(req, "tcp://127.0.0.1:5001", config)
     assert isinstance(spec, psik.JobSpec)
 
+
 def test_create_forwarder(config):
-    entry = PortEntry(eid=1, user="tester", port=10000, internal_url="tcp://a:10000", external_url="tcp://a:10001")
+    entry = PortEntry(
+        eid=1,
+        user="tester",
+        port=10000,
+        internal_url="tcp://a:10000",
+        external_url="tcp://a:10001",
+    )
     spec = create_forwarder(entry, config)
     assert isinstance(spec, psik.JobSpec)
+
 
 def test_generate(config):
     req = Parameters.model_validate_json(param1)

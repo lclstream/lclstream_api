@@ -17,6 +17,7 @@ _logger = logging.getLogger(__name__)
 
 callback = APIRouter(responses={401: {"description": "Unauthorized"}})
 
+
 async def handle_callback(
     client: ClientName,
     cb: psik.Callback,
@@ -65,7 +66,10 @@ async def producer_callback(
     bg_tasks: BackgroundTasks,
     x_hub_signature_256: Annotated[str | None, Header()] = None,
 ) -> bool:
-    return await handle_callback(ClientName.producer, cb, db, request, bg_tasks, x_hub_signature_256)
+    return await handle_callback(
+        ClientName.producer, cb, db, request, bg_tasks, x_hub_signature_256
+    )
+
 
 @callback.post("/forwarder")
 async def forwarder_callback(
@@ -75,4 +79,6 @@ async def forwarder_callback(
     bg_tasks: BackgroundTasks,
     x_hub_signature_256: Annotated[str | None, Header()] = None,
 ) -> bool:
-    return await handle_callback(ClientName.cache, cb, db, request, bg_tasks, x_hub_signature_256)
+    return await handle_callback(
+        ClientName.cache, cb, db, request, bg_tasks, x_hub_signature_256
+    )

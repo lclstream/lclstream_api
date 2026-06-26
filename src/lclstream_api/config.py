@@ -1,15 +1,16 @@
 import os
 from functools import cache
 from pathlib import Path
-from typing import Union, Optional
-
-import yaml
+from typing import Union
 
 import psik
+import yaml
 from pydantic import BaseModel
+
 
 class LCLStreamerConfig(BaseModel):
     jobspec: psik.JobSpec
+
 
 class ForwarderConfig(BaseModel):
     ip: str
@@ -17,9 +18,11 @@ class ForwarderConfig(BaseModel):
     end_port: int = 34000
     jobspec: psik.JobSpec
 
+
 class ReplayConfig(BaseModel):
-    cache_fmt: Optional[str] = None
+    cache_fmt: str | None = None
     jobspec: psik.JobSpec = psik.JobSpec(script="")
+
 
 class Config(BaseModel):
     psik: psik.Config
@@ -28,6 +31,7 @@ class Config(BaseModel):
     forwarder: ForwarderConfig
     replay: ReplayConfig = ReplayConfig()
     lclstreamer: LCLStreamerConfig
+
 
 # Other config options we could add...
 #
@@ -70,7 +74,7 @@ def load_config(config_name: Pstr | None = None) -> Config:
         path = Path(os.environ["LCLSTREAM_API_CONFIG"])
     else:
         path = Path(os.environ.get("VIRTUAL_ENV", "/")) / "etc" / cfg_name
-    cfg = yaml.safe_load( path.read_text(encoding="utf-8") )
+    cfg = yaml.safe_load(path.read_text(encoding="utf-8"))
     return Config.model_validate(cfg)
 
 

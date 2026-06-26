@@ -1,16 +1,15 @@
-""" This file implements a "Transfers" table, which essentially has
-    the format:
+"""This file implements a "Transfers" table, which essentially has
+the format:
 
-    - eid [foreign_key] (same key as PortEntry table)
-    ++ foreign key to state transition log (id, xfer, **PortTransition)
-    ++ foreign key to current state table (id, xfer, ClientName, state)
+- eid [foreign_key] (same key as PortEntry table)
+++ foreign key to state transition log (id, xfer, **PortTransition)
+++ foreign key to current state table (id, xfer, ClientName, state)
 """
 
 import logging
-from typing import Annotated, Tuple
+from typing import Annotated
 
 from fastapi import Depends
-
 from psik import Job
 from psik.models import JobID
 
@@ -23,14 +22,16 @@ _logger = logging.getLogger(__name__)
 class XferDatabase:  # singleton
     def __init__(self) -> None:
         self.jobs: dict[int, Transfer] = {}
-        
+
         # second table for fast indexing (on callbacks)
-        self.jobids: dict[Tuple[ClientName, str], int] = {}
+        self.jobids: dict[tuple[ClientName, str], int] = {}
 
     def items(self):
         return self.jobs.items()
 
-    def lookup_job(self, client: ClientName, jobid: JobID) -> Tuple[Transfer, Job|None]:
+    def lookup_job(
+        self, client: ClientName, jobid: JobID
+    ) -> tuple[Transfer, Job | None]:
         eid = self.jobids[(client, jobid)]
         xfer = self.jobs[eid]
         if client == ClientName.producer:
@@ -63,6 +64,7 @@ class XferDatabase:  # singleton
         await xfer.cancel_job()
         return xfer
 
+
 DB: XferDatabase = None  # type: ignore[assignment]
 
 
@@ -72,5 +74,6 @@ def get_database() -> XferDatabase:
     if DB is None:
         DB = XferDatabase()
     return DB
+
 
 Database = Annotated[XferDatabase, Depends(get_database)]

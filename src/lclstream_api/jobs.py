@@ -3,16 +3,15 @@
 from pathlib import Path
 from secrets import token_urlsafe
 
+import psik
 from pydantic import SecretStr
 
-import psik
-
 from .config import Config
-from .models import PortEntry
 from .lclstreamer_param import (
     BinaryDataStreamingDataHandlerParameters,
     Parameters,
 )
+from .models import PortEntry
 
 
 def replace_data_handler(req: Parameters, url: str) -> None:
@@ -31,7 +30,9 @@ def replace_data_handler(req: Parameters, url: str) -> None:
 
 # note: we could also use domain (FastAPI.Request's req.base_url)
 #       to construct the callback URL...
-def create_producer(request: Parameters, internal_url: str, cfg: Config) -> psik.JobSpec:
+def create_producer(
+    request: Parameters, internal_url: str, cfg: Config
+) -> psik.JobSpec:
     replace_data_handler(request, internal_url)
 
     pre = has_cache(request, cfg)
@@ -45,22 +46,25 @@ def create_producer(request: Parameters, internal_url: str, cfg: Config) -> psik
         spec.cb_secret = SecretStr(token_urlsafe(32))
     return spec
 
+
 def create_forwarder(entry: PortEntry, cfg: Config) -> psik.JobSpec:
-    """Create the message forwarder jobspec for launching with psik.
-    """
+    """Create the message forwarder jobspec for launching with psik."""
     spec = cfg.forwarder.jobspec.model_copy()
-    spec.script = spec.script.format(internal_url = entry.internal_url,
-                                     external_url = entry.external_url,
-                                     port = entry.port)
+    spec.script = spec.script.format(
+        internal_url=entry.internal_url,
+        external_url=entry.external_url,
+        port=entry.port,
+    )
 
     if cfg.callback_url:
         spec.callback = cfg.callback_url + "/forwarder"
         spec.cb_secret = SecretStr(token_urlsafe(32))
     return spec
 
+
 def get_outdir(req: Parameters, cfg: Config) -> Path | None:
     """Compute the output directory name for this
-       experiment / req.config pair.
+    experiment / req.config pair.
     """
     if cfg.replay.cache_fmt is None:
         return None

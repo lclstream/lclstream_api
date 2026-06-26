@@ -1,40 +1,39 @@
 import logging
-from pathlib import Path
-from typing import Annotated, Optional, Awaitable, Callable, Tuple
 import time
+from collections.abc import Awaitable, Callable
+from pathlib import Path
 
 from psik import Job, JobManager
 
 from .config import Config
-from .jobs import create_producer, create_forwarder
+from .jobs import create_forwarder, create_producer
 from .lclstreamer_param import Parameters
 from .models import (
+    CacheMetrics,
     ClientName,
     JobState,
-    TransferInfo,
-    TransferStatus,
-    PortTransition,
-    CacheMetrics,
     PortEntry,
+    PortTransition,
     empty_metric,
 )
 
 _logger = logging.getLogger(__name__)
 
+
 class Transfer:
-    """ Transfer implements a finite-state machine that tracks the
-        status of a given transfer.
+    """Transfer implements a finite-state machine that tracks the
+    status of a given transfer.
     """
 
     eid: int
     states: dict[ClientName, JobState]
     log: list[PortTransition]
-    producer_job:  Job | None
+    producer_job: Job | None
     forwarder_job: Job | None
 
     cache_metrics: CacheMetrics
 
-    def __init__(self, eid: int, on_complete: Optional[Callable] = None):
+    def __init__(self, eid: int, on_complete: Callable | None = None):
         self.eid = eid
         self.on_complete = on_complete
         self.states = {}
@@ -77,13 +76,15 @@ class Transfer:
         jobndx: int = 0,
         info: str = "",
         job: Job | None = None,
-    ) -> Optional[Callable[[], Awaitable[None]]]:
+    ) -> Callable[[], Awaitable[None]] | None:
         # TODO: reset timer.
         # TODO: wire up the last timer tick to call self.cancel()
         #       so that naturally terminating jobs ensure on_complete called.
 
         self.log.append(
-            PortTransition(time=time.time(), client=name, state=state, jobndx=jobndx, info=info)
+            PortTransition(
+                time=time.time(), client=name, state=state, jobndx=jobndx, info=info
+            )
         )
         _logger.debug("Transfer(%d) %s: %s -> %s", self.eid, name.value, self.states[name].value, state.value)
         self.states[name] = state
@@ -113,7 +114,11 @@ class Transfer:
 
             if state.is_final():
                 if not self.states[ClientName.producer].is_final():
-                    _logger.warning("Transfer(%d): Cache completed while producer is %s - canceling.", self.eid, self.states[ClientName.producer].value)
+                    _logger.warning(
+                        "Transfer(%d): Cache completed while producer is %s - canceling.",
+                        self.eid,
+                        self.states[ClientName.producer].value,
+                    )
                     return self._cancel_producer
 
                 # both finalized - normal completion path.
@@ -130,8 +135,7 @@ class Transfer:
             self.on_complete = None
 
     async def cancel_job(self):
-        """Cancel the job associated with this port.
-        """
+        """Cancel the job associated with this port."""
         await self._cancel_producer(False)
         await self._cancel_forwarder(False)
         self.done()
@@ -139,12 +143,18 @@ class Transfer:
     def metrics(self, metric: CacheMetrics):
         self.cache_metrics = metric
 
-async def create_transfer(entry: PortEntry, request: Parameters, mgr: JobManager, cfg: Config, on_complete: Optional[Callable]) -> Tuple[Job|Exception, Job|Exception, Transfer|Exception]:
-    """ Create the transfer.
-        Does not start jobs or add to the DB!
+
+async def create_transfer(
+    entry: PortEntry,
+    request: Parameters,
+    mgr: JobManager,
+    cfg: Config,
+    on_complete: Callable | None,
+) -> tuple[Job | Exception, Job | Exception, Transfer | Exception]:
+    """Create the transfer.
+    Does not start jobs or add to the DB!
     """
     internal_url = entry.internal_url
-    external_url = entry.external_url
 
     # 1. Create the producer job
     producer_spec = create_producer(request, internal_url, cfg)
@@ -179,8 +189,10 @@ async def create_transfer(entry: PortEntry, request: Parameters, mgr: JobManager
         return producer_job, forwarder_job, e
 
     #   3a. Record "new" transitions so xfer can cache the job-s.
-    for client, job in [(ClientName.cache, forwarder_job),
-                        (ClientName.producer, producer_job)]:
+    for client, job in [
+        (ClientName.cache, forwarder_job),
+        (ClientName.producer, producer_job),
+    ]:
         jobndx = job.history[-1].jobndx
         action = xfer.transition(
             client,

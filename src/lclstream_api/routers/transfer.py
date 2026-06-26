@@ -1,5 +1,4 @@
 import logging
-from pathlib import Path
 from typing import Annotated
 
 import psik
@@ -14,12 +13,11 @@ from ..config import Config, load_config, to_mgr
 from ..lclstreamer_param import Parameters
 from ..models import (
     ClientName,
-    JobState,
     TransferInfo,
     TransferStatus,
 )
 from ..ports import PortUsage
-from ..transfer_mgr import Transfer, create_transfer
+from ..transfer_mgr import create_transfer
 from ..xfer_db import Database
 
 _logger = logging.getLogger(__name__)
@@ -35,6 +33,7 @@ Manager = Annotated[psik.JobManager, Depends(default_mgr)]
 
 
 transfers = APIRouter(responses={401: {"description": "Unauthorized"}})
+
 
 @transfers.get("/", include_in_schema=False)
 @transfers.get("")
@@ -117,10 +116,13 @@ async def new_transfer(
     except RuntimeError:
         _logger.error("Out of ports.")
         raise HTTPException(status_code=500, detail="Out of ports.")
-    on_complete = lambda: ports.delete(entry.eid)
+    def on_complete():
+        return ports.delete(entry.eid)
 
     try:
-        forwarder_job, producer_job, xfer = await create_transfer(entry, request, mgr, cfg, on_complete)
+        forwarder_job, producer_job, xfer = await create_transfer(
+            entry, request, mgr, cfg, on_complete
+        )
     except Exception:
         on_complete()
         raise
@@ -129,21 +131,32 @@ async def new_transfer(
     # and jobs are either un-created or stuck at "new" state
     if isinstance(producer_job, Exception):
         on_complete()
-        raise HTTPException(status_code=400, detail=f"Error creating producer job: {str(producer_job,)}")
+        raise HTTPException(
+            status_code=400, detail=f"Error creating producer job: {str(producer_job)}"
+        )
     if producer_job.spec.directory is None:
         on_complete()
-        raise HTTPException(status_code=500, detail="Error creating producer job directory.")
+        raise HTTPException(
+            status_code=500, detail="Error creating producer job directory."
+        )
 
     if isinstance(forwarder_job, Exception):
         on_complete()
-        raise HTTPException(status_code=400, detail=f"Error creating forwarder job: {str(forwarder_job,)}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Error creating forwarder job: {str(forwarder_job)}",
+        )
     if forwarder_job.spec.directory is None:
         on_complete()
-        raise HTTPException(status_code=500, detail="Error creating forwarder job directory.")
+        raise HTTPException(
+            status_code=500, detail="Error creating forwarder job directory."
+        )
 
     if isinstance(xfer, Exception):
         on_complete()
-        raise HTTPException(status_code=400, detail=f"Error creating port pair: {str(xfer)}")
+        raise HTTPException(
+            status_code=400, detail=f"Error creating port pair: {str(xfer)}"
+        )
 
     db.add(entry.eid, xfer)
     # Submit jobs to the queue
@@ -161,6 +174,7 @@ async def new_transfer(
         info=last.info,
     )
 
+
 @transfers.get("/{id}")
 async def get_transfer(id: int, ports: PortUsage, db: Database) -> TransferInfo:
     """Read job
@@ -169,7 +183,7 @@ async def get_transfer(id: int, ports: PortUsage, db: Database) -> TransferInfo:
     Returns information associated with this transfer.
     """
     try:
-        xfer  = db[id]
+        xfer = db[id]
         entry = ports[id]
     except KeyError:
         raise HTTPException(status_code=404, detail="Transfer is not active.")
@@ -177,9 +191,7 @@ async def get_transfer(id: int, ports: PortUsage, db: Database) -> TransferInfo:
 
 
 @transfers.delete("/{id}")
-async def cancel_transfer(
-    id: int, bg_tasks: BackgroundTasks, db: Database
-) -> None:
+async def cancel_transfer(id: int, bg_tasks: BackgroundTasks, db: Database) -> None:
     # Cancel job
     try:
         xfer = db[id]

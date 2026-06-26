@@ -1,6 +1,6 @@
 import logging
 import time
-from enum import Enum
+from enum import StrEnum
 
 from psik.models import JobState
 from pydantic import BaseModel
@@ -31,7 +31,7 @@ def empty_metric() -> CacheMetrics:
     return CacheMetrics(time=time.time(), producers=0, recvd=0, sent=0, buffered=0)
 
 
-class ClientName(str, Enum):
+class ClientName(StrEnum):
     cache = "cache"
     producer = "producer"
     consumer = "consumer"
