@@ -647,7 +647,7 @@ name = "exceptiongroup"
 version = "1.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
+    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/50/79/66800aadf48771f6b62f7eb014e352e5d06856655206165d775e675a02c9/exceptiongroup-1.3.1.tar.gz", hash = "sha256:8b412432c6055b0b7d14c310000ae93352ed6754f70fa8f7c34141f91c4e3219", size = 30371, upload-time = "2025-11-21T23:01:54.787Z" }
 wheels = [
@@ -982,7 +982,7 @@ dev = [
 requires-dist = [
     { name = "fastapi", specifier = ">=0.136.3" },
     { name = "lclstream", git = "https://github.com/lclstream/lclstream.git" },
-    { name = "psik", specifier = ">=3.0.1" },
+    { name = "psik", specifier = ">=3.1.0" },
     { name = "pydantic", specifier = ">=2.13.4" },
     { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "uvicorn", specifier = ">=0.48.0" },
@@ -1720,7 +1720,7 @@ wheels = [
 
 [[package]]
 name = "psik"
-version = "3.0.1"
+version = "3.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -1730,9 +1730,9 @@ dependencies = [
     { name = "pyyaml" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/26/53/b3fe8d3096a17bacdd9952308ab6fc0e3808e3475105404964e980613dd6/psik-3.0.1.tar.gz", hash = "sha256:0fe8c33647cd6e251906f6d2b2f1aa0ab8f5d814b661458451467f805b73740d", size = 37186, upload-time = "2026-01-12T22:40:29.793Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/da/e9/c425418c07b95f96341d41b048f1afd84ba160890f0baec2752f847cb847/psik-3.1.0.tar.gz", hash = "sha256:0c3c09a08a43c689014d89858528e5a1add67e0ca50c5f2b4befdc1b490b68c3", size = 44664, upload-time = "2026-06-26T16:38:26.544Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/76/46/29e145474fd6fb586a047573b73d1fc32dc08bf7d31effee2bfdd785937e/psik-3.0.1-py3-none-any.whl", hash = "sha256:83dd6bdab1dd7beb02707c8f0afebb523027773457205a57f4344f746f87aad7", size = 33549, upload-time = "2026-01-12T22:40:28.871Z" },
+    { url = "https://files.pythonhosted.org/packages/08/53/08f70575cc8aea22b4a46ec7b9c688848d6b8d0b43b7a7455ac9f42d2c44/psik-3.1.0-py3-none-any.whl", hash = "sha256:6a3d40e18bc0a3388463f7f592c96dd90a6000f7786c395f3397bc31e5a2d567", size = 44105, upload-time = "2026-06-26T16:38:25.483Z" },
 ]
 
 [[package]]

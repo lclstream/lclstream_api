@@ -3,6 +3,10 @@
 set -euo pipefail
 
 run="uv run --no-sync"
+# note: we use no-sync here since uv pip install
+# was used to manually update the psik package during testing.
+# The psik-api backend works as of v3.1.0, so this is no longer
+# necessary.
 
 BASE=$PWD/tests/integration
 export PSIK_CONFIG=$BASE/psik.json
