@@ -1,4 +1,4 @@
-{ "prefix": "/tmp/psik_jobs",
+{ "prefix": "/tmp/psik_api",
   "backends": {
     "default": { "type": "local"}
   },

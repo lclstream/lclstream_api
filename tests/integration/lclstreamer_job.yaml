@@ -1,0 +1,16 @@
+name: lclstreamer_test
+script: |
+  pwd
+  # echo HOME=$HOME # seems $HOME is undefined, which we can work around.
+  HOME=/home/99r
+  echo jobid=$jobid jobndx=$jobndx
+  STREAMER=$HOME/src/lclstreamer
+  $HOME/.pixi/bin/pixi run --manifest-path $STREAMER lclstreamer --config lclstreamer.yaml
+
+callback: http://127.0.0.1:8000/v1/callbacks/producer
+backend: psik_local
+resources:
+  duration: 30
+  node_count: 1
+  processes_per_node: 1
+  cpu_cores_per_process: 16
