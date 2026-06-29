@@ -16,6 +16,7 @@ dependencies = [
     "lclstream @ git+https://github.com/lclstream/lclstream.git",
     "psik>=3.1.0",
     "pydantic>=2.13.4",
+    "pydantic-settings>=2.0",
     "pyyaml>=6.0.3",
     "uvicorn>=0.48.0",
 ]
