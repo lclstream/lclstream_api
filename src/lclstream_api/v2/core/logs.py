@@ -18,6 +18,11 @@ class LogStream(StrEnum):
     producer_stderr = "producer_stderr"
 
 
+class LogReadMode(StrEnum):
+    head = "head"
+    tail = "tail"
+
+
 _STREAM_FILENAMES: dict[LogStream, str] = {
     LogStream.cache: CACHE_LOG_FILENAME,
     LogStream.producer_stdout: PRODUCER_STDOUT_FILENAME,
