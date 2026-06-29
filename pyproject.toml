@@ -9,7 +9,7 @@ authors = [
 ]
 description = "Image streaming API for psana."
 readme = "README.md"
-requires-python = ">=3.10,<4.0"
+requires-python = ">=3.12,<4.0"
 license = "MIT"
 dependencies = [
     # amscrot is consumed directly (facility API): submit/status/cancel +
