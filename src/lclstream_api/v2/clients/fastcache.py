@@ -5,6 +5,7 @@ from uuid import UUID
 import httpx
 from pydantic import AnyUrl, BaseModel
 
+from .. import config
 from ..config import FastcacheClientSettings
 from ..core import transfer as tcore
 
@@ -101,3 +102,26 @@ class FastcacheClient:
         if response.status_code == httpx.codes.NOT_FOUND:
             return
         response.raise_for_status()
+
+
+_client: FastcacheClient | None = None
+
+
+def startup() -> None:
+    """Build the fastcache client singleton (call at app startup)."""
+    global _client
+    _client = FastcacheClient(config.fastcache)
+
+
+async def shutdown() -> None:
+    """Close the fastcache client singleton (call at app shutdown)."""
+    global _client
+    if _client is not None:
+        await _client.aclose()
+    _client = None
+
+
+def client() -> FastcacheClient:
+    if _client is None:
+        raise RuntimeError("fastcache client not initialized; call clients.startup()")
+    return _client

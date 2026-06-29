@@ -6,6 +6,7 @@ from amscrot.facility import FacilityClient
 from amscrot.facility.models import Resource
 from amscrot.serviceclient import DestroyError
 
+from .. import config
 from ..config import IriClientSettings
 
 JobId = str
@@ -83,3 +84,24 @@ class IriClient:
 
     async def delete(self, path: Path) -> None:
         await asyncio.to_thread(self._remove, path)
+
+
+_client: IriClient | None = None
+
+
+def startup() -> None:
+    """Build the IRI client singleton (call at app startup)."""
+    global _client
+    _client = IriClient(config.iri)
+
+
+async def shutdown() -> None:
+    """Release the IRI client singleton (call at app shutdown)."""
+    global _client
+    _client = None
+
+
+def client() -> IriClient:
+    if _client is None:
+        raise RuntimeError("iri client not initialized; call clients.startup()")
+    return _client
