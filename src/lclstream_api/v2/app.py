@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from . import config, db, workflows
+from .clients import shutdown as clients_shutdown, startup as clients_startup
 from .exceptions import register_exception_handlers
 from .routers.v1.transfer import router as transfer_router
 
@@ -23,13 +24,13 @@ def build_dbos_config() -> DBOSConfig:
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     DBOS(config=build_dbos_config())
     await db.init_datasource()
-    workflows.startup()
+    clients_startup()
     DBOS.launch()
     workflows.register_schedules()
     try:
         yield
     finally:
-        await workflows.shutdown()
+        await clients_shutdown()
         DBOS.destroy()
 
 

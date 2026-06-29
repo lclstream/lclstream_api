@@ -29,8 +29,7 @@ from pydantic import AwareDatetime
 
 from ..lclstreamer_param import Parameters
 from . import config, db, repo
-from .clients.fastcache import FastcacheClient
-from .clients.iri import IriClient
+from .clients import fastcache, iri
 from .core import producer as pcore, transfer as tcore
 from .models import TransferState, TransitionSource
 
@@ -49,37 +48,6 @@ _TEARDOWN_STATES = frozenset(
 
 RECONCILE_SCHEDULE = "*/10 * * * * *"
 
-_fastcache: FastcacheClient | None = None
-_iri: IriClient | None = None
-
-
-def startup() -> None:
-    """Init the clients (call at app startup)."""
-    global _fastcache, _iri
-    _fastcache = FastcacheClient(config.fastcache)
-    _iri = IriClient(config.iri)
-
-
-async def shutdown() -> None:
-    """Close the clients (call at app shutdown)."""
-    global _fastcache, _iri
-    if _fastcache is not None:
-        await _fastcache.aclose()
-    _fastcache = None
-    _iri = None
-
-
-def _fc() -> FastcacheClient:
-    if _fastcache is None:
-        raise RuntimeError("workflows not configured; call startup() at app startup")
-    return _fastcache
-
-
-def _iri_client() -> IriClient:
-    if _iri is None:
-        raise RuntimeError("workflows not configured; call startup() at app startup")
-    return _iri
-
 
 # ---------------------------------------------------------------------------
 # External IO steps
@@ -96,7 +64,7 @@ DEFAULT_RETRY_SETTINGS: dict[str, Any] = {
 # TODO: this is not idempotent so we cannot retry
 @DBOS.step()
 async def _create_cache(transfer_id: UUID, requested_by: str) -> tcore.CacheEndpoint:
-    cache = await _fc().create_cache(transfer_id, requested_by)
+    cache = await fastcache.client().create_cache(transfer_id, requested_by)
     return tcore.CacheEndpoint.from_uris(
         cache.id,
         cache.config.hostname,
@@ -108,17 +76,17 @@ async def _create_cache(transfer_id: UUID, requested_by: str) -> tcore.CacheEndp
 # TODO: this is not idempotent so we cannot retry
 @DBOS.step()
 async def _submit_producer(jobspec: JobSpec) -> str:
-    return await _iri_client().submit_job(jobspec)
+    return await iri.client().submit_job(jobspec)
 
 
 @DBOS.step(**DEFAULT_RETRY_SETTINGS)
 async def _upload_config(path: Path, content: str) -> None:
-    await _iri_client().upload_file(path, content)
+    await iri.client().upload_file(path, content)
 
 
 @DBOS.step(**DEFAULT_RETRY_SETTINGS)
 async def _delete_config(path: Path) -> None:
-    await _iri_client().delete(path)
+    await iri.client().delete(path)
 
 
 @DBOS.step(**DEFAULT_RETRY_SETTINGS)
@@ -130,23 +98,23 @@ async def _delete_work_dir(work_dir: Path) -> None:
 
 @DBOS.step(**DEFAULT_RETRY_SETTINGS)
 async def _get_cache_state(cache_id: UUID) -> tcore.CacheState | None:
-    cache = await _fc().get_cache(cache_id)
+    cache = await fastcache.client().get_cache(cache_id)
     return cache.state if cache is not None else None
 
 
 @DBOS.step(**DEFAULT_RETRY_SETTINGS)
 async def _get_producer_state(job_id: str) -> JobState | None:
-    return await _iri_client().get_job(job_id)
+    return await iri.client().get_job(job_id)
 
 
 @DBOS.step(**DEFAULT_RETRY_SETTINGS)
 async def _delete_cache(cache_id: UUID) -> None:
-    await _fc().delete_cache(cache_id)
+    await fastcache.client().delete_cache(cache_id)
 
 
 @DBOS.step(**DEFAULT_RETRY_SETTINGS)
 async def _cancel_producer(job_id: str) -> None:
-    await _iri_client().cancel_job(job_id)
+    await iri.client().cancel_job(job_id)
 
 
 # ---------------------------------------------------------------------------
