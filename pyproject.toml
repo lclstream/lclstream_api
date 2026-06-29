@@ -16,7 +16,7 @@ dependencies = [
     "fastapi>=0.136.3",
     "fastapi-jwks>=2.0.2",
     "pyjwt>=2.13.0",
-    "lclstream @ git+https://github.com/lclstream/lclstream.git",
+    # "lclstream @ git+https://github.com/lclstream/lclstream.git",
     "psik>=3.1.0",
     "pydantic>=2.13.4",
     "pydantic-settings>=2.0",
@@ -68,9 +68,22 @@ ignore = [
     "E501",  # line too long — handled by formatter
 ]
 
+[tool.ruff.lint.per-file-ignores]
+# conftest must seed env vars before importing the eagerly-built config module.
+"tests/v2/conftest.py" = ["E402"]
+
 [tool.ruff.lint.isort]
 known-first-party = ["lclstream_api"]
+combine-as-imports = true
 
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+
+[tool.pyrefly]
+project-includes = [
+    "**/*.py*",
+    "**/*.ipynb",
+]
+search-path = ["src"]
+
