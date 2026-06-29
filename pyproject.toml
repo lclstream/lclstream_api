@@ -9,7 +9,7 @@ authors = [
 ]
 description = "Image streaming API for psana."
 readme = "README.md"
-requires-python = ">=3.10,<4.0"
+requires-python = ">=3.12,<4.0"
 license = "MIT"
 dependencies = [
     "amscrot-py @ git+https://github.com/doe-iri/iri-facility-api-toolkit@577a6e6d668ce743fb4f09486f21f2b8260193f2",
