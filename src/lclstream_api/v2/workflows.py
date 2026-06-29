@@ -145,10 +145,7 @@ async def _load_setup_inputs(transfer_id: UUID) -> tuple[str, str, str]:
     transfer = await repo.get_transfer(db.sql_session(), transfer_id)
     if transfer is None:
         raise LookupError(f"transfer {transfer_id} disappeared during setup")
-    parameters = Parameters.model_validate(transfer.parameters)
-    exp, run = pcore.parse_exp_run(parameters.source_identifier)
-    if exp is None or run is None:
-        raise LookupError(f"transfer {transfer_id} has no resolvable exp/run")
+    exp, run = pcore.resolve_exp_run(Parameters.model_validate(transfer.parameters))
     return transfer.user, exp, run
 
 
@@ -183,9 +180,7 @@ async def _load_producer_inputs(
     if transfer is None:
         return None
     parameters = Parameters.model_validate(transfer.parameters)
-    exp, run = pcore.parse_exp_run(parameters.source_identifier)
-    if exp is None or run is None:
-        raise LookupError(f"transfer {transfer_id} has no resolvable exp/run")
+    exp, run = pcore.resolve_exp_run(parameters)
     return tcore.ProducerInputs(
         parameters=parameters, endpoint=endpoint, exp=exp, run=run
     )
@@ -262,7 +257,9 @@ async def provision_transfer(transfer_id: UUID) -> None:
     progress = tcore.ProvisionProgress()
     try:
         requested_by, exp, run = await _load_setup_inputs(transfer_id)
-        cache_log_path = logs.cache_log_path(config.producer, exp, run, transfer_id)
+        cache_log_path = logs.log_stream_path(
+            logs.LogStream.cache, config.producer, exp, run, transfer_id
+        )
         endpoint = await _create_cache(transfer_id, requested_by, cache_log_path)
         work_dir = pcore.transfer_work_dir(config.producer, exp, run, transfer_id)
         # if _create_cache succeeds, then we know the working directory exists
