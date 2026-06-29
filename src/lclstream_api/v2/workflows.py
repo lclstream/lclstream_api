@@ -28,7 +28,7 @@ from pydantic import AwareDatetime
 from ..lclstreamer_param import Parameters
 from . import config, db, repo
 from .clients import fastcache, iri
-from .core import producer as pcore, transfer as tcore
+from .core import logs, producer as pcore, transfer as tcore
 from .models import TransferState, TransitionSource
 
 logger = logging.getLogger(__name__)
@@ -54,9 +54,13 @@ MAX_PROVISIONING_AGE_S = 1800.0
 
 
 @DBOS.step()
-async def _create_cache(transfer_id: UUID, requested_by: str) -> tcore.CacheEndpoint:
+async def _create_cache(
+    transfer_id: UUID, requested_by: str, cache_log_path: Path
+) -> tcore.CacheEndpoint:
     # TODO: not idempotent yet !
-    cache = await fastcache.client().create_cache(transfer_id, requested_by)
+    cache = await fastcache.client().create_cache(
+        transfer_id, requested_by, cache_log_path
+    )
     return tcore.CacheEndpoint.from_uris(
         cache.id,
         cache.config.hostname,
@@ -121,11 +125,17 @@ async def _save_cache(transfer_id: UUID, endpoint: tcore.CacheEndpoint) -> None:
 
 
 @db.transaction()
-async def _load_requested_by(transfer_id: UUID) -> str:
+async def _load_setup_inputs(transfer_id: UUID) -> tuple[str, str, str]:
+    """Load the inputs the saga needs before provisioning: the requesting
+    user plus the resolved (exp, run) that pin the transfer work dir."""
     transfer = await repo.get_transfer(db.sql_session(), transfer_id)
     if transfer is None:
         raise LookupError(f"transfer {transfer_id} disappeared during setup")
-    return transfer.user
+    parameters = Parameters.model_validate(transfer.parameters)
+    exp, run = pcore.parse_exp_run(parameters.source_identifier)
+    if exp is None or run is None:
+        raise LookupError(f"transfer {transfer_id} has no resolvable exp/run")
+    return transfer.user, exp, run
 
 
 @db.transaction()
@@ -225,8 +235,9 @@ async def _teardown(refs: tcore.TransferRefs) -> None:
 async def provision_transfer(transfer_id: UUID) -> None:
     progress = tcore.ProvisionProgress()
     try:
-        requested_by = await _load_requested_by(transfer_id)
-        endpoint = await _create_cache(transfer_id, requested_by)
+        requested_by, exp, run = await _load_setup_inputs(transfer_id)
+        cache_log_path = logs.cache_log_path(config.producer, exp, run, transfer_id)
+        endpoint = await _create_cache(transfer_id, requested_by, cache_log_path)
         progress = progress.with_cache(endpoint.cache_id)
         await _save_cache(transfer_id, endpoint)
 
