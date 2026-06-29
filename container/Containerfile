@@ -2,6 +2,9 @@
 FROM python:3.14-slim AS builder
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
+# Install git (required for git-sourced dependencies)
+RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
+
 # Use the system Python across both stages
 ENV UV_PYTHON_DOWNLOADS=0
 
