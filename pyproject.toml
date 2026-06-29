@@ -17,6 +17,8 @@ dependencies = [
     # `historical` flag through job reads (PR feat/historical-job-reads).
     "amscrot-py",
     "fastapi>=0.136.3",
+    "fastapi-jwks>=2.0.2",
+    "pyjwt>=2.13.0",
     "lclstream @ git+https://github.com/lclstream/lclstream.git",
     "psik>=3.1.0",
     "pydantic>=2.13.4",
