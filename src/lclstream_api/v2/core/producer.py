@@ -105,6 +105,13 @@ def parse_exp_run(source_identifier: str) -> tuple[str | None, str | None]:
     return exp, run
 
 
+def resolve_exp_run(params: Parameters) -> tuple[str, str]:
+    exp, run = parse_exp_run(params.source_identifier)
+    if exp is None or run is None:
+        raise ValueError("source_identifier has no resolvable exp/run")
+    return exp, run
+
+
 def short_id(transfer_id: UUID) -> str:
     return str(transfer_id)[:8]
 
