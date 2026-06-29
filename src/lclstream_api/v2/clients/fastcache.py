@@ -29,6 +29,7 @@ class CacheCreate(BaseModel):
 
     transfer_id: UUID
     requested_by: str
+    log_path: Path
 
 
 class CachePublic(BaseModel):
@@ -73,14 +74,17 @@ class FastcacheClient:
     async def aclose(self) -> None:
         await self._http.aclose()
 
-    async def create_cache(self, transfer_id: UUID, requested_by: str) -> CachePublic:
+    async def create_cache(
+        self, transfer_id: UUID, requested_by: str, cache_log_path: Path
+    ) -> CachePublic:
         body = CacheCreate(
             transfer_id=transfer_id,
             requested_by=requested_by,
+            log_path=cache_log_path,
         )
         response = await self._http.post(
             "/caches/",
-            json=body.model_dump(exclude_none=True),
+            json=body.model_dump(mode="json", exclude_none=True),
             headers=self._auth_headers(),
         )
         response.raise_for_status()
