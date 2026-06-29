@@ -24,6 +24,7 @@ dependencies = [
     "uvicorn>=0.48.0",
     "sqlalchemy>=2.0.51",
     "httpx>=0.28.1",
+    "dbos>=2.0",
 ]
 
 [dependency-groups]
