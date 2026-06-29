@@ -13,9 +13,9 @@ from lclstream_api.v2.core.producer import (
     inject_cache_handlers,
     parse_exp_run,
     producer_config_path,
-    producer_job_path,
     render_config_yaml,
     short_id,
+    transfer_work_dir,
 )
 
 ParamsFactory = Callable[..., Parameters]
@@ -65,7 +65,7 @@ def test_producer_job_path_layout(
     make_producer_settings: SettingsFactory,
 ) -> None:
     settings = make_producer_settings(data_base_dir="/sdf/data/lcls/ds")
-    path = producer_job_path(
+    path = transfer_work_dir(
         settings, exp="mfxl1001", run="42", transfer_id=TRANSFER_ID
     )
     assert path == Path(
@@ -77,7 +77,7 @@ def test_instrument_is_first_three_chars_of_exp(
     make_producer_settings: SettingsFactory,
 ) -> None:
     settings = make_producer_settings(data_base_dir="/base")
-    path = producer_job_path(
+    path = transfer_work_dir(
         settings, exp="cxic00118", run="7", transfer_id=TRANSFER_ID
     )
     assert path.parts[1:3] == ("base", "cxi")
@@ -87,7 +87,7 @@ def test_config_path_is_job_dir_plus_filename(
     make_producer_settings: SettingsFactory,
 ) -> None:
     settings = make_producer_settings(data_base_dir="/base")
-    job = producer_job_path(settings, exp="mfxl1001", run="42", transfer_id=TRANSFER_ID)
+    job = transfer_work_dir(settings, exp="mfxl1001", run="42", transfer_id=TRANSFER_ID)
     cfg = producer_config_path(
         settings, exp="mfxl1001", run="42", transfer_id=TRANSFER_ID
     )
