@@ -1,11 +1,11 @@
 import os
 from functools import cache
 from pathlib import Path
-from typing import Union
+from typing import Annotated, Any, Union
 
 import psik
 import yaml
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class LCLStreamerConfig(BaseModel):
@@ -24,6 +24,14 @@ class ReplayConfig(BaseModel):
     jobspec: psik.JobSpec = psik.JobSpec(script="")
 
 
+class OidcSettings(BaseModel):
+    issuer_url: str = "https://dex.example/dex"
+    jwks_uri: str = "https://dex.example/dex/keys"
+    audiences: CommaSeparatedList = Field(default_factory=list)
+    # Verified emails allowed to use the service (the access allowlist).
+    expected_users: CommaSeparatedList = Field(default_factory=list)
+
+
 class Config(BaseModel):
     psik: psik.Config
     callback_url: str | None  # no default since None breaks callback functionality
@@ -31,6 +39,7 @@ class Config(BaseModel):
     forwarder: ForwarderConfig
     replay: ReplayConfig = ReplayConfig()
     lclstreamer: LCLStreamerConfig
+    oidc: OidcSettings
 
 
 # Other config options we could add...
