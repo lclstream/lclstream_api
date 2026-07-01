@@ -37,3 +37,10 @@ lclstreamer:
    #  CERTIFIED_CONFIG: "/sdf/home/r/rogersdd/venvs/lclstream_api/etc/certified"
     script: |
       pixi run --manifest-path /home/99r/src/lclstreamer -e default lclstreamer --config lclstreamer.json
+
+oidc:
+    issuer_url: https://dex.slac.stanford.edu
+    jwks_uri: https://dex.slac.stanford.edu/keys
+    audiencs: s3df
+    # Verified emails allowed to use the service (allowlist; all members see all).
+    expected_users: "rogersdd@slac.stanford.edu"

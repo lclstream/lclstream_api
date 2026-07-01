@@ -1,6 +1,6 @@
 [project]
 name = "lclstream_api"
-version = "0.10.1"
+version = "0.11.0"
 authors = [
   { name = "David M. Rogers", email ="predictivestatmech@gmail.com" },
   { name = "Cong Wang", email ="wangimagine@gmail.com" },
@@ -9,13 +9,16 @@ authors = [
 ]
 description = "Image streaming API for psana."
 readme = "README.md"
-requires-python = ">=3.10,<4.0"
+requires-python = ">=3.12,<4.0"
 license = "MIT"
 dependencies = [
     "fastapi>=0.136.3",
+    "fastapi-jwks>=2.0.2",
+    "pyjwt>=2.13.0",
     "lclstream @ git+https://github.com/lclstream/lclstream.git",
     "psik>=3.1.0",
     "pydantic>=2.13.4",
+    "pydantic-settings>=2.0",
     "pyyaml>=6.0.3",
     "uvicorn>=0.48.0",
 ]

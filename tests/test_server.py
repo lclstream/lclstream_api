@@ -10,10 +10,11 @@ from test_jobs import param2
 from lclstream_api.models import TransferInfo, TransferStatus
 from lclstream_api.server import api
 from test_config import config, setup_lclstream_api  # noqa: F401
+from test_jwks import my_token
 
 ADDR = "tcp://127.0.0.1:28451"
 
-client = TestClient(api)
+client = TestClient(api) # TODO: bake my_token into authorization requests with this client
 
 
 @pytest_asyncio.fixture

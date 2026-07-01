@@ -6,6 +6,9 @@ import yaml
 
 from lclstream_api.config import Config
 
+
+# TODO: setup an ephermal RS256 token mint to create and validate test tokens
+
 # this config only works if lclstreamer is setup...
 cfg_yaml = """
 psik:
@@ -44,6 +47,13 @@ lclstreamer:
       processes_per_node: 1
       cpu_cores_per_process: 1
     script: "lclstreamer --config lclstreamer.json"
+
+oidc:
+    issuer_url: https://dex.slac.stanford.edu
+    jwks_uri: https://dex.slac.stanford.edu/keys
+    audiences: s3df
+    # Verified emails allowed to use the service (allowlist; all members see all).
+    expected_users: "user1@slac.stanford.edu,user2@slac.stanford.edu"
 """
 
 # this config uses lclstream (client) to mimick lclstreamer
@@ -82,6 +92,13 @@ lclstreamer:
       processes_per_node: 1
       cpu_cores_per_process: 1
     script: "lclstream push --addr {url} --ndial 1 *.*"
+
+oidc:
+    issuer_url: https://dex.slac.stanford.edu
+    jwks_uri: https://dex.slac.stanford.edu/keys
+    audiences: s3df
+    # Verified emails allowed to use the service (allowlist; all members see all).
+    expected_users: "user1@slac.stanford.edu,user2@slac.stanford.edu"
 """
 
 
