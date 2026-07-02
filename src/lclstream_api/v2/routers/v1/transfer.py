@@ -1,18 +1,20 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import PlainTextResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ... import service
 from ...auth import CurrentUser
-from ...core import producer as pcore
+from ...core import logs as lcore, producer as pcore
 from ...db import get_session
 from ...models import (
     Message,
     TransferCancelOutcome,
     TransferCreate,
     TransferDetail,
+    TransferLogIndex,
     TransferPublic,
     TransfersPublic,
     TransferState,
@@ -66,3 +68,32 @@ async def cancel_transfer(
     if outcome == TransferCancelOutcome.already_final:
         return Message(message="Transfer is already in a final state")
     return Message(message="Cancellation requested")
+
+
+@router.get("/{transfer_id}/logs", response_model=TransferLogIndex)
+async def get_transfer_logs(
+    transfer_id: UUID, session: SessionDep, user: CurrentUser
+) -> TransferLogIndex:
+    return await service.list_transfer_logs(session, transfer_id)
+
+
+@router.get("/{transfer_id}/logs/{stream}", response_class=PlainTextResponse)
+async def get_transfer_log(
+    transfer_id: UUID,
+    stream: lcore.LogStream,
+    session: SessionDep,
+    user: CurrentUser,
+    mode: lcore.LogReadMode = lcore.LogReadMode.tail,
+    lines: int = 200,
+    bytes_: Annotated[int | None, Query(alias="bytes")] = None,
+) -> str:
+    # An explicit byte budget supersedes the line count.
+    effective_lines = None if bytes_ is not None else lines
+    return await service.read_transfer_log(
+        session,
+        transfer_id,
+        stream,
+        mode=mode,
+        lines=effective_lines,
+        bytes_=bytes_,
+    )

@@ -26,6 +26,9 @@ if TYPE_CHECKING:
     from .transfer import ProducerInputs
 
 CONFIG_FILENAME = "lclstreamer.yaml"
+# Producer stdout/stderr land next to the config in the per-transfer work dir.
+PRODUCER_STDOUT_FILENAME = "output.txt"
+PRODUCER_STDERR_FILENAME = "error.txt"
 
 # TODO: use container field after we get that feature added to iri
 # NOTE: environment intentionally left empty here -- the currently-deployed
@@ -102,11 +105,18 @@ def parse_exp_run(source_identifier: str) -> tuple[str | None, str | None]:
     return exp, run
 
 
+def resolve_exp_run(params: Parameters) -> tuple[str, str]:
+    exp, run = parse_exp_run(params.source_identifier)
+    if exp is None or run is None:
+        raise ValueError("source_identifier has no resolvable exp/run")
+    return exp, run
+
+
 def short_id(transfer_id: UUID) -> str:
     return str(transfer_id)[:8]
 
 
-def producer_job_path(
+def transfer_work_dir(
     settings: LCLStreamerProducerSettings, exp: str, run: str, transfer_id: UUID
 ) -> Path:
     """Per-transfer working directory."""
@@ -125,7 +135,7 @@ def producer_config_path(
     settings: LCLStreamerProducerSettings, exp: str, run: str, transfer_id: UUID
 ) -> Path:
     """Remote producer config filepath."""
-    return producer_job_path(settings, exp, run, transfer_id) / CONFIG_FILENAME
+    return transfer_work_dir(settings, exp, run, transfer_id) / CONFIG_FILENAME
 
 
 def build_legacy_launch_script(
@@ -195,7 +205,7 @@ def build_producer_plan(
     psana_env = _PSANA_ENV[params.event_source.type]
     psana_environment = settings.environments.get(psana_env) or {}
 
-    job_dir = producer_job_path(settings, exp, run, transfer_id)
+    job_dir = transfer_work_dir(settings, exp, run, transfer_id)
     config_path = producer_config_path(settings, exp, run, transfer_id)
 
     jobspec = DEFAULT_JOB_SPEC.model_copy(deep=True)
@@ -211,9 +221,8 @@ def build_producer_plan(
     jobspec.name = name
     jobspec.environment = {**(jobspec.environment or {}), **psana_environment}
     jobspec.directory = str(job_dir)
-    jobspec.stdin_path = str(job_dir / "input.txt")
-    jobspec.stdout_path = str(job_dir / "output.txt")
-    jobspec.stderr_path = str(job_dir / "error.txt")
+    jobspec.stdout_path = str(job_dir / PRODUCER_STDOUT_FILENAME)
+    jobspec.stderr_path = str(job_dir / PRODUCER_STDERR_FILENAME)
     return ProducerPlan(
         jobspec=JobSpec.model_validate(jobspec),
         config_path=config_path,
