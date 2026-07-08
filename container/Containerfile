@@ -26,8 +26,10 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 FROM python:3.14-slim
 
+WORKDIR /app
 # Copy the environment, but not the source code
 COPY --from=builder /app/.venv /app/.venv
+COPY --from=builder /app/pyproject.toml /app/pyproject.toml
 
 # Copy the configuration files
 COPY config/lclstream_api.json  /etc/lclstream_api.json
