@@ -1,24 +1,34 @@
-import os
-
-# Must run before importing lclstream_api.v2.config (built eagerly at import).
-_DUMMY_ENV = {
-    "LCLSTREAM_FASTCACHE_TOKEN_FILE": "/dev/null",
-    "LCLSTREAM_FASTCACHE_CLIENT_CERT": "/dev/null",
-    "LCLSTREAM_FASTCACHE_CLIENT_KEY": "/dev/null",
-    "LCLSTREAM_IRI_S3DF_TOKEN_FILE": "/dev/null",
-}
-for _key, _value in _DUMMY_ENV.items():
-    os.environ.setdefault(_key, _value)
-
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 
 import pytest
 
 from lclstream_api.lclstreamer_param import Parameters
+from lclstream_api.v2 import config
 from lclstream_api.v2.config import LCLStreamerProducerSettings
 
 ParamsFactory = Callable[..., Parameters]
 SettingsFactory = Callable[..., LCLStreamerProducerSettings]
+
+_SETTINGS_GETTERS = (
+    config.get_database,
+    config.get_dbos,
+    config.get_fastcache,
+    config.get_iri,
+    config.get_producer,
+    config.get_oidc,
+    config.get_app,
+)
+
+
+@pytest.fixture(autouse=True)
+def _clear_settings_cache() -> Iterator[None]:
+    """Getters are ``lru_cache``d; clear them so env overrides never leak
+    between tests."""
+    for getter in _SETTINGS_GETTERS:
+        getter.cache_clear()
+    yield
+    for getter in _SETTINGS_GETTERS:
+        getter.cache_clear()
 
 # A minimal but valid lclstreamer config. ``InternalEventSource`` maps to the
 # psana2 environment (see ``core.producer._PSANA_ENV``).

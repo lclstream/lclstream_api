@@ -113,7 +113,7 @@ _client: FastcacheClient | None = None
 
 def startup() -> None:
     global _client
-    _client = FastcacheClient(config.fastcache)
+    _client = FastcacheClient(config.get_fastcache())
 
 
 async def shutdown() -> None:
