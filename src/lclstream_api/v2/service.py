@@ -127,7 +127,7 @@ async def read_transfer_log(
 ) -> str:
     """Return the head/tail of a single log stream as decoded text."""
     exp, run = await _resolve_exp_run(session, transfer_id)
-    path = lcore.log_stream_path(stream, config.producer, exp, run, transfer_id)
+    path = lcore.log_stream_path(stream, config.get_producer(), exp, run, transfer_id)
     client = iri.client()
     try:
         if mode is lcore.LogReadMode.head:
@@ -156,7 +156,10 @@ async def list_transfer_logs(
     exp, run = await _resolve_exp_run(session, transfer_id)
     client = iri.client()
     paths = [
-        (stream, lcore.log_stream_path(stream, config.producer, exp, run, transfer_id))
+        (
+            stream,
+            lcore.log_stream_path(stream, config.get_producer(), exp, run, transfer_id),
+        )
         for stream in lcore.LogStream
     ]
     stats = await asyncio.gather(*(client.stat(path) for _, path in paths))
