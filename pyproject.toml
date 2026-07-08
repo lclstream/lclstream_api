@@ -55,6 +55,18 @@ where = ["src"]
 [tool.alembic]
 script_location = "lclstream_api.v2:alembic"
 
+[[tool.alembic.post_write_hooks]]
+name = "ruff_format"
+type = "exec"
+executable = "uv"
+options = "run ruff format REVISION_SCRIPT_FILENAME"
+
+[[tool.alembic.post_write_hooks]]
+name = "ruff_check"
+type = "exec"
+executable = "uv"
+options = "run ruff check --fix REVISION_SCRIPT_FILENAME"
+
 [tool.ruff]
 line-length = 88
 target-version = "py314"
