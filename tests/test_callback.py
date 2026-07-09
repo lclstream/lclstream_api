@@ -15,6 +15,8 @@ from lclstream_api.routers.callback import (
 )
 from lclstream_api.xfer_db import get_database
 
+from test_config import config  # noqa: F401
+
 ### test fixture for accepting a callback ###
 cb_value = web.AppKey("value", None)  # type: ignore[var-annotated]
 

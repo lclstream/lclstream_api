@@ -1,36 +1,60 @@
 import os
 from functools import cache
 from pathlib import Path
-from typing import Union
+from typing import Annotated, Any, Union, List
 
 import psik
 import yaml
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, BeforeValidator, ConfigDict
+#from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+
+def _parse_comma_list(v: Any) -> List[str]:
+    if isinstance(v, str) and not v.startswith("["):
+        return [item.strip() for item in v.split(",") if item.strip()]
+    return v
+
+# NoDecode stops pydantic-settings from JSON-decoding the env value in the
+# source (which a bare string like "s3df" fails)
+#CommaSeparatedList = Annotated[list[str], NoDecode, BeforeValidator(_parse_comma_list)]
+CommaSeparatedList = Annotated[list[str], BeforeValidator(_parse_comma_list)]
 
 
-class LCLStreamerConfig(BaseModel):
+class StrictModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
+class LCLStreamerConfig(StrictModel):
     jobspec: psik.JobSpec
 
 
-class ForwarderConfig(BaseModel):
+class ForwarderConfig(StrictModel):
     ip: str
     start_port: int = 30001
     end_port: int = 34000
     jobspec: psik.JobSpec
 
 
-class ReplayConfig(BaseModel):
+class ReplayConfig(StrictModel):
     cache_fmt: str | None = None
     jobspec: psik.JobSpec = psik.JobSpec(script="")
 
 
-class Config(BaseModel):
+class OidcSettings(StrictModel):
+    issuer_url: str = "https://dex.example/dex"
+    jwks_uri: str = "https://dex.example/dex/keys"
+    audiences: CommaSeparatedList = Field(default_factory=list)
+    # Verified emails allowed to use the service (the access allowlist).
+    expected_users: CommaSeparatedList = Field(default_factory=list)
+
+
+class Config(StrictModel):
     psik: psik.Config
     callback_url: str | None  # no default since None breaks callback functionality
 
     forwarder: ForwarderConfig
     replay: ReplayConfig = ReplayConfig()
     lclstreamer: LCLStreamerConfig
+    oidc: OidcSettings
 
 
 # Other config options we could add...

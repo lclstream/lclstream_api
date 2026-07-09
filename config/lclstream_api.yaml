@@ -1,0 +1,88 @@
+callback_url: "https://sdfdtn002.slac.stanford.edu:4433/v1/callback"
+
+psik:
+    prefix: "/sdf/home/r/rogersdd/lclstream/lclstream_api/jobs"
+    backends:
+      psik_default:
+        type: "psik"
+        attributes:
+            remote_url: "https://sdfdtn002.slac.stanford.edu:4444"
+            remote_backend: "default"
+            next: "{}"
+
+      psik_slurm:
+        type: "psik"
+        project_name: "lcls:tmox42619"
+        queue_name: "milano"
+        attributes:
+            remote_url: "https://sdfdtn002.slac.stanford.edu:4444"
+            remote_backend: "slurm"
+            next: '{"--exclusive":""}'
+
+      # The two backends below will launch directly,
+      # rather than relaying through psik_api.
+      # (this is also the content of psik_api's backend config)
+      default:
+        type: "local"
+      slurm:
+        type: "slurm"
+        project_name: "lcls:tmox42619"
+        queue_name: "milano"
+        attributes:
+          "--exclusive": ""
+
+forwarder:
+    ip: "134.79.23.42"
+    start_port: 31000 # must be unique from ports
+    end_port:   32000 # used by lclstream-api in k8s
+    jobspec:
+        name: "fastcache"
+        backend: "default"
+        resources:
+            duration: 80
+            node_count: 1
+            processes_per_node: 1
+            cpu_cores_per_process: 1
+        environment:
+            CERTIFIED_CONFIG: "/sdf/home/r/rogersdd/lclstream/certificates/dtn"
+        script: |
+            cat >config.json <<__CONFIG__
+            {{ "inurl": "{internal_url}",
+              "outurl": "{external_url}",
+              "type": 4,
+              "helper_threads": 0,
+              "num_workers": 1,
+              "io_threads": 16,
+              "hwm": 10,
+              "verbose": true
+            }}
+            __CONFIG__
+
+            /sdf/group/lcls/ds/tools/fastcache/latest/build/lclstream-fastcache config.json
+
+
+lclstreamer:
+    jobspec:
+        name: "lclstreamer"
+        backend: "slurm"
+        resources:
+            duration: 60
+            node_count: 1 # TODO: increase to 2
+            processes_per_node: 64
+            cpu_cores_per_process: 1
+            #memory: 17179869184 # not sure this is supported...
+        environment:
+            # FIXME: setup a separate cert for nodes on psana
+            #CERTIFIED_CONFIG: "/sdf/home/r/rogersdd/lclstream/certificates/psana"
+            CERTIFIED_CONFIG: "/sdf/home/r/rogersdd/lclstream/certificates/dtn"
+        script: |
+            BASE=/sdf/group/lcls/ds/tools/lclstreamer/latest/.pixi/envs/{psana_env}/bin
+            source /sdf/group/lcls/ds/tools/lclstreamer/latest/activation-{psana_env}.sh
+            $BASE/mpirun $BASE/lclstreamer --config lclstreamer.json
+
+oidc:
+    issuer_url: https://dex.slac.stanford.edu
+    jwks_uri: https://dex.slac.stanford.edu/keys
+    audiences: s3df
+    # Verified emails allowed to use the service (allowlist; all members see all).
+    expected_users: "rogersdd@slac.stanford.edu"

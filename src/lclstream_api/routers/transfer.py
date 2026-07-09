@@ -9,6 +9,7 @@ from fastapi import (
     HTTPException,
 )
 
+from ..auth import CurrentUser
 from ..config import Config, load_config, to_mgr
 from ..lclstreamer_param import Parameters
 from ..models import (
@@ -38,6 +39,7 @@ transfers = APIRouter(responses={401: {"description": "Unauthorized"}})
 @transfers.get("/", include_in_schema=False)
 @transfers.get("")
 async def list_transfers(
+    user: CurrentUser,
     db: Database,
     ports: PortUsage,
     index: int = 0,
@@ -59,7 +61,9 @@ async def list_transfers(
             xfer = db[eid]
         except KeyError:
             continue
-        # TODO: filter by entry.user here (or list all for admin)
+        # TODO: allow admin-s to see all transfers
+        if user != entry.user: # show only the user's transfers
+            continue
 
         cstate = xfer.states[ClientName.cache]
         if state is not None and state != cstate:
@@ -90,13 +94,13 @@ async def list_transfers(
 @transfers.post("/", include_in_schema=False)
 @transfers.post("")
 async def new_transfer(
-    request: Parameters,
+    user: CurrentUser,
     db: Database,
     ports: PortUsage,
     bg_tasks: BackgroundTasks,
     cfg: CachedConfig,
     mgr: Manager,
-    user: str = "none",
+    request: Parameters,
 ) -> TransferStatus:
     """
     Submit a transfer to run ASAP.
@@ -176,7 +180,7 @@ async def new_transfer(
 
 
 @transfers.get("/{id}")
-async def get_transfer(id: int, ports: PortUsage, db: Database) -> TransferInfo:
+async def get_transfer(user: CurrentUser, ports: PortUsage, db: Database, id: int) -> TransferInfo:
     """Read job
     - id: The transfer ID
 
@@ -187,14 +191,22 @@ async def get_transfer(id: int, ports: PortUsage, db: Database) -> TransferInfo:
         entry = ports[id]
     except KeyError:
         raise HTTPException(status_code=404, detail="Transfer is not active.")
+
+    if entry.user != user:
+        raise HTTPException(status_code=404, detail="Transfer is not active.")
+
     return TransferInfo(user=entry.user, log=xfer.log, metrics=xfer.cache_metrics)
 
 
 @transfers.delete("/{id}")
-async def cancel_transfer(id: int, bg_tasks: BackgroundTasks, db: Database) -> None:
+async def cancel_transfer(user: CurrentUser, bg_tasks: BackgroundTasks, ports: PortUsage, db: Database, id: int) -> None:
     # Cancel job
     try:
-        xfer = db[id]
+        xfer  = db[id]
+        entry = db[id]
     except KeyError:
+        raise HTTPException(status_code=404, detail="Transfer is not active.")
+
+    if entry.user != user:
         raise HTTPException(status_code=404, detail="Transfer is not active.")
     bg_tasks.add_task(xfer.cancel_job)
