@@ -1,106 +1,129 @@
-import { useQuery } from "@tanstack/react-query"
-import { formatDistanceToNow } from "date-fns"
-import { Inbox, TriangleAlert } from "lucide-react"
-import { getTransfersTransfersGetOptions } from "@/client/@tanstack/react-query.gen"
+import { useVirtualizer } from "@tanstack/react-virtual"
+import { Inbox, Loader2, TriangleAlert } from "lucide-react"
+import { useRef } from "react"
 import { StatusPlaceholder } from "@/components/Common/StatusPlaceholder"
-import { StateBadge } from "@/components/Transfers/StateBadge"
+import {
+  TransferCard,
+  TransferCardSkeleton,
+} from "@/components/Transfers/TransferCard"
+import { useTransfersQuery } from "@/hooks/useTransfersQuery"
 
-// Static placeholder rows shown while the list is loading. Hoisted so the
-// same elements are reused instead of being recreated on every render.
-const SKELETON_ROWS = ["a", "b", "c", "d", "e"].map((key) => (
-  <tr key={`skeleton-${key}`} className="border-b last:border-0">
-    <td className="py-3 pr-4">
-      <div className="h-4 w-24 animate-pulse rounded bg-muted" />
-    </td>
-    <td className="py-3 pr-4">
-      <div className="h-4 w-16 animate-pulse rounded bg-muted" />
-    </td>
-    <td className="py-3 pr-4">
-      <div className="h-4 w-32 animate-pulse rounded bg-muted" />
-    </td>
-    <td className="py-3 pr-4">
-      <div className="h-4 w-20 animate-pulse rounded bg-muted" />
-    </td>
-  </tr>
-))
-
-const TABLE_HEAD = (
-  <thead>
-    <tr className="border-b text-left text-muted-foreground">
-      <th className="py-2 pr-4 font-medium">ID</th>
-      <th className="py-2 pr-4 font-medium">State</th>
-      <th className="py-2 pr-4 font-medium">Requested by</th>
-      <th className="py-2 pr-4 font-medium">Created</th>
-    </tr>
-  </thead>
-)
+const SKELETON_KEYS = ["a", "b", "c", "d", "e"]
 
 export function TransfersList({
   onSelect,
 }: {
   onSelect: (id: string) => void
 }) {
-  const { data, isPending, isError } = useQuery({
-    ...getTransfersTransfersGetOptions({ query: { limit: 100 } }),
-    refetchInterval: 5_000,
-    refetchIntervalInBackground: false,
+  const {
+    transfers,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isPending,
+    isError,
+  } = useTransfersQuery()
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+
+  const virtualizer = useVirtualizer({
+    count: transfers.length,
+    getScrollElement: () => scrollContainerRef.current,
+    estimateSize: () => 76,
+    overscan: 5,
+    gap: 8,
+    onChange: (instance) => {
+      const lastItem = instance.range?.endIndex ?? 0
+      if (
+        lastItem >= transfers.length - 5 &&
+        hasNextPage &&
+        !isFetchingNextPage
+      ) {
+        fetchNextPage()
+      }
+    },
   })
 
   if (isError) {
     return (
-      <StatusPlaceholder
-        icon={TriangleAlert}
-        variant="destructive"
-        title="Failed to load transfers"
-        description="Check that the API is reachable and try again."
-      />
-    )
-  }
-
-  if (!isPending && data.data.length === 0) {
-    return (
-      <StatusPlaceholder
-        icon={Inbox}
-        title="No transfers yet"
-        description="Transfers created via lclstream_api will show up here."
-      />
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <StatusPlaceholder
+          icon={TriangleAlert}
+          variant="destructive"
+          title="Failed to load transfers"
+          description="Check that the API is reachable and try again."
+        />
+      </div>
     )
   }
 
   if (isPending) {
     return (
-      <table className="w-full text-sm">
-        {TABLE_HEAD}
-        <tbody>{SKELETON_ROWS}</tbody>
-      </table>
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-2">
+        {SKELETON_KEYS.map((key) => (
+          <TransferCardSkeleton key={key} />
+        ))}
+      </div>
     )
   }
 
+  if (transfers.length === 0) {
+    return (
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <StatusPlaceholder
+          icon={Inbox}
+          title="No transfers yet"
+          description="Transfers created via lclstream_api will show up here."
+        />
+      </div>
+    )
+  }
+
+  const virtualItems = virtualizer.getVirtualItems()
+
   return (
-    <table className="w-full text-sm">
-      {TABLE_HEAD}
-      <tbody>
-        {data.data.map((transfer) => (
-          <tr
-            key={transfer.id}
-            onClick={() => onSelect(transfer.id)}
-            className="cursor-pointer border-b last:border-0 hover:bg-accent/50"
-          >
-            <td className="py-3 pr-4 font-mono text-xs">
-              {transfer.id.slice(0, 8)}
-            </td>
-            <td className="py-3 pr-4">
-              <StateBadge state={transfer.state} />
-            </td>
-            <td className="py-3 pr-4">{transfer.requested_by}</td>
-            <td className="py-3 pr-4 text-muted-foreground">
-              {formatDistanceToNow(new Date(transfer.created_at), {
-                addSuffix: true,
-              })}
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <div
+      ref={scrollContainerRef}
+      className="flex-1 min-h-0 overflow-y-auto"
+      aria-busy={isFetchingNextPage}
+    >
+      <div
+        style={{
+          height: `${virtualizer.getTotalSize()}px`,
+          width: "100%",
+          position: "relative",
+        }}
+      >
+        {virtualItems.map((virtualRow) => {
+          const transfer = transfers[virtualRow.index]
+          if (!transfer) return null
+
+          return (
+            <div
+              key={transfer.id}
+              data-index={virtualRow.index}
+              ref={virtualizer.measureElement}
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                transform: `translateY(${virtualRow.start}px)`,
+              }}
+            >
+              <TransferCard
+                transfer={transfer}
+                onClick={() => onSelect(transfer.id)}
+              />
+            </div>
+          )
+        })}
+      </div>
+      {isFetchingNextPage && (
+        <div className="flex justify-center py-4">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      )}
+    </div>
   )
 }

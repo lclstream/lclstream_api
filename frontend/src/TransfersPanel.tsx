@@ -67,8 +67,13 @@ export function TransfersPanel({
   const [view, setView] = useState<View>({ name: "list" })
 
   const body = (
-    <div className={cn("bg-background text-foreground p-4", className)}>
-      <div className="mb-4 flex items-center justify-between">
+    <div
+      className={cn(
+        "flex h-screen flex-col overflow-hidden bg-background text-foreground p-4",
+        className,
+      )}
+    >
+      <div className="mb-4 flex shrink-0 items-center justify-between">
         <h1 className="text-lg font-semibold">Transfers (dev)</h1>
         <ThemeToggle />
       </div>
