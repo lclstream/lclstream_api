@@ -1,20 +1,22 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { ThemeProvider } from "next-themes"
-import { useMemo, useState } from "react"
+import { lazy, Suspense, useRef, useState } from "react"
 import { Toaster } from "sonner"
 
 import { client } from "@/client/client.gen"
 import { ThemeToggle } from "@/components/Common/Appearance"
-import { TransferDetail } from "@/components/Transfers/TransferDetail"
 import { TransfersList } from "@/components/Transfers/TransfersList"
 import { cn } from "@/lib/utils"
 
-// Dev-only escape hatch: in production the API sits behind a gateway that
-// already attaches auth, so the app never sends its own Authorization header.
-// Locally we point straight at the real dev k8s API (no gateway in front of
-// it from here), so `scripts/dev-token.sh` mints a real S3DF/Dex bearer
-// token and bakes it in as VITE_DEV_BEARER_TOKEN; if present, attach it to
-// every request.
+// Code-split: list-only hosts skip date-fns.
+const TransferDetail = lazy(() =>
+  import("@/components/Transfers/TransferDetail").then((m) => ({
+    default: m.TransferDetail,
+  })),
+)
+
+// Prod sits behind a gateway that attaches auth.
+// Dev hits the k8s API direct; `scripts/dev-token.sh` mints the token.
 if (import.meta.env.DEV && import.meta.env.VITE_DEV_BEARER_TOKEN) {
   client.instance.interceptors.request.use((config) => {
     config.headers.set(
@@ -47,19 +49,20 @@ export function TransfersPanel({
   theme = "bundled",
   className,
 }: TransfersPanelProps) {
-  const queryClient = useMemo(
+  const [queryClient] = useState(
     () =>
       new QueryClient({
         defaultOptions: {
           queries: { staleTime: 10_000, gcTime: 5 * 60_000 },
         },
       }),
-    [],
   )
 
-  useMemo(() => {
-    if (apiBaseUrl) client.setConfig({ baseURL: apiBaseUrl })
-  }, [apiBaseUrl])
+  const appliedBaseUrl = useRef<string | undefined>(undefined)
+  if (apiBaseUrl && appliedBaseUrl.current !== apiBaseUrl) {
+    client.setConfig({ baseURL: apiBaseUrl })
+    appliedBaseUrl.current = apiBaseUrl
+  }
 
   const [view, setView] = useState<View>({ name: "list" })
 
@@ -72,10 +75,12 @@ export function TransfersPanel({
       {view.name === "list" ? (
         <TransfersList onSelect={(id) => setView({ name: "detail", id })} />
       ) : (
-        <TransferDetail
-          transferId={view.id}
-          onBack={() => setView({ name: "list" })}
-        />
+        <Suspense fallback={null}>
+          <TransferDetail
+            transferId={view.id}
+            onBack={() => setView({ name: "list" })}
+          />
+        </Suspense>
       )}
       <Toaster richColors closeButton />
     </div>

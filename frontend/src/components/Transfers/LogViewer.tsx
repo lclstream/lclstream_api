@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query"
+import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { useState } from "react"
 
 import type { LogReadMode, LogStream } from "@/client"
@@ -23,6 +23,9 @@ export function LogViewer({ transferId }: { transferId: string }) {
     }),
     refetchInterval: 3_000,
     refetchIntervalInBackground: false,
+    // Keep showing the previous stream's logs while the new one loads
+    // instead of blanking the pane on every tab switch.
+    placeholderData: keepPreviousData,
   })
 
   return (

@@ -5,6 +5,36 @@ import { getTransfersTransfersGetOptions } from "@/client/@tanstack/react-query.
 import { StatusPlaceholder } from "@/components/Common/StatusPlaceholder"
 import { StateBadge } from "@/components/Transfers/StateBadge"
 
+// Static placeholder rows shown while the list is loading. Hoisted so the
+// same elements are reused instead of being recreated on every render.
+const SKELETON_ROWS = ["a", "b", "c", "d", "e"].map((key) => (
+  <tr key={`skeleton-${key}`} className="border-b last:border-0">
+    <td className="py-3 pr-4">
+      <div className="h-4 w-24 animate-pulse rounded bg-muted" />
+    </td>
+    <td className="py-3 pr-4">
+      <div className="h-4 w-16 animate-pulse rounded bg-muted" />
+    </td>
+    <td className="py-3 pr-4">
+      <div className="h-4 w-32 animate-pulse rounded bg-muted" />
+    </td>
+    <td className="py-3 pr-4">
+      <div className="h-4 w-20 animate-pulse rounded bg-muted" />
+    </td>
+  </tr>
+))
+
+const TABLE_HEAD = (
+  <thead>
+    <tr className="border-b text-left text-muted-foreground">
+      <th className="py-2 pr-4 font-medium">ID</th>
+      <th className="py-2 pr-4 font-medium">State</th>
+      <th className="py-2 pr-4 font-medium">Requested by</th>
+      <th className="py-2 pr-4 font-medium">Created</th>
+    </tr>
+  </thead>
+)
+
 export function TransfersList({
   onSelect,
 }: {
@@ -37,54 +67,39 @@ export function TransfersList({
     )
   }
 
+  if (isPending) {
+    return (
+      <table className="w-full text-sm">
+        {TABLE_HEAD}
+        <tbody>{SKELETON_ROWS}</tbody>
+      </table>
+    )
+  }
+
   return (
     <table className="w-full text-sm">
-      <thead>
-        <tr className="border-b text-left text-muted-foreground">
-          <th className="py-2 pr-4 font-medium">ID</th>
-          <th className="py-2 pr-4 font-medium">State</th>
-          <th className="py-2 pr-4 font-medium">Requested by</th>
-          <th className="py-2 pr-4 font-medium">Created</th>
-        </tr>
-      </thead>
+      {TABLE_HEAD}
       <tbody>
-        {isPending
-          ? ["a", "b", "c", "d", "e"].map((key) => (
-              <tr key={`skeleton-${key}`} className="border-b last:border-0">
-                <td className="py-3 pr-4">
-                  <div className="h-4 w-24 animate-pulse rounded bg-muted" />
-                </td>
-                <td className="py-3 pr-4">
-                  <div className="h-4 w-16 animate-pulse rounded bg-muted" />
-                </td>
-                <td className="py-3 pr-4">
-                  <div className="h-4 w-32 animate-pulse rounded bg-muted" />
-                </td>
-                <td className="py-3 pr-4">
-                  <div className="h-4 w-20 animate-pulse rounded bg-muted" />
-                </td>
-              </tr>
-            ))
-          : data.data.map((transfer) => (
-              <tr
-                key={transfer.id}
-                onClick={() => onSelect(transfer.id)}
-                className="cursor-pointer border-b last:border-0 hover:bg-accent/50"
-              >
-                <td className="py-3 pr-4 font-mono text-xs">
-                  {transfer.id.slice(0, 8)}
-                </td>
-                <td className="py-3 pr-4">
-                  <StateBadge state={transfer.state} />
-                </td>
-                <td className="py-3 pr-4">{transfer.requested_by}</td>
-                <td className="py-3 pr-4 text-muted-foreground">
-                  {formatDistanceToNow(new Date(transfer.created_at), {
-                    addSuffix: true,
-                  })}
-                </td>
-              </tr>
-            ))}
+        {data.data.map((transfer) => (
+          <tr
+            key={transfer.id}
+            onClick={() => onSelect(transfer.id)}
+            className="cursor-pointer border-b last:border-0 hover:bg-accent/50"
+          >
+            <td className="py-3 pr-4 font-mono text-xs">
+              {transfer.id.slice(0, 8)}
+            </td>
+            <td className="py-3 pr-4">
+              <StateBadge state={transfer.state} />
+            </td>
+            <td className="py-3 pr-4">{transfer.requested_by}</td>
+            <td className="py-3 pr-4 text-muted-foreground">
+              {formatDistanceToNow(new Date(transfer.created_at), {
+                addSuffix: true,
+              })}
+            </td>
+          </tr>
+        ))}
       </tbody>
     </table>
   )
