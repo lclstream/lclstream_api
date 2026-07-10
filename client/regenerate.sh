@@ -13,6 +13,7 @@ uv run python scripts/dump_openapi.py
 GENERATOR_IMAGE="openapitools/openapi-generator-cli@sha256:da552b8d0add9fd3cd89ce836d55b433c8cf467b287dd50c62bbd4482c03f677"
 
 docker run --rm \
+  --user "$(id -u):$(id -g)" \
   -v "$REPO_ROOT/openapi.json:/spec.json:ro" \
   -v "$GENERATOR_CONFIG:/config.yaml:ro" \
   -v "$TMP_DIR:/out" \
