@@ -90,6 +90,11 @@ export const zBinaryFileWritingDataHandlerParameters = z.object({
 });
 
 /**
+ * CacheMode
+ */
+export const zCacheMode = z.enum(['per_transfer', 'shared']);
+
+/**
  * ConstValueParameters
  *
  * Parameters for ConstValue class
@@ -473,6 +478,7 @@ export const zParameters = z.object({
  * TransferCreate
  */
 export const zTransferCreate = z.object({
+    cache_mode: zCacheMode.optional().default('per_transfer'),
     parameters: zParameters
 });
 
@@ -513,10 +519,13 @@ export const zTransferState = z.enum([
  * TransferPublic
  */
 export const zTransferPublic = z.object({
+    cache_mode: zCacheMode,
     connection_info: zConsumerConnectionInfo.nullish(),
     created_at: z.iso.datetime(),
+    experiment: z.string(),
     id: z.uuid(),
     requested_by: z.string(),
+    run: z.string(),
     state: zTransferState
 });
 
@@ -552,10 +561,13 @@ export const zTransitionPublic = z.object({
  * TransferDetail
  */
 export const zTransferDetail = z.object({
+    cache_mode: zCacheMode,
     connection_info: zConsumerConnectionInfo.nullish(),
     created_at: z.iso.datetime(),
+    experiment: z.string(),
     id: z.uuid(),
     requested_by: z.string(),
+    run: z.string(),
     state: zTransferState,
     transitions: z.array(zTransitionPublic).optional().default([])
 });

@@ -30,6 +30,7 @@ def _clear_settings_cache() -> Iterator[None]:
     for getter in _SETTINGS_GETTERS:
         getter.cache_clear()
 
+
 # A minimal but valid lclstreamer config. ``InternalEventSource`` maps to the
 # psana2 environment (see ``core.producer._PSANA_ENV``).
 _BASE_PARAMS: dict = {

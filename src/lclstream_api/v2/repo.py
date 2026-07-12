@@ -22,12 +22,18 @@ async def insert_transfer(
     transfer_id: UUID,
     user: str,
     parameters: dict[str, Any],
+    experiment: str,
+    run: str,
+    cache_mode: tcore.CacheMode = tcore.CacheMode.per_transfer,
 ) -> Transfer:
     transfer = Transfer(
         id=transfer_id,
         user=user,
         state=TransferState.provisioning,
         parameters=parameters,
+        experiment=experiment,
+        run=run,
+        cache_mode=cache_mode,
     )
     session.add(transfer)
     session.add(

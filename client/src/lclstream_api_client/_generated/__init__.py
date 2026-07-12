@@ -32,6 +32,7 @@ __all__ = [
     "BatchProcessingPipelineParameters",
     "BinaryDataStreamingDataHandlerParameters",
     "BinaryFileWritingDataHandlerParameters",
+    "CacheMode",
     "ConstValueParameters",
     "ConsumerConnectionInfo",
     "DataHandlersInner",
@@ -92,6 +93,7 @@ from lclstream_api_client._generated.models.array_shape import ArrayShape as Arr
 from lclstream_api_client._generated.models.batch_processing_pipeline_parameters import BatchProcessingPipelineParameters as BatchProcessingPipelineParameters
 from lclstream_api_client._generated.models.binary_data_streaming_data_handler_parameters import BinaryDataStreamingDataHandlerParameters as BinaryDataStreamingDataHandlerParameters
 from lclstream_api_client._generated.models.binary_file_writing_data_handler_parameters import BinaryFileWritingDataHandlerParameters as BinaryFileWritingDataHandlerParameters
+from lclstream_api_client._generated.models.cache_mode import CacheMode as CacheMode
 from lclstream_api_client._generated.models.const_value_parameters import ConstValueParameters as ConstValueParameters
 from lclstream_api_client._generated.models.consumer_connection_info import ConsumerConnectionInfo as ConsumerConnectionInfo
 from lclstream_api_client._generated.models.data_handlers_inner import DataHandlersInner as DataHandlersInner

@@ -9,6 +9,7 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
 from ...lclstreamer_param import Parameters
 from ..models import TransferState, TransitionSource
+from .producer import CacheMode
 
 
 class CacheState(StrEnum):
@@ -229,7 +230,9 @@ class ProvisionProgress(BaseModel):
     steps: tuple[Compensation, ...] = ()
 
     # New instances are returned, since we want immutability baked in.
-    def with_cache(self, cache_id: UUID) -> ProvisionProgress:
+    def with_cache(self, cache_id: UUID, *, mode: CacheMode) -> ProvisionProgress:
+        if mode is not CacheMode.per_transfer:
+            return self
         return ProvisionProgress(steps=(*self.steps, DeleteCache(cache_id=cache_id)))
 
     def with_config(self, config_path: Path) -> ProvisionProgress:
@@ -302,7 +305,19 @@ class TransferResourceRefs(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     cache_id: UUID | None
+    cache_mode: CacheMode
     producer_job_id: str | None
+
+
+class TransferSetup(BaseModel):
+    """Inputs provisioning needs before it starts."""
+
+    model_config = ConfigDict(frozen=True)
+
+    requested_by: str
+    exp: str
+    run: str
+    cache_mode: CacheMode
 
 
 class TransferObservation(BaseModel):

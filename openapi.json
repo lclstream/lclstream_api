@@ -108,6 +108,14 @@
         "title": "BinaryFileWritingDataHandlerParameters",
         "type": "object"
       },
+      "CacheMode": {
+        "enum": [
+          "per_transfer",
+          "shared"
+        ],
+        "title": "CacheMode",
+        "type": "string"
+      },
       "ConstValueParameters": {
         "additionalProperties": false,
         "description": "Parameters for ConstValue class",
@@ -761,6 +769,10 @@
       },
       "TransferCreate": {
         "properties": {
+          "cache_mode": {
+            "$ref": "#/components/schemas/CacheMode",
+            "default": "per_transfer"
+          },
           "parameters": {
             "$ref": "#/components/schemas/Parameters"
           }
@@ -773,6 +785,9 @@
       },
       "TransferDetail": {
         "properties": {
+          "cache_mode": {
+            "$ref": "#/components/schemas/CacheMode"
+          },
           "connection_info": {
             "anyOf": [
               {
@@ -788,6 +803,10 @@
             "title": "Created At",
             "type": "string"
           },
+          "experiment": {
+            "title": "Experiment",
+            "type": "string"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -795,6 +814,10 @@
           },
           "requested_by": {
             "title": "Requested By",
+            "type": "string"
+          },
+          "run": {
+            "title": "Run",
             "type": "string"
           },
           "state": {
@@ -813,7 +836,10 @@
           "id",
           "created_at",
           "requested_by",
-          "state"
+          "state",
+          "experiment",
+          "run",
+          "cache_mode"
         ],
         "title": "TransferDetail",
         "type": "object"
@@ -889,6 +915,9 @@
       },
       "TransferPublic": {
         "properties": {
+          "cache_mode": {
+            "$ref": "#/components/schemas/CacheMode"
+          },
           "connection_info": {
             "anyOf": [
               {
@@ -904,6 +933,10 @@
             "title": "Created At",
             "type": "string"
           },
+          "experiment": {
+            "title": "Experiment",
+            "type": "string"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -911,6 +944,10 @@
           },
           "requested_by": {
             "title": "Requested By",
+            "type": "string"
+          },
+          "run": {
+            "title": "Run",
             "type": "string"
           },
           "state": {
@@ -921,7 +958,10 @@
           "id",
           "created_at",
           "requested_by",
-          "state"
+          "state",
+          "experiment",
+          "run",
+          "cache_mode"
         ],
         "title": "TransferPublic",
         "type": "object"

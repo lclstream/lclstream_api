@@ -7,6 +7,7 @@ from uuid import UUID, uuid4
 import pytest
 from amsc_iri.models import JobState
 
+from lclstream_api.v2.core.producer import CacheMode
 from lclstream_api.v2.core.transfer import (
     CacheEndpoint,
     CacheState,
@@ -461,7 +462,7 @@ def test_provision_progress_accumulates_steps_in_reverse() -> None:
 
     progress = (
         ProvisionProgress()
-        .with_cache(cache_id)
+        .with_cache(cache_id, mode=CacheMode.per_transfer)
         .with_config(config_path)
         .with_producer("job-1")
     )
@@ -472,13 +473,23 @@ def test_provision_progress_accumulates_steps_in_reverse() -> None:
     )
 
 
+def test_provision_progress_with_cache_shared_mode_has_nothing_to_compensate() -> None:
+    """Other transfers may depend on a shared cache; only an explicit operator
+    call tears it down."""
+    progress = ProvisionProgress().with_cache(uuid4(), mode=CacheMode.shared)
+    assert progress.compensation() == ()
+
+
 def test_provision_progress_compensates_partial_failure() -> None:
-    """A crash after the cache exists but before the producer is submitted only
-    undoes what was recorded."""
+    """A crash undoes only what the ledger recorded."""
 
     cache_id = uuid4()
     config_path = Path("/x.yaml")
-    progress = ProvisionProgress().with_cache(cache_id).with_config(config_path)
+    progress = (
+        ProvisionProgress()
+        .with_cache(cache_id, mode=CacheMode.per_transfer)
+        .with_config(config_path)
+    )
     assert progress.compensation() == (
         DeleteConfig(config_path=config_path),
         DeleteCache(cache_id=cache_id),
@@ -487,5 +498,5 @@ def test_provision_progress_compensates_partial_failure() -> None:
 
 def test_provision_progress_is_immutable() -> None:
     base = ProvisionProgress()
-    base.with_cache(uuid4())
+    base.with_cache(uuid4(), mode=CacheMode.per_transfer)
     assert base.steps == ()
