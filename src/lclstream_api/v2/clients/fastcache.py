@@ -27,7 +27,7 @@ class CacheConfig(BaseModel):
 class CacheCreate(BaseModel):
     """POST body for creating a cache (TODO: hand-mirrored, drifts silently)."""
 
-    transfer_id: UUID
+    key: str
     requested_by: str
     log_path: Path
 
@@ -36,7 +36,7 @@ class CachePublic(BaseModel):
     """Cache row from fastcache_api (TODO: hand-mirrored, drifts silently)."""
 
     id: UUID
-    transfer_id: str
+    key: str | None
     user: str
     state: tcore.CacheState
     log_path: Path
@@ -75,13 +75,9 @@ class FastcacheClient:
         await self._http.aclose()
 
     async def create_cache(
-        self, transfer_id: UUID, requested_by: str, cache_log_path: Path
+        self, *, key: str, requested_by: str, log_path: Path
     ) -> CachePublic:
-        body = CacheCreate(
-            transfer_id=transfer_id,
-            requested_by=requested_by,
-            log_path=cache_log_path,
-        )
+        body = CacheCreate(key=key, requested_by=requested_by, log_path=log_path)
         response = await self._http.post(
             "/caches/",
             json=body.model_dump(mode="json", exclude_none=True),
