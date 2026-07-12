@@ -18,7 +18,8 @@ import re  # noqa: F401
 import json
 
 from pydantic import BaseModel, ConfigDict
-from typing import Any, ClassVar, Dict, List
+from typing import Any, ClassVar, Dict, List, Optional
+from lclstream_api_client._generated.models.cache_mode import CacheMode
 from lclstream_api_client._generated.models.parameters import Parameters
 from typing import Optional, Set
 from typing_extensions import Self
@@ -28,9 +29,10 @@ class TransferCreate(BaseModel):
     """
     TransferCreate
     """ # noqa: E501
+    cache_mode: Optional[CacheMode] = None
     parameters: Parameters
     additional_properties: Dict[str, Any] = {}
-    __properties: ClassVar[List[str]] = ["parameters"]
+    __properties: ClassVar[List[str]] = ["cache_mode", "parameters"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -93,6 +95,7 @@ class TransferCreate(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
+            "cache_mode": obj.get("cache_mode"),
             "parameters": Parameters.from_dict(obj["parameters"]) if obj.get("parameters") is not None else None
         })
         # store additional fields in additional_properties
