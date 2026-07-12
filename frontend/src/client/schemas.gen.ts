@@ -110,6 +110,15 @@ export const BinaryFileWritingDataHandlerParametersSchema = {
     type: 'object'
 } as const;
 
+export const CacheModeSchema = {
+    enum: [
+        'per_transfer',
+        'shared'
+    ],
+    title: 'CacheMode',
+    type: 'string'
+} as const;
+
 export const ConstValueParametersSchema = {
     additionalProperties: false,
     description: 'Parameters for ConstValue class',
@@ -783,6 +792,10 @@ export const SourceIdentifierParametersSchema = {
 
 export const TransferCreateSchema = {
     properties: {
+        cache_mode: {
+            $ref: '#/components/schemas/CacheMode',
+            default: 'per_transfer'
+        },
         parameters: {
             $ref: '#/components/schemas/Parameters'
         }
@@ -796,6 +809,9 @@ export const TransferCreateSchema = {
 
 export const TransferDetailSchema = {
     properties: {
+        cache_mode: {
+            $ref: '#/components/schemas/CacheMode'
+        },
         connection_info: {
             anyOf: [
                 {
@@ -811,6 +827,10 @@ export const TransferDetailSchema = {
             title: 'Created At',
             type: 'string'
         },
+        experiment: {
+            title: 'Experiment',
+            type: 'string'
+        },
         id: {
             format: 'uuid',
             title: 'Id',
@@ -818,6 +838,10 @@ export const TransferDetailSchema = {
         },
         requested_by: {
             title: 'Requested By',
+            type: 'string'
+        },
+        run: {
+            title: 'Run',
             type: 'string'
         },
         state: {
@@ -836,7 +860,10 @@ export const TransferDetailSchema = {
         'id',
         'created_at',
         'requested_by',
-        'state'
+        'state',
+        'experiment',
+        'run',
+        'cache_mode'
     ],
     title: 'TransferDetail',
     type: 'object'
@@ -915,6 +942,9 @@ export const TransferLogStreamInfoSchema = {
 
 export const TransferPublicSchema = {
     properties: {
+        cache_mode: {
+            $ref: '#/components/schemas/CacheMode'
+        },
         connection_info: {
             anyOf: [
                 {
@@ -930,6 +960,10 @@ export const TransferPublicSchema = {
             title: 'Created At',
             type: 'string'
         },
+        experiment: {
+            title: 'Experiment',
+            type: 'string'
+        },
         id: {
             format: 'uuid',
             title: 'Id',
@@ -937,6 +971,10 @@ export const TransferPublicSchema = {
         },
         requested_by: {
             title: 'Requested By',
+            type: 'string'
+        },
+        run: {
+            title: 'Run',
             type: 'string'
         },
         state: {
@@ -947,7 +985,10 @@ export const TransferPublicSchema = {
         'id',
         'created_at',
         'requested_by',
-        'state'
+        'state',
+        'experiment',
+        'run',
+        'cache_mode'
     ],
     title: 'TransferPublic',
     type: 'object'
