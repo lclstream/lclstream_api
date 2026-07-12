@@ -28,6 +28,14 @@ CONFIG_FILENAME = "lclstreamer.yaml"
 PRODUCER_STDOUT_FILENAME = "output.txt"
 PRODUCER_STDERR_FILENAME = "error.txt"
 
+
+class CacheMode(StrEnum):
+    # One cache per transfer (default).
+    per_transfer = "per_transfer"
+    # One cache shared by many producers for the same experiment.
+    shared = "shared"
+
+
 # TODO: use container field after we get that feature added to iri
 # NOTE: JobSpec.environment replaces the S3DF IRI compute
 # adapter's own baseline Slurm environment whenever it's non-empty

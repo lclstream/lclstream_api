@@ -15,6 +15,7 @@ from sqlalchemy.orm import (
     relationship,
 )
 
+from .core.producer import CacheMode
 from .models import TransferState
 
 
@@ -62,6 +63,11 @@ class Transfer(DTMixin, Base):
     # since these are always present it would be good to keep them around
     experiment: Mapped[str] = mapped_column(doc="Experiment's unique name")
     run: Mapped[str] = mapped_column(doc="Run number within the experiment")
+
+    cache_mode: Mapped[str] = mapped_column(
+        default=CacheMode.per_transfer,
+        doc="CacheMode: per_transfer or shared; stored as the string value",
+    )
 
     # Cache reference (lives in fastcache_api's DB on the DTN).
     cache_id: Mapped[UUID | None] = mapped_column(
