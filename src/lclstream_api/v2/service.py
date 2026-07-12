@@ -22,6 +22,7 @@ from .clients import iri
 from .core import logs as lcore, producer as pcore
 from .exceptions import NotFound, UpstreamError
 from .models import (
+    CacheMode,
     TransferCancelOutcome,
     TransferDetail,
     TransferLogIndex,
@@ -34,7 +35,13 @@ from .models import (
 
 
 async def create_transfer(
-    session: AsyncSession, user: str, parameters: Parameters
+    session: AsyncSession,
+    user: str,
+    parameters: Parameters,
+    cache_mode: CacheMode = CacheMode.per_transfer,
+    *,
+    experiment: str,
+    run: str,
 ) -> TransferPublic:
     transfer_id = uuid4()
     async with session.begin():
@@ -43,6 +50,9 @@ async def create_transfer(
             transfer_id=transfer_id,
             user=user,
             parameters=parameters.model_dump(mode="json"),
+            experiment=experiment,
+            run=run,
+            cache_mode=cache_mode,
         )
         public = TransferPublic.from_transfer(transfer)
     # here we just start the workflow
