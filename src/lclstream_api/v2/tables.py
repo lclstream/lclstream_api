@@ -58,6 +58,11 @@ class Transfer(DTMixin, Base):
         JSON, doc="Full lclstreamer Parameters payload"
     )
 
+    # keep ref to experiment/run - we could look these up in the params, but
+    # since these are always present it would be good to keep them around
+    experiment: Mapped[str] = mapped_column(doc="Experiment's unique name")
+    run: Mapped[str] = mapped_column(doc="Run number within the experiment")
+
     # Cache reference (lives in fastcache_api's DB on the DTN).
     cache_id: Mapped[UUID | None] = mapped_column(
         default=None, doc="Soft link to fastcache_api Cache.id"
