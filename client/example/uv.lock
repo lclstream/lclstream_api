@@ -180,7 +180,7 @@ wheels = [
 [[package]]
 name = "lclstream-api-client"
 version = "0.1.0"
-source = { git = "https://github.com/lclstream/lclstream_api.git?subdirectory=client%2F&rev=add-client-example#83e06cc6aada5f35ec7cc9778c6870232b189752" }
+source = { git = "https://github.com/lclstream/lclstream_api.git?subdirectory=client%2F&rev=add-jobspec-override#73ec10dd835fb2c0b14645b41a452b940127cae1" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
@@ -200,7 +200,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "lclstream-api-client", git = "https://github.com/lclstream/lclstream_api.git?subdirectory=client%2F&rev=add-client-example" },
+    { name = "lclstream-api-client", git = "https://github.com/lclstream/lclstream_api.git?subdirectory=client%2F&rev=add-jobspec-override" },
     { name = "pydantic-settings", specifier = ">=2.6.0" },
     { name = "pyzmq", specifier = ">=27.1.0" },
 ]

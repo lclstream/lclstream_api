@@ -48,19 +48,21 @@ class Transfer(DTMixin, Base):
     id: Mapped[UUID] = mapped_column(default=uuid4, primary_key=True)
     user: Mapped[str] = mapped_column(doc="User that created this transfer")
 
-    # Denormalized current state; the transitions table is the source of truth.
+    # Denormalized; the transitions table is authoritative.
     state: Mapped[str] = mapped_column(
         default=TransferState.provisioning,
         doc="Current lifecycle state; stored as the TransferState string value",
     )
 
-    # Full lclstreamer request payload (includes experiment/run).
     parameters: Mapped[dict[str, Any]] = mapped_column(
         JSON, doc="Full lclstreamer Parameters payload"
     )
 
-    # keep ref to experiment/run - we could look these up in the params, but
-    # since these are always present it would be good to keep them around
+    job_spec: Mapped[dict[str, Any] | None] = mapped_column(
+        JSON, default=None, doc="Producer JobSpec to submit via IRI"
+    )
+
+    # Denormalized from parameters; always present there.
     experiment: Mapped[str] = mapped_column(doc="Experiment's unique name")
     run: Mapped[str] = mapped_column(doc="Run number within the experiment")
 
