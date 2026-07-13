@@ -30,6 +30,7 @@ class CacheCreate(BaseModel):
     key: str
     requested_by: str
     log_path: Path
+    idle_timeout_ms: int | None = None
 
 
 class CachePublic(BaseModel):
@@ -75,9 +76,19 @@ class FastcacheClient:
         await self._http.aclose()
 
     async def create_cache(
-        self, *, key: str, requested_by: str, log_path: Path
+        self,
+        *,
+        key: str,
+        requested_by: str,
+        log_path: Path,
+        idle_timeout_ms: int | None = None,
     ) -> CachePublic:
-        body = CacheCreate(key=key, requested_by=requested_by, log_path=log_path)
+        body = CacheCreate(
+            key=key,
+            requested_by=requested_by,
+            log_path=log_path,
+            idle_timeout_ms=idle_timeout_ms,
+        )
         response = await self._http.post(
             "/caches/",
             json=body.model_dump(mode="json", exclude_none=True),
