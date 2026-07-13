@@ -19,7 +19,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..lclstreamer_param import Parameters
 from . import config, repo, workflows
 from .clients import iri
-from .core import logs as lcore
+from .core import logs as lcore, producer as pcore
+from .core.producer import JobSpec
 from .exceptions import NotFound, UpstreamError
 from .models import (
     CacheMode,
@@ -42,8 +43,18 @@ async def create_transfer(
     *,
     experiment: str,
     run: str,
+    job_spec_override: JobSpec | None = None,
 ) -> TransferPublic:
     transfer_id = uuid4()
+    job_spec = pcore.build_job_spec(
+        parameters,
+        config.get_producer(),
+        name=pcore.producer_job_name(transfer_id),
+        exp=experiment,
+        run=run,
+        transfer_id=transfer_id,
+        job_spec_override=job_spec_override,
+    )
     async with session.begin():
         transfer = await repo.insert_transfer(
             session,
@@ -53,6 +64,7 @@ async def create_transfer(
             experiment=experiment,
             run=run,
             cache_mode=cache_mode,
+            job_spec=job_spec.model_dump(mode="json"),
         )
         public = TransferPublic.from_transfer(transfer)
     # here we just start the workflow

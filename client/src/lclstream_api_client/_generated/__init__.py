@@ -35,6 +35,7 @@ __all__ = [
     "CacheMode",
     "ConstValueParameters",
     "ConsumerConnectionInfo",
+    "Container",
     "DataHandlersInner",
     "DataSerializer",
     "DataSourcesValue",
@@ -43,6 +44,8 @@ __all__ = [
     "HDF5BinarySerializerParameters",
     "HTTPValidationError",
     "InternalEventSourceParameters",
+    "JobAttributes",
+    "JobSpec",
     "LocationInner",
     "LogReadMode",
     "LogStream",
@@ -58,6 +61,7 @@ __all__ = [
     "Psana2RunInfoParameters",
     "Psana2TimestampParameters",
     "PsanaFields",
+    "ResourceSpec",
     "SimplonBinarySerializerParameters",
     "SourceIdentifierParameters",
     "TransferCreate",
@@ -72,6 +76,7 @@ __all__ = [
     "ValidationError",
     "Value",
     "ValueAnyOfInner",
+    "VolumeMount",
 ]
 
 # import apis into sdk package
@@ -96,6 +101,7 @@ from lclstream_api_client._generated.models.binary_file_writing_data_handler_par
 from lclstream_api_client._generated.models.cache_mode import CacheMode as CacheMode
 from lclstream_api_client._generated.models.const_value_parameters import ConstValueParameters as ConstValueParameters
 from lclstream_api_client._generated.models.consumer_connection_info import ConsumerConnectionInfo as ConsumerConnectionInfo
+from lclstream_api_client._generated.models.container import Container as Container
 from lclstream_api_client._generated.models.data_handlers_inner import DataHandlersInner as DataHandlersInner
 from lclstream_api_client._generated.models.data_serializer import DataSerializer as DataSerializer
 from lclstream_api_client._generated.models.data_sources_value import DataSourcesValue as DataSourcesValue
@@ -104,6 +110,8 @@ from lclstream_api_client._generated.models.generic_random_numpy_array_parameter
 from lclstream_api_client._generated.models.hdf5_binary_serializer_parameters import HDF5BinarySerializerParameters as HDF5BinarySerializerParameters
 from lclstream_api_client._generated.models.http_validation_error import HTTPValidationError as HTTPValidationError
 from lclstream_api_client._generated.models.internal_event_source_parameters import InternalEventSourceParameters as InternalEventSourceParameters
+from lclstream_api_client._generated.models.job_attributes import JobAttributes as JobAttributes
+from lclstream_api_client._generated.models.job_spec import JobSpec as JobSpec
 from lclstream_api_client._generated.models.location_inner import LocationInner as LocationInner
 from lclstream_api_client._generated.models.log_read_mode import LogReadMode as LogReadMode
 from lclstream_api_client._generated.models.log_stream import LogStream as LogStream
@@ -119,6 +127,7 @@ from lclstream_api_client._generated.models.psana2_event_source_parameters impor
 from lclstream_api_client._generated.models.psana2_run_info_parameters import Psana2RunInfoParameters as Psana2RunInfoParameters
 from lclstream_api_client._generated.models.psana2_timestamp_parameters import Psana2TimestampParameters as Psana2TimestampParameters
 from lclstream_api_client._generated.models.psana_fields import PsanaFields as PsanaFields
+from lclstream_api_client._generated.models.resource_spec import ResourceSpec as ResourceSpec
 from lclstream_api_client._generated.models.simplon_binary_serializer_parameters import SimplonBinarySerializerParameters as SimplonBinarySerializerParameters
 from lclstream_api_client._generated.models.source_identifier_parameters import SourceIdentifierParameters as SourceIdentifierParameters
 from lclstream_api_client._generated.models.transfer_create import TransferCreate as TransferCreate
@@ -133,4 +142,5 @@ from lclstream_api_client._generated.models.transition_source import TransitionS
 from lclstream_api_client._generated.models.validation_error import ValidationError as ValidationError
 from lclstream_api_client._generated.models.value import Value as Value
 from lclstream_api_client._generated.models.value_any_of_inner import ValueAnyOfInner as ValueAnyOfInner
+from lclstream_api_client._generated.models.volume_mount import VolumeMount as VolumeMount
 

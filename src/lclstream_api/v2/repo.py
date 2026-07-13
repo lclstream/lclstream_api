@@ -24,6 +24,7 @@ async def insert_transfer(
     parameters: dict[str, Any],
     experiment: str,
     run: str,
+    job_spec: dict[str, Any],
     cache_mode: tcore.CacheMode = tcore.CacheMode.per_transfer,
 ) -> Transfer:
     transfer = Transfer(
@@ -34,6 +35,7 @@ async def insert_transfer(
         experiment=experiment,
         run=run,
         cache_mode=cache_mode,
+        job_spec=job_spec,
     )
     session.add(transfer)
     session.add(

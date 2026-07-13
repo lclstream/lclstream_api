@@ -193,6 +193,20 @@ export const zInternalEventSourceParameters = z.object({
 });
 
 /**
+ * JobAttributes
+ *
+ * Additional attributes and scheduling parameters for a job.
+ */
+export const zJobAttributes = z.object({
+    account: z.string().min(1).nullish(),
+    additional_properties: z.record(z.string(), z.unknown()).optional().default({}),
+    custom_attributes: z.record(z.string(), z.string()).nullish(),
+    duration: z.int().gte(1).nullish(),
+    queue_name: z.string().min(1).nullish(),
+    reservation_id: z.string().min(1).nullish()
+});
+
+/**
  * LogReadMode
  */
 export const zLogReadMode = z.enum(['head', 'tail']);
@@ -336,6 +350,22 @@ export const zPsana2TimestampParameters = z.object({
 });
 
 /**
+ * ResourceSpec
+ *
+ * Specification of computational resources required for a job.
+ */
+export const zResourceSpec = z.object({
+    additional_properties: z.record(z.string(), z.unknown()).optional().default({}),
+    cpu_cores_per_process: z.int().gte(1).nullish(),
+    exclusive_node_use: z.boolean().nullish().default(true),
+    gpu_cores_per_process: z.int().gte(1).nullish(),
+    memory: z.int().gte(1).nullish(),
+    node_count: z.int().gte(1).nullish(),
+    process_count: z.int().gte(1).nullish(),
+    processes_per_node: z.int().gte(1).nullish()
+});
+
+/**
  * SimplonBinarySerializerParameters
  *
  * Configuration parameters for the Simplon binary serializer
@@ -475,14 +505,6 @@ export const zParameters = z.object({
 });
 
 /**
- * TransferCreate
- */
-export const zTransferCreate = z.object({
-    cache_mode: zCacheMode.optional().default('per_transfer'),
-    parameters: zParameters
-});
-
-/**
  * TransferLogStreamInfo
  *
  * One log stream's resolved location and (best-effort) availability.
@@ -588,6 +610,61 @@ export const zValidationError = z.object({
  */
 export const zHttpValidationError = z.object({
     detail: z.array(zValidationError).optional()
+});
+
+/**
+ * VolumeMount
+ *
+ * Represents a volume mount for a container.
+ */
+export const zVolumeMount = z.object({
+    additional_properties: z.record(z.string(), z.unknown()).optional().default({}),
+    read_only: z.boolean().nullish().default(true),
+    source: z.string().min(1),
+    target: z.string().min(1)
+});
+
+/**
+ * Container
+ *
+ * Represents a container specification for job execution.  Implementation notes: The value of gpu_cores_per_process in ResourceSpec should be used to determine if the container should be run with GPU support. Likewise, the value of launcher in JobSpec should be used to determine if the container should be run with MPI support. The container should by default. be run with host networking.
+ */
+export const zContainer = z.object({
+    additional_properties: z.record(z.string(), z.unknown()).optional().default({}),
+    image: z.string().min(1),
+    volume_mounts: z.array(zVolumeMount).nullish()
+});
+
+/**
+ * JobSpec
+ *
+ * Specification for a job.
+ */
+export const zJobSpec = z.object({
+    arguments: z.array(z.string()).nullish(),
+    attributes: zJobAttributes.nullish(),
+    container: zContainer.nullish(),
+    directory: z.string().min(1).nullish(),
+    environment: z.record(z.string(), z.string()).nullish(),
+    executable: z.string().min(1).nullish(),
+    inherit_environment: z.boolean().nullish().default(true),
+    launcher: z.string().min(1).nullish(),
+    name: z.string().min(1).nullish(),
+    post_launch: z.string().min(1).nullish(),
+    pre_launch: z.string().min(1).nullish(),
+    resources: zResourceSpec.nullish(),
+    stderr_path: z.string().min(1).nullish(),
+    stdin_path: z.string().min(1).nullish(),
+    stdout_path: z.string().min(1).nullish()
+});
+
+/**
+ * TransferCreate
+ */
+export const zTransferCreate = z.object({
+    cache_mode: zCacheMode.optional().default('per_transfer'),
+    job_spec_override: zJobSpec.nullish(),
+    parameters: zParameters
 });
 
 export const zGetTransfersTransfersGetData = z.object({

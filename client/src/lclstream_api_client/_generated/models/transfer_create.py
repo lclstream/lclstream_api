@@ -20,6 +20,7 @@ import json
 from pydantic import BaseModel, ConfigDict
 from typing import Any, ClassVar, Dict, List, Optional
 from lclstream_api_client._generated.models.cache_mode import CacheMode
+from lclstream_api_client._generated.models.job_spec import JobSpec
 from lclstream_api_client._generated.models.parameters import Parameters
 from typing import Optional, Set
 from typing_extensions import Self
@@ -30,9 +31,10 @@ class TransferCreate(BaseModel):
     TransferCreate
     """ # noqa: E501
     cache_mode: Optional[CacheMode] = None
+    job_spec_override: Optional[JobSpec] = None
     parameters: Parameters
     additional_properties: Dict[str, Any] = {}
-    __properties: ClassVar[List[str]] = ["cache_mode", "parameters"]
+    __properties: ClassVar[List[str]] = ["cache_mode", "job_spec_override", "parameters"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -75,6 +77,9 @@ class TransferCreate(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # override the default output from pydantic by calling `to_dict()` of job_spec_override
+        if self.job_spec_override:
+            _dict['job_spec_override'] = self.job_spec_override.to_dict()
         # override the default output from pydantic by calling `to_dict()` of parameters
         if self.parameters:
             _dict['parameters'] = self.parameters.to_dict()
@@ -82,6 +87,11 @@ class TransferCreate(BaseModel):
         if self.additional_properties is not None:
             for _key, _value in self.additional_properties.items():
                 _dict[_key] = _value
+
+        # set to None if job_spec_override (nullable) is None
+        # and model_fields_set contains the field
+        if self.job_spec_override is None and "job_spec_override" in self.model_fields_set:
+            _dict['job_spec_override'] = None
 
         return _dict
 
@@ -96,6 +106,7 @@ class TransferCreate(BaseModel):
 
         _obj = cls.model_validate({
             "cache_mode": obj.get("cache_mode"),
+            "job_spec_override": JobSpec.from_dict(obj["job_spec_override"]) if obj.get("job_spec_override") is not None else None,
             "parameters": Parameters.from_dict(obj["parameters"]) if obj.get("parameters") is not None else None
         })
         # store additional fields in additional_properties

@@ -4,12 +4,15 @@ from uuid import UUID
 
 import pytest
 import yaml
+from amsc_iri.models import JobAttributes, JobSpec
 
 from lclstream_api.lclstreamer_param import Parameters
 from lclstream_api.v2.config import LCLStreamerProducerSettings
 from lclstream_api.v2.core.producer import (
     CONFIG_FILENAME,
     CacheMode,
+    apply_job_spec_update,
+    build_job_spec,
     build_producer_plan,
     cache_idle_timeout_ms,
     inject_cache_handlers,
@@ -142,11 +145,11 @@ def test_render_config_yaml_roundtrips(make_params: ParamsFactory) -> None:
 
 
 # ---------------------------------------------------------------------------
-# build_producer_plan: the full jobspec + config the shell needs
+# build_job_spec / build_producer_plan
 # ---------------------------------------------------------------------------
 
 
-def test_build_producer_plan_assembles_jobspec_and_config(
+def test_build_job_spec_and_producer_plan_assemble_jobspec_and_config(
     make_params: ParamsFactory,
     make_producer_settings: SettingsFactory,
 ) -> None:
@@ -156,13 +159,16 @@ def test_build_producer_plan_assembles_jobspec_and_config(
         environments={"psana2": {"PSANA_VERSION": "2"}},
     )
 
-    plan = build_producer_plan(
+    jobspec = build_job_spec(
         params,
         settings,
         name="transfer-job",
         exp="mfxl1001",
         run="42",
         transfer_id=TRANSFER_ID,
+    )
+    plan = build_producer_plan(
+        jobspec, params, settings, exp="mfxl1001", run="42", transfer_id=TRANSFER_ID
     )
 
     expected_dir = "/sdf/data/lcls/ds/mfx/mfxl1001/scratch/lclstreamer/lclstreamer_mfxl1001_42_12345678"
@@ -200,7 +206,7 @@ def test_build_producer_plan_assembles_jobspec_and_config(
     }
 
 
-def test_build_producer_plan_without_matching_environment_keeps_defaults(
+def test_build_job_spec_without_matching_environment_keeps_defaults(
     make_params: ParamsFactory,
     make_producer_settings: SettingsFactory,
 ) -> None:
@@ -211,15 +217,10 @@ def test_build_producer_plan_without_matching_environment_keeps_defaults(
     params = make_params()
     settings = make_producer_settings(environments={})  # nothing for psana2
 
-    plan = build_producer_plan(
-        params,
-        settings,
-        name="job",
-        exp="mfxl1001",
-        run="42",
-        transfer_id=TRANSFER_ID,
+    jobspec = build_job_spec(
+        params, settings, name="job", exp="mfxl1001", run="42", transfer_id=TRANSFER_ID
     )
-    assert plan.jobspec.environment == {
+    assert jobspec.environment == {
         "TMPDIR": "/tmp",
         "OMPI_MCA_orte_tmpdir_base": "/tmp",
         "PMIX_MCA_psec": "native",
@@ -228,31 +229,104 @@ def test_build_producer_plan_without_matching_environment_keeps_defaults(
     }
 
 
-def test_build_producer_plan_does_not_mutate_default_spec(
+def test_build_job_spec_does_not_mutate_default_spec(
     make_params: ParamsFactory,
     make_producer_settings: SettingsFactory,
 ) -> None:
-    """Two plans must be independent: building one must not bleed state into the
-    shared ``DEFAULT_JOB_SPEC`` and thus into the next."""
+    """Building one jobspec must not bleed state into the shared
+    ``DEFAULT_JOB_SPEC``."""
 
     params = make_params()
     settings = make_producer_settings()
 
-    first = build_producer_plan(
+    first = build_job_spec(
         params, settings, name="a", exp="mfxl1001", run="1", transfer_id=TRANSFER_ID
     )
     other_id = UUID("87654321-4321-8765-4321-876543218765")
-    second = build_producer_plan(
+    second = build_job_spec(
         params, settings, name="b", exp="cxic00118", run="9", transfer_id=other_id
     )
 
-    assert first.jobspec.name == "a"
-    assert second.jobspec.name == "b"
-    assert first.jobspec.attributes is not None
-    assert second.jobspec.attributes is not None
-    assert first.jobspec.attributes.account == "lcls:mfxl1001"
-    assert second.jobspec.attributes.account == "lcls:cxic00118"
-    assert first.config_path != second.config_path
+    assert first.name == "a"
+    assert second.name == "b"
+    assert first.attributes is not None
+    assert second.attributes is not None
+    assert first.attributes.account == "lcls:mfxl1001"
+    assert second.attributes.account == "lcls:cxic00118"
+
+
+# ---------------------------------------------------------------------------
+# apply_job_spec_update / JobSpecUpdate: caller-supplied JobSpec overrides
+# ---------------------------------------------------------------------------
+
+
+def test_apply_job_spec_update_none_is_noop() -> None:
+    base = JobSpec(name="job", attributes=JobAttributes(account="lcls:mfxl1001"))
+    assert apply_job_spec_update(base, None) is base
+
+
+def test_apply_job_spec_update_only_overrides_set_nested_fields() -> None:
+    """Overriding account must not clobber siblings the update left unset."""
+    base = JobSpec(
+        attributes=JobAttributes(
+            account="lcls:mfxl1001", queue_name="milano", duration=3600
+        )
+    )
+    update = JobSpec(attributes=JobAttributes(account="lcls:public01"))
+
+    merged = apply_job_spec_update(base, update)
+
+    assert merged.attributes is not None
+    assert merged.attributes.account == "lcls:public01"
+    assert merged.attributes.queue_name == "milano"
+    assert merged.attributes.duration == 3600
+
+
+def test_apply_job_spec_update_merges_environment_additively() -> None:
+    """``environment`` is a plain dict, not a submodel, but the deep merge
+    still adds keys instead of replacing it."""
+    base = JobSpec(environment={"TMPDIR": "/tmp", "PATH": "/bin"})
+    update = JobSpec(environment={"FOO": "bar"})
+
+    merged = apply_job_spec_update(base, update)
+
+    assert merged.environment == {"TMPDIR": "/tmp", "PATH": "/bin", "FOO": "bar"}
+
+
+def test_apply_job_spec_update_does_not_mutate_base() -> None:
+    base = JobSpec(attributes=JobAttributes(account="lcls:mfxl1001"))
+    update = JobSpec(attributes=JobAttributes(account="lcls:public01"))
+
+    apply_job_spec_update(base, update)
+
+    assert base.attributes is not None
+    assert base.attributes.account == "lcls:mfxl1001"
+
+
+def test_build_job_spec_applies_job_spec_update(
+    make_params: ParamsFactory,
+    make_producer_settings: SettingsFactory,
+) -> None:
+    """The account override wins over the exp-derived default; everything else
+    stays computed."""
+    params = make_params()
+    settings = make_producer_settings(data_base_dir="/sdf/data/lcls/ds")
+    override = JobSpec(attributes=JobAttributes(account="lcls:mfx101629726"))
+
+    jobspec = build_job_spec(
+        params,
+        settings,
+        name="transfer-job",
+        exp="mfx100848724",
+        run="51",
+        transfer_id=TRANSFER_ID,
+        job_spec_override=override,
+    )
+
+    assert jobspec.attributes is not None
+    assert jobspec.attributes.account == "lcls:mfx101629726"
+    assert jobspec.attributes.queue_name == "milano"
+    assert jobspec.executable == "/usr/bin/apptainer"
 
 
 @pytest.mark.parametrize(

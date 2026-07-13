@@ -58,7 +58,13 @@ async def new_transfer(
             ),
         )
     return await service.create_transfer(
-        session, user, body.parameters, body.cache_mode, experiment=exp, run=run
+        session,
+        user,
+        body.parameters,
+        body.cache_mode,
+        experiment=exp,
+        run=run,
+        job_spec_override=body.job_spec_override,
     )
 
 

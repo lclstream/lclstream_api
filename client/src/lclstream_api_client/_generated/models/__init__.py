@@ -20,6 +20,7 @@ from lclstream_api_client._generated.models.binary_file_writing_data_handler_par
 from lclstream_api_client._generated.models.cache_mode import CacheMode
 from lclstream_api_client._generated.models.const_value_parameters import ConstValueParameters
 from lclstream_api_client._generated.models.consumer_connection_info import ConsumerConnectionInfo
+from lclstream_api_client._generated.models.container import Container
 from lclstream_api_client._generated.models.data_handlers_inner import DataHandlersInner
 from lclstream_api_client._generated.models.data_serializer import DataSerializer
 from lclstream_api_client._generated.models.data_sources_value import DataSourcesValue
@@ -28,6 +29,8 @@ from lclstream_api_client._generated.models.generic_random_numpy_array_parameter
 from lclstream_api_client._generated.models.hdf5_binary_serializer_parameters import HDF5BinarySerializerParameters
 from lclstream_api_client._generated.models.http_validation_error import HTTPValidationError
 from lclstream_api_client._generated.models.internal_event_source_parameters import InternalEventSourceParameters
+from lclstream_api_client._generated.models.job_attributes import JobAttributes
+from lclstream_api_client._generated.models.job_spec import JobSpec
 from lclstream_api_client._generated.models.location_inner import LocationInner
 from lclstream_api_client._generated.models.log_read_mode import LogReadMode
 from lclstream_api_client._generated.models.log_stream import LogStream
@@ -43,6 +46,7 @@ from lclstream_api_client._generated.models.psana2_event_source_parameters impor
 from lclstream_api_client._generated.models.psana2_run_info_parameters import Psana2RunInfoParameters
 from lclstream_api_client._generated.models.psana2_timestamp_parameters import Psana2TimestampParameters
 from lclstream_api_client._generated.models.psana_fields import PsanaFields
+from lclstream_api_client._generated.models.resource_spec import ResourceSpec
 from lclstream_api_client._generated.models.simplon_binary_serializer_parameters import SimplonBinarySerializerParameters
 from lclstream_api_client._generated.models.source_identifier_parameters import SourceIdentifierParameters
 from lclstream_api_client._generated.models.transfer_create import TransferCreate
@@ -57,4 +61,5 @@ from lclstream_api_client._generated.models.transition_source import TransitionS
 from lclstream_api_client._generated.models.validation_error import ValidationError
 from lclstream_api_client._generated.models.value import Value
 from lclstream_api_client._generated.models.value_any_of_inner import ValueAnyOfInner
+from lclstream_api_client._generated.models.volume_mount import VolumeMount
 

@@ -8,7 +8,7 @@ The shell (clients/iri.py + workflows.py) performs the upload and submission.
 import re
 from enum import StrEnum
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 import yaml
@@ -70,6 +70,23 @@ DEFAULT_JOB_SPEC: JobSpec = JobSpec(
 )
 
 APPTAINER_BIN = "/usr/bin/apptainer"
+
+
+def _deep_merge(base: dict[str, Any], update: dict[str, Any]) -> dict[str, Any]:
+    merged = dict(base)
+    for key, value in update.items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = _deep_merge(merged[key], value)
+        else:
+            merged[key] = value
+    return merged
+
+
+def apply_job_spec_update(jobspec: JobSpec, update: JobSpec | None) -> JobSpec:
+    if update is None:
+        return jobspec
+    merged = _deep_merge(jobspec.model_dump(), update.model_dump(exclude_unset=True))
+    return JobSpec.model_validate(merged)
 
 
 def inject_cache_handlers(params: Parameters, pull_uri: str) -> Parameters:
@@ -176,7 +193,7 @@ class ProducerPlan(BaseModel):
     config_yaml: str
 
 
-def build_producer_plan(
+def build_job_spec(
     params: Parameters,
     settings: LCLStreamerProducerSettings,
     *,
@@ -184,7 +201,13 @@ def build_producer_plan(
     exp: str,
     run: str,
     transfer_id: UUID,
-) -> ProducerPlan:
+    job_spec_override: JobSpec | None = None,
+) -> JobSpec:
+    """Resolve the full producer JobSpec for a transfer. Deterministic given
+    its inputs (not dependent on the allocated cache), so it's computed once
+    at transfer-creation time and the result is what gets persisted/submitted
+    -- not recomputed later during provisioning.
+    """
     psana_env = _PSANA_ENV[params.event_source.type]
     psana_environment = settings.environments.get(psana_env) or {}
 
@@ -209,14 +232,32 @@ def build_producer_plan(
     jobspec.directory = str(job_dir)
     jobspec.stdout_path = str(job_dir / PRODUCER_STDOUT_FILENAME)
     jobspec.stderr_path = str(job_dir / PRODUCER_STDERR_FILENAME)
+    return apply_job_spec_update(jobspec, job_spec_override)
+
+
+def build_producer_plan(
+    jobspec: JobSpec,
+    params: Parameters,
+    settings: LCLStreamerProducerSettings,
+    *,
+    exp: str,
+    run: str,
+    transfer_id: UUID,
+) -> ProducerPlan:
+    """Pair an already-resolved JobSpec (see ``build_job_spec``) with the
+    config file to upload for this transfer."""
     return ProducerPlan(
-        jobspec=JobSpec.model_validate(jobspec),
-        config_path=config_path,
+        jobspec=jobspec,
+        config_path=producer_config_path(settings, exp, run, transfer_id),
         config_yaml=render_config_yaml(params),
     )
 
 
 PRODUCER_JOB_NAME_PREFIX = "lclstream-producer-"
+
+
+def producer_job_name(transfer_id: UUID) -> str:
+    return f"{PRODUCER_JOB_NAME_PREFIX}{short_id(transfer_id)}"
 
 
 def plan_producer(
@@ -227,9 +268,9 @@ def plan_producer(
     """Compose the full producer plan for a transfer."""
     params = inject_cache_handlers(inputs.parameters, inputs.endpoint.pull_uri)
     return build_producer_plan(
+        inputs.job_spec,
         params,
         settings,
-        name=f"{PRODUCER_JOB_NAME_PREFIX}{short_id(transfer_id)}",
         exp=inputs.exp,
         run=inputs.run,
         transfer_id=transfer_id,

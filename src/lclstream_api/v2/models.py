@@ -7,7 +7,7 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict
 
 from ..lclstreamer_param import Parameters as LCLStreamerParameters
 from .core.logs import LogStream
-from .core.producer import CacheMode
+from .core.producer import CacheMode, JobSpec
 
 if TYPE_CHECKING:
     from .tables import Transfer
@@ -60,6 +60,8 @@ class ConsumerConnectionInfo(BaseModel):
 class TransferCreate(BaseModel):
     parameters: LCLStreamerParameters
     cache_mode: CacheMode = CacheMode.per_transfer
+    # Optional escape hatch
+    job_spec_override: JobSpec | None = None
 
 
 class TransitionPublic(BaseModel):
