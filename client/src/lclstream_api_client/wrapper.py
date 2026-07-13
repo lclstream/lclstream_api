@@ -7,13 +7,13 @@ from ._generated.configuration import Configuration
 from ._generated.models.log_read_mode import LogReadMode
 from ._generated.models.log_stream import LogStream
 from ._generated.models.message import Message
-from ._generated.models.parameters import Parameters
 from ._generated.models.transfer_create import TransferCreate
 from ._generated.models.transfer_detail import TransferDetail
 from ._generated.models.transfer_log_index import TransferLogIndex
 from ._generated.models.transfer_public import TransferPublic
 from ._generated.models.transfer_state import TransferState
 from ._generated.models.transfers_public import TransfersPublic
+from .params import Parameters
 
 Token = str | Callable[[], str]
 
@@ -48,7 +48,7 @@ class LclstreamApiClient:
 
     def create_transfer(self, parameters: Parameters) -> TransferPublic:
         return self._authed().new_transfer_transfers_post_sync(
-            TransferCreate(parameters=parameters)
+            TransferCreate(parameters=parameters.to_generated())
         )
 
     def cancel_transfer(self, transfer_id: UUID) -> Message:
@@ -106,7 +106,7 @@ class AsyncLclstreamApiClient:
 
     async def create_transfer(self, parameters: Parameters) -> TransferPublic:
         return await self._authed().new_transfer_transfers_post(
-            TransferCreate(parameters=parameters)
+            TransferCreate(parameters=parameters.to_generated())
         )
 
     async def cancel_transfer(self, transfer_id: UUID) -> Message:
