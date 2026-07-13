@@ -17,24 +17,25 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
-from lclstream_api_client._generated.models.cache_mode import CacheMode
-from lclstream_api_client._generated.models.job_spec import JobSpec
-from lclstream_api_client._generated.models.parameters import Parameters
+from typing_extensions import Annotated
 from typing import Optional, Set
 from typing_extensions import Self
 from pydantic_core import to_jsonable_python
 
-class TransferCreate(BaseModel):
+class JobAttributes(BaseModel):
     """
-    TransferCreate
+    Additional attributes and scheduling parameters for a job.
     """ # noqa: E501
-    cache_mode: Optional[CacheMode] = None
-    job_spec_override: Optional[JobSpec] = None
-    parameters: Parameters
+    account: Optional[Annotated[str, Field(min_length=1, strict=True)]] = Field(default=None, description="Account or project to charge for resource usage")
+    additional_properties: Optional[Dict[str, Any]] = None
+    custom_attributes: Optional[Dict[str, StrictStr]] = Field(default=None, description="Custom scheduler-specific attributes as key-value pairs")
+    duration: Optional[Annotated[int, Field(strict=True, ge=1)]] = Field(default=None, description="Duration in seconds")
+    queue_name: Optional[Annotated[str, Field(min_length=1, strict=True)]] = Field(default=None, description="Name of the queue or partition to submit the job to")
+    reservation_id: Optional[Annotated[str, Field(min_length=1, strict=True)]] = Field(default=None, description="ID of a reservation to use for the job")
     additional_properties: Dict[str, Any] = {}
-    __properties: ClassVar[List[str]] = ["cache_mode", "job_spec_override", "parameters"]
+    __properties: ClassVar[List[str]] = ["account", "additional_properties", "custom_attributes", "duration", "queue_name", "reservation_id"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -54,7 +55,7 @@ class TransferCreate(BaseModel):
 
     @classmethod
     def from_json(cls, json_str: str) -> Optional[Self]:
-        """Create an instance of TransferCreate from a JSON string"""
+        """Create an instance of JobAttributes from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
     def to_dict(self) -> Dict[str, Any]:
@@ -77,27 +78,41 @@ class TransferCreate(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
-        # override the default output from pydantic by calling `to_dict()` of job_spec_override
-        if self.job_spec_override:
-            _dict['job_spec_override'] = self.job_spec_override.to_dict()
-        # override the default output from pydantic by calling `to_dict()` of parameters
-        if self.parameters:
-            _dict['parameters'] = self.parameters.to_dict()
         # puts key-value pairs in additional_properties in the top level
         if self.additional_properties is not None:
             for _key, _value in self.additional_properties.items():
                 _dict[_key] = _value
 
-        # set to None if job_spec_override (nullable) is None
+        # set to None if account (nullable) is None
         # and model_fields_set contains the field
-        if self.job_spec_override is None and "job_spec_override" in self.model_fields_set:
-            _dict['job_spec_override'] = None
+        if self.account is None and "account" in self.model_fields_set:
+            _dict['account'] = None
+
+        # set to None if custom_attributes (nullable) is None
+        # and model_fields_set contains the field
+        if self.custom_attributes is None and "custom_attributes" in self.model_fields_set:
+            _dict['custom_attributes'] = None
+
+        # set to None if duration (nullable) is None
+        # and model_fields_set contains the field
+        if self.duration is None and "duration" in self.model_fields_set:
+            _dict['duration'] = None
+
+        # set to None if queue_name (nullable) is None
+        # and model_fields_set contains the field
+        if self.queue_name is None and "queue_name" in self.model_fields_set:
+            _dict['queue_name'] = None
+
+        # set to None if reservation_id (nullable) is None
+        # and model_fields_set contains the field
+        if self.reservation_id is None and "reservation_id" in self.model_fields_set:
+            _dict['reservation_id'] = None
 
         return _dict
 
     @classmethod
     def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
-        """Create an instance of TransferCreate from a dict"""
+        """Create an instance of JobAttributes from a dict"""
         if obj is None:
             return None
 
@@ -105,9 +120,12 @@ class TransferCreate(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "cache_mode": obj.get("cache_mode"),
-            "job_spec_override": JobSpec.from_dict(obj["job_spec_override"]) if obj.get("job_spec_override") is not None else None,
-            "parameters": Parameters.from_dict(obj["parameters"]) if obj.get("parameters") is not None else None
+            "account": obj.get("account"),
+            "additional_properties": obj.get("additional_properties"),
+            "custom_attributes": obj.get("custom_attributes"),
+            "duration": obj.get("duration"),
+            "queue_name": obj.get("queue_name"),
+            "reservation_id": obj.get("reservation_id")
         })
         # store additional fields in additional_properties
         for _key in obj.keys():
