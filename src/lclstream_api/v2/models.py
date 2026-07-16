@@ -6,8 +6,9 @@ from uuid import UUID
 from pydantic import AwareDatetime, BaseModel, ConfigDict
 
 from ..lclstreamer_param import Parameters as LCLStreamerParameters
+from .core.enums import CacheMode, CacheState, TransferState, TransitionSource
 from .core.logs import LogStream
-from .core.producer import CacheMode, JobSpec
+from .core.producer import JobSpec
 
 if TYPE_CHECKING:
     from .tables import Transfer
@@ -115,3 +116,17 @@ class TransferLogStreamInfo(BaseModel):
 class TransferLogIndex(BaseModel):
     transfer_id: UUID
     streams: list[TransferLogStreamInfo]
+
+
+class CacheStatusPublic(BaseModel):
+    id: UUID
+    state: CacheState
+
+
+class CachesPublic(BaseModel):
+    data: list[CacheStatusPublic]
+
+
+class CacheShutdownConflict(BaseModel):
+    message: str
+    active_transfer_count: int

@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from . import config, db, workflows
 from .clients import shutdown as clients_shutdown, startup as clients_startup
 from .exceptions import register_exception_handlers
+from .routers.v1.cache import router as cache_router
 from .routers.v1.transfer import router as transfer_router
 
 
@@ -44,6 +45,7 @@ app = FastAPI(
 
 register_exception_handlers(app)
 app.include_router(transfer_router)
+app.include_router(cache_router)
 
 # Opt-in only (see AppSettings.cors_origins docstring) — production serves
 # frontend+API same-origin behind a gateway and never sets this.
