@@ -116,6 +116,71 @@
         "title": "CacheMode",
         "type": "string"
       },
+      "CacheShutdownConflict": {
+        "properties": {
+          "active_transfer_count": {
+            "title": "Active Transfer Count",
+            "type": "integer"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "active_transfer_count"
+        ],
+        "title": "CacheShutdownConflict",
+        "type": "object"
+      },
+      "CacheState": {
+        "description": "Observed fastcache cache lifecycle.",
+        "enum": [
+          "new",
+          "queued",
+          "active",
+          "completed",
+          "failed",
+          "canceled"
+        ],
+        "title": "CacheState",
+        "type": "string"
+      },
+      "CacheStatusPublic": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/CacheState"
+          }
+        },
+        "required": [
+          "id",
+          "state"
+        ],
+        "title": "CacheStatusPublic",
+        "type": "object"
+      },
+      "CachesPublic": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/CacheStatusPublic"
+            },
+            "title": "Data",
+            "type": "array"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "CachesPublic",
+        "type": "object"
+      },
       "ConstValueParameters": {
         "additionalProperties": false,
         "description": "Parameters for ConstValue class",
@@ -1576,6 +1641,121 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/caches/": {
+      "get": {
+        "operationId": "get_caches_caches__get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "experiment",
+            "required": true,
+            "schema": {
+              "title": "Experiment",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CachesPublic"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "JWKSAuth": []
+          }
+        ],
+        "summary": "Get Caches",
+        "tags": [
+          "caches"
+        ]
+      }
+    },
+    "/caches/{cache_id}": {
+      "delete": {
+        "operationId": "shutdown_cache_caches__cache_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cache_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Cache Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "force",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Force",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CacheShutdownConflict"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "JWKSAuth": []
+          }
+        ],
+        "summary": "Shutdown Cache",
+        "tags": [
+          "caches"
+        ]
+      }
+    },
     "/transfers/": {
       "get": {
         "operationId": "get_transfers_transfers__get",
