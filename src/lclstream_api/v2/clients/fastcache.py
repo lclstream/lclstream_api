@@ -67,11 +67,6 @@ class FastcacheClient:
             timeout=settings.timeout_s,
         )
 
-    def _auth_headers(self) -> httpx.Headers:
-        # Re-read the shared token file on every call so a rotated mint is
-        # picked up without restarting.
-        return httpx.Headers({"Authorization": f"Bearer {self._settings.token}"})
-
     async def aclose(self) -> None:
         await self._http.aclose()
 
@@ -92,24 +87,19 @@ class FastcacheClient:
         response = await self._http.post(
             "/caches/",
             json=body.model_dump(mode="json", exclude_none=True),
-            headers=self._auth_headers(),
         )
         response.raise_for_status()
         return CachePublic.model_validate(response.json())
 
     async def get_cache(self, cache_id: UUID) -> CachePublic | None:
-        response = await self._http.get(
-            f"/caches/{cache_id}", headers=self._auth_headers()
-        )
+        response = await self._http.get(f"/caches/{cache_id}")
         if response.status_code == httpx.codes.NOT_FOUND:
             return None
         response.raise_for_status()
         return CachePublic.model_validate(response.json())
 
     async def delete_cache(self, cache_id: UUID) -> None:
-        response = await self._http.delete(
-            f"/caches/{cache_id}", headers=self._auth_headers()
-        )
+        response = await self._http.delete(f"/caches/{cache_id}")
         if response.status_code == httpx.codes.NOT_FOUND:
             return
         response.raise_for_status()
