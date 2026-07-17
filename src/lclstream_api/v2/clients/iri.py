@@ -95,9 +95,7 @@ class LogStat(BaseModel):
         return self.stat.modified_at if self.stat else None
 
 
-# amscrot's status() returns AmSCROT JobState strings (upper case). Map them
-# back to the canonical amsc_iri JobState the core consumes; an unmapped/UNKNOWN
-# state means the job is gone (reads as None).
+# amscrot's upper-case states; unmapped means job gone.
 _STATE_MAP: dict[str, JobState] = {
     "NEW": JobState.NEW,
     "QUEUED": JobState.QUEUED,
@@ -146,12 +144,10 @@ class IriClient:
         return job.id
 
     def _get(self, job_id: JobId, token: str) -> JobState | None:
-        # TODO: eventually we should use historical=True when that is
-        # supported by IRI. Right now it is unsupported in s3df IRI
-        # related to avoiding hammering slurmdb
+        # IRI tries the live queue first, then slurmdbd, in one call.
         try:
             job = self._resource(token).job(job_id)
-            state = job.refresh(historical=False)
+            state = job.refresh(historical=True)
         except Exception as exc:
             _raise_operation_error(exc, "job status")
         if state == "UNKNOWN" and job.message:
