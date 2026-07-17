@@ -270,8 +270,8 @@ async def list_transfer_logs(
 async def list_caches_for_experiment(
     session: AsyncSession, experiment: str
 ) -> CachesPublic:
-    """The experiment's active shared cache, if any."""
-    cache_id = await repo.find_latest_shared_transfer_cache(session, experiment)
+    """The experiment's active cache, if any."""
+    cache_id = await repo.find_active_cache(session, experiment)
     if cache_id is None:
         return CachesPublic(data=[])
     cache = await fastcache.client().get_cache(cache_id)
@@ -280,11 +280,17 @@ async def list_caches_for_experiment(
     return CachesPublic(data=[CacheStatusPublic(id=cache.id, state=cache.state)])
 
 
-async def shutdown_cache(
-    session: AsyncSession, cache_id: UUID, *, force: bool = False
-) -> None:
-    if not force:
+async def shutdown_cache(session: AsyncSession, cache_id: UUID) -> None:
+    async with session.begin():
+        cache = await repo.lock_active_cache(session, cache_id)
+        if cache is None:
+            raise NotFound(f"cache {cache_id} not found")
         count = await repo.count_active_transfers_by_cache(session, cache_id)
         if count > 0:
             raise CacheShutdownBlocked(count)
-    await fastcache.client().delete_cache(cache_id)
+
+        # Keep the registry row locked across deletion. Provisioning either
+        # attached before this count (and blocks shutdown), or waits and sees
+        # retired_at after commit, so it cannot attach to a deleted cache.
+        await fastcache.client().delete_cache(cache_id)
+        await repo.retire_cache(session, cache, retired_at=datetime.now(UTC))
