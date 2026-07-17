@@ -10,7 +10,7 @@ from sqlalchemy.orm import selectinload
 
 from .core import transfer as tcore
 from .models import TransferState, TransitionSource
-from .tables import Transfer, Transition, UserCredential
+from .tables import Cache, Transfer, Transition, UserCredential
 
 logger = logging.getLogger(__name__)
 
@@ -128,6 +128,24 @@ async def set_cache_endpoints(
     transfer = await session.get(Transfer, transfer_id)
     if transfer is None:
         raise LookupError(f"transfer {transfer_id} not found")
+    if tcore.CacheMode(transfer.cache_mode) is tcore.CacheMode.shared:
+        # The registry row is the serialization point between provisioning and
+        # explicit shared-cache shutdown. A shutdown transaction locks and
+        # retires this row; an attachment racing behind it must fail rather
+        # than bind a transfer to a cache that was just deleted.
+        await session.execute(
+            insert(Cache)
+            .values(id=cache_id, experiment=transfer.experiment)
+            .on_conflict_do_nothing(index_elements=[Cache.id])
+        )
+        result = await session.execute(
+            select(Cache).where(Cache.id == cache_id).with_for_update()
+        )
+        cache = result.scalar_one()
+        if cache.experiment != transfer.experiment:
+            raise LookupError(f"cache {cache_id} belongs to a different experiment")
+        if cache.retired_at is not None:
+            raise LookupError(f"cache {cache_id} has been shut down")
     transfer.cache_id = cache_id
     transfer.cache_hostname = hostname
     transfer.pull_port = pull_port
@@ -187,22 +205,40 @@ async def record_state(
     return True
 
 
-async def find_latest_shared_transfer_cache(
-    session: AsyncSession, experiment: str
-) -> UUID | None:
-    """Most recent shared-mode cache_id created for this experiment, if any."""
+async def find_active_cache(session: AsyncSession, experiment: str) -> UUID | None:
+    """Most recently registered active cache for this experiment."""
 
     result = await session.execute(
-        select(Transfer.cache_id)
+        select(Cache.id)
         .where(
-            Transfer.experiment == experiment,
-            Transfer.cache_mode == tcore.CacheMode.shared,
-            Transfer.cache_id.is_not(None),
+            Cache.experiment == experiment,
+            Cache.retired_at.is_(None),
         )
-        .order_by(Transfer.created_at.desc())
+        .order_by(Cache.created_at.desc())
         .limit(1)
     )
     return result.scalar_one_or_none()
+
+
+async def lock_active_cache(session: AsyncSession, cache_id: UUID) -> Cache | None:
+    """Lock a known active cache until the caller's transaction ends."""
+
+    result = await session.execute(
+        select(Cache)
+        .where(
+            Cache.id == cache_id,
+            Cache.retired_at.is_(None),
+        )
+        .with_for_update()
+    )
+    return result.scalar_one_or_none()
+
+
+async def retire_cache(
+    session: AsyncSession, cache: Cache, *, retired_at: AwareDatetime
+) -> None:
+    cache.retired_at = retired_at
+    await session.flush()
 
 
 async def count_active_transfers_by_cache(session: AsyncSession, cache_id: UUID) -> int:
