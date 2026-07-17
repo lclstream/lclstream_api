@@ -371,6 +371,7 @@ _LEGAL_PAIRS = {
     (TransferState.ready, TransferState.failed),
     (TransferState.ready, TransferState.canceling),
     (TransferState.canceling, TransferState.canceled),
+    (TransferState.canceling, TransferState.failed),
 }
 
 

@@ -63,6 +63,21 @@ DEFAULT_JOB_SPEC: JobSpec = JobSpec(
     ),
 )
 
+
+def required_token_lifetime_seconds(job_spec: JobSpec, grace_seconds: int) -> int:
+    """Return the delegated-token lifetime required to admit a producer job."""
+
+    attributes = job_spec.attributes
+    if attributes is None:
+        raise ValueError("producer job spec must define attributes")
+    duration = attributes.duration
+    if duration is None:
+        raise ValueError("producer job spec must define a duration")
+    if grace_seconds < 0:
+        raise ValueError("credential lifecycle grace must be non-negative")
+    return duration + grace_seconds
+
+
 APPTAINER_BIN = "/usr/bin/apptainer"
 
 
