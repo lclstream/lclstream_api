@@ -48,35 +48,21 @@ class FastcacheClientSettings(BaseSettings):
     )
 
     base_url: AnyHttpUrl = AnyHttpUrl("https://sdfdtn003.sdf.slac.stanford.edu:8000")
-    # Path to the shared 12h SLAC bearer token (re-read on each request so the
-    # mint can rotate it without a restart). Same file IRI uses.
-    token_file: Path = Field(
-        description="Path to a file containing the shared SLAC bearer token",
-    )
-    # mTLS: CA bundle that signs the fastcache server cert, plus our client cert.
+    # mTLS: server CA, plus our client cert.
     verify: bool | str = True
     client_cert: Path
     client_key: Path
     timeout_s: float = 30.0
 
-    @property
-    def token(self) -> str:
-        """Read the bearer token from file (fresh each call)."""
-        return self.token_file.read_text().strip()
-
 
 class IriClientSettings(BaseSettings):
-    """Connection + placement settings for IRI submission at S3DF.
-
-    Reads ``LCLSTREAM_IRI_*`` environment variables.
-    Requires ``s3df_token_file`` pointing to a file containing the S3DF Dex bearer token.
-    """
+    """Connection and placement settings for IRI submission at S3DF."""
 
     model_config = SettingsConfigDict(
         env_prefix="LCLSTREAM_IRI_", frozen=True, validate_default=True
     )
 
-    # Prod IRI API; override to https://iri-dev.slac.stanford.edu for dev.
+    # Dev is https://iri-dev.slac.stanford.edu.
     base_url: AnyHttpUrl = AnyHttpUrl("https://iri.slac.stanford.edu")
     facility: str = "s3df"
     resource: str = "milano"
