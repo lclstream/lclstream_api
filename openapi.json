@@ -389,6 +389,29 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "InsufficientTokenLifetimeError": {
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "remaining_seconds": {
+            "title": "Remaining Seconds",
+            "type": "integer"
+          },
+          "required_seconds": {
+            "title": "Required Seconds",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "detail",
+          "required_seconds",
+          "remaining_seconds"
+        ],
+        "title": "InsufficientTokenLifetimeError",
+        "type": "object"
+      },
       "InternalEventSourceParameters": {
         "additionalProperties": true,
         "description": "Configuration parameters for the Internal Event Source\n\nThis event source generates synthetic events entirely in-process and does\nnot depend on any external data-acquisition framework. It is intended\nmainly for testing and development\n\nAttributes:\n\n    type: Discriminator field, must be ``\"InternalEventSource\"``\n\n    number_of_events_to_generate: Total number of synthetic events to\n        produce before the source is exhausted",
@@ -1856,11 +1879,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/InsufficientTokenLifetimeError"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Unprocessable Content"
           }
         },
         "security": [
