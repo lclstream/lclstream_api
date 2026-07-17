@@ -1,6 +1,9 @@
 from collections.abc import Callable, Iterator
+from contextlib import asynccontextmanager
+from typing import cast
 
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from lclstream_api.lclstreamer_param import Parameters
 from lclstream_api.v2 import config
@@ -11,6 +14,7 @@ SettingsFactory = Callable[..., LCLStreamerProducerSettings]
 
 _SETTINGS_GETTERS = (
     config.get_database,
+    config.get_credentials,
     config.get_dbos,
     config.get_fastcache,
     config.get_iri,
@@ -88,3 +92,15 @@ def make_producer_settings() -> SettingsFactory:
         )
 
     return _make
+
+
+class _FakeSession:
+    @asynccontextmanager
+    async def begin(self):
+        yield self
+
+
+@pytest.fixture
+def fake_session() -> AsyncSession:
+    """Stub session for tests that never touch the database."""
+    return cast(AsyncSession, _FakeSession())
