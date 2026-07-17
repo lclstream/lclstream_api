@@ -119,6 +119,75 @@ export const CacheModeSchema = {
     type: 'string'
 } as const;
 
+export const CacheShutdownConflictSchema = {
+    properties: {
+        active_transfer_count: {
+            title: 'Active Transfer Count',
+            type: 'integer'
+        },
+        message: {
+            title: 'Message',
+            type: 'string'
+        }
+    },
+    required: [
+        'message',
+        'active_transfer_count'
+    ],
+    title: 'CacheShutdownConflict',
+    type: 'object'
+} as const;
+
+export const CacheStateSchema = {
+    description: 'Observed fastcache cache lifecycle.',
+    enum: [
+        'new',
+        'queued',
+        'active',
+        'completed',
+        'failed',
+        'canceled'
+    ],
+    title: 'CacheState',
+    type: 'string'
+} as const;
+
+export const CacheStatusPublicSchema = {
+    properties: {
+        id: {
+            format: 'uuid',
+            title: 'Id',
+            type: 'string'
+        },
+        state: {
+            $ref: '#/components/schemas/CacheState'
+        }
+    },
+    required: [
+        'id',
+        'state'
+    ],
+    title: 'CacheStatusPublic',
+    type: 'object'
+} as const;
+
+export const CachesPublicSchema = {
+    properties: {
+        data: {
+            items: {
+                $ref: '#/components/schemas/CacheStatusPublic'
+            },
+            title: 'Data',
+            type: 'array'
+        }
+    },
+    required: [
+        'data'
+    ],
+    title: 'CachesPublic',
+    type: 'object'
+} as const;
+
 export const ConstValueParametersSchema = {
     additionalProperties: false,
     description: 'Parameters for ConstValue class',
