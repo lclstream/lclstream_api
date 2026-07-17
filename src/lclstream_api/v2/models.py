@@ -17,29 +17,6 @@ class Message(BaseModel):
     message: str
 
 
-class TransferState(StrEnum):
-    provisioning = "provisioning"  # spinning up cache + producer
-    ready = "ready"  # both active, connection_info available
-    canceling = "canceling"  # cancel requested, teardown in progress
-    canceled = "canceled"
-    completed = "completed"
-    failed = "failed"
-
-    def is_final(self) -> bool:
-        return self in (
-            TransferState.canceled,
-            TransferState.completed,
-            TransferState.failed,
-        )
-
-
-class TransitionSource(StrEnum):
-    producer = "producer"
-    cache = "cache"
-    user = "user"
-    orchestrator = "orchestrator"  # from lclstream_api
-
-
 class TransferCancelOutcome(StrEnum):
     already_final = "already_final"
     canceling = "canceling"  # cancellation recorded, teardown to follow

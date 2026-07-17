@@ -19,6 +19,7 @@ from ...lclstreamer_param import (
     BinaryDataStreamingDataHandlerParameters,
     Parameters,
 )
+from .enums import CacheMode
 
 if TYPE_CHECKING:
     from ..config import LCLStreamerProducerSettings
@@ -27,13 +28,6 @@ if TYPE_CHECKING:
 CONFIG_FILENAME = "lclstreamer.yaml"
 PRODUCER_STDOUT_FILENAME = "output.txt"
 PRODUCER_STDERR_FILENAME = "error.txt"
-
-
-class CacheMode(StrEnum):
-    # One cache per transfer (default).
-    per_transfer = "per_transfer"
-    # One cache shared by many producers for the same experiment.
-    shared = "shared"
 
 
 def cache_idle_timeout_ms(mode: CacheMode) -> int | None:
