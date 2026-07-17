@@ -42,6 +42,20 @@ class DTMixin(CreatedAtMixin, UpdatedAtMixin):
     pass
 
 
+class Cache(DTMixin, Base):
+    """Registry row serializing shared-cache attachment and shutdown."""
+
+    __tablename__ = "caches"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True)
+    experiment: Mapped[str] = mapped_column(index=True)
+    retired_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        default=None,
+        doc="Set once explicit shutdown has deleted the FastCache resource",
+    )
+
+
 class Transfer(DTMixin, Base):
     __tablename__ = "transfers"
 
