@@ -133,6 +133,23 @@ class AppSettings(BaseSettings):
     cors_origins: CommaSeparatedList = Field(default_factory=list)
 
 
+class CredentialsSettings(BaseSettings):
+    """Encrypted delegated-token storage and admission policy."""
+
+    model_config = SettingsConfigDict(
+        env_prefix="LCLSTREAM_CREDENTIALS_", frozen=True, validate_default=True
+    )
+
+    fernet_key: SecretStr = Field(
+        description="Base64 Fernet key encrypting stored user bearer tokens"
+    )
+    lifecycle_grace_seconds: int = Field(
+        default=900,
+        ge=0,
+        description="Token lifetime reserved beyond the requested producer limit",
+    )
+
+
 # Settings are constructed lazily and then cached
 @lru_cache
 def get_database() -> DatabaseSettings:
@@ -167,3 +184,8 @@ def get_oidc() -> OidcSettings:
 @lru_cache
 def get_app() -> AppSettings:
     return AppSettings()
+
+
+@lru_cache
+def get_credentials() -> CredentialsSettings:
+    return CredentialsSettings()
