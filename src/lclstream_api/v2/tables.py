@@ -46,7 +46,13 @@ class Transfer(DTMixin, Base):
     __tablename__ = "transfers"
 
     id: Mapped[UUID] = mapped_column(default=uuid4, primary_key=True)
-    user: Mapped[str] = mapped_column(doc="User that created this transfer")
+    owner_issuer: Mapped[str] = mapped_column(doc="OIDC issuer of the owner")
+    owner_subject: Mapped[str] = mapped_column(
+        doc="OIDC subject of the owner within owner_issuer"
+    )
+    owner_email: Mapped[str] = mapped_column(
+        doc="Verified owner email retained for display and audit only"
+    )
 
     # Denormalized; the transitions table is authoritative.
     state: Mapped[str] = mapped_column(
@@ -104,6 +110,25 @@ class Transfer(DTMixin, Base):
         back_populates="transfer",
         cascade="all, delete-orphan",
         order_by="Transition.created_at",
+    )
+
+
+class UserCredential(UpdatedAtMixin, Base):
+    """Latest delegated bearer token stored for an OIDC principal."""
+
+    __tablename__ = "user_credentials"
+
+    issuer: Mapped[str] = mapped_column(primary_key=True, doc="OIDC issuer")
+    subject: Mapped[str] = mapped_column(
+        primary_key=True, doc="OIDC subject within issuer"
+    )
+    email: Mapped[str] = mapped_column(
+        doc="Verified email at the time this credential was captured"
+    )
+    encrypted_token: Mapped[bytes] = mapped_column(doc="Fernet-encrypted bearer token")
+    # Plaintext so expiry checks don't need to decrypt the token.
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), doc="Token expiry"
     )
 
 

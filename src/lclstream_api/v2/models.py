@@ -75,7 +75,7 @@ class TransferPublic(BaseModel):
         return cls(
             id=transfer.id,
             created_at=transfer.created_at,
-            requested_by=transfer.user,
+            requested_by=transfer.owner_email,
             state=TransferState(transfer.state),
             experiment=transfer.experiment,
             run=transfer.run,

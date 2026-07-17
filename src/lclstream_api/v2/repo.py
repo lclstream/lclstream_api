@@ -3,13 +3,14 @@ from typing import Any
 from uuid import UUID
 
 from pydantic import AwareDatetime
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from .core import transfer as tcore
 from .models import TransferState, TransitionSource
-from .tables import Transfer, Transition
+from .tables import Transfer, Transition, UserCredential
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,9 @@ async def insert_transfer(
     session: AsyncSession,
     *,
     transfer_id: UUID,
-    user: str,
+    owner_issuer: str,
+    owner_subject: str,
+    owner_email: str,
     parameters: dict[str, Any],
     experiment: str,
     run: str,
@@ -29,7 +32,9 @@ async def insert_transfer(
 ) -> Transfer:
     transfer = Transfer(
         id=transfer_id,
-        user=user,
+        owner_issuer=owner_issuer,
+        owner_subject=owner_subject,
+        owner_email=owner_email,
         state=TransferState.provisioning,
         parameters=parameters,
         experiment=experiment,
@@ -52,6 +57,23 @@ async def insert_transfer(
 
 async def get_transfer(session: AsyncSession, transfer_id: UUID) -> Transfer | None:
     return await session.get(Transfer, transfer_id)
+
+
+async def get_owned_transfer(
+    session: AsyncSession,
+    transfer_id: UUID,
+    *,
+    owner_issuer: str,
+    owner_subject: str,
+) -> Transfer | None:
+    result = await session.execute(
+        select(Transfer).where(
+            Transfer.id == transfer_id,
+            Transfer.owner_issuer == owner_issuer,
+            Transfer.owner_subject == owner_subject,
+        )
+    )
+    return result.scalar_one_or_none()
 
 
 async def get_transfer_with_transitions(
@@ -190,3 +212,53 @@ async def count_active_transfers_by_cache(session: AsyncSession, cache_id: UUID)
         .where(Transfer.cache_id == cache_id, Transfer.state.not_in(_FINAL_STATES))
     )
     return result.scalar_one()
+
+
+async def get_user_credential(
+    session: AsyncSession, issuer: str, subject: str
+) -> UserCredential | None:
+    return await session.get(UserCredential, (issuer, subject))
+
+
+async def upsert_user_credential(
+    session: AsyncSession,
+    *,
+    issuer: str,
+    subject: str,
+    email: str,
+    encrypted_token: bytes,
+    expires_at: AwareDatetime,
+) -> bool:
+    """Atomically retain only the latest-expiring credential for a principal."""
+
+    insert_statement = insert(UserCredential).values(
+        issuer=issuer,
+        subject=subject,
+        email=email,
+        encrypted_token=encrypted_token,
+        expires_at=expires_at,
+    )
+    statement = insert_statement.on_conflict_do_update(
+        index_elements=[UserCredential.issuer, UserCredential.subject],
+        set_={
+            UserCredential.email: insert_statement.excluded.email,
+            UserCredential.encrypted_token: insert_statement.excluded.encrypted_token,
+            UserCredential.expires_at: insert_statement.excluded.expires_at,
+            UserCredential.updated_at: func.now(),
+        },
+        where=insert_statement.excluded.expires_at > UserCredential.expires_at,
+    ).returning(UserCredential.expires_at)
+    result = await session.execute(statement)
+    return result.scalar_one_or_none() is not None
+
+
+async def purge_expired_user_credentials(
+    session: AsyncSession, *, now: AwareDatetime
+) -> int:
+    statement = (
+        delete(UserCredential)
+        .where(UserCredential.expires_at <= now)
+        .returning(UserCredential.issuer)
+    )
+    result = await session.execute(statement)
+    return len(result.scalars().all())
