@@ -1,10 +1,12 @@
 from collections.abc import Callable
 from uuid import UUID
 
+from ._generated.api.caches_api import CachesApi
 from ._generated.api.transfers_api import TransfersApi
 from ._generated.api_client import ApiClient
 from ._generated.configuration import Configuration
 from ._generated.models.cache_mode import CacheMode
+from ._generated.models.caches_public import CachesPublic
 from ._generated.models.job_spec import JobSpec
 from ._generated.models.log_read_mode import LogReadMode
 from ._generated.models.log_stream import LogStream
@@ -28,11 +30,17 @@ class LclstreamApiClient:
     def __init__(self, base_url: str, token: Token) -> None:
         self._token = token
         self._configuration = Configuration(host=base_url)
-        self._api = TransfersApi(ApiClient(self._configuration))
+        api_client = ApiClient(self._configuration)
+        self._api = TransfersApi(api_client)
+        self._caches_api = CachesApi(api_client)
 
     def _authed(self) -> TransfersApi:
         self._configuration.access_token = _resolve_token(self._token)
         return self._api
+
+    def _authed_caches(self) -> CachesApi:
+        self._configuration.access_token = _resolve_token(self._token)
+        return self._caches_api
 
     def list_transfers(
         self,
@@ -88,16 +96,31 @@ class LclstreamApiClient:
             )
         )
 
+    def list_caches(self, experiment: str) -> CachesPublic:
+        """The active shared (long-lived) cache for an experiment, if any."""
+        return self._authed_caches().get_caches_caches_get_sync(experiment)
+
+    def shutdown_cache(self, cache_id: UUID) -> Message:
+        return self._authed_caches().shutdown_cache_caches_cache_id_delete_sync(
+            cache_id
+        )
+
 
 class AsyncLclstreamApiClient:
     def __init__(self, base_url: str, token: Token) -> None:
         self._token = token
         self._configuration = Configuration(host=base_url)
-        self._api = TransfersApi(ApiClient(self._configuration))
+        api_client = ApiClient(self._configuration)
+        self._api = TransfersApi(api_client)
+        self._caches_api = CachesApi(api_client)
 
     def _authed(self) -> TransfersApi:
         self._configuration.access_token = _resolve_token(self._token)
         return self._api
+
+    def _authed_caches(self) -> CachesApi:
+        self._configuration.access_token = _resolve_token(self._token)
+        return self._caches_api
 
     async def aclose(self) -> None:
         await self._api.api_client.close()
@@ -154,4 +177,13 @@ class AsyncLclstreamApiClient:
             await self._authed().get_transfer_log_transfers_transfer_id_logs_stream_get(
                 transfer_id, stream, mode=mode, lines=lines, bytes=bytes_
             )
+        )
+
+    async def list_caches(self, experiment: str) -> CachesPublic:
+        """The active shared (long-lived) cache for an experiment, if any."""
+        return await self._authed_caches().get_caches_caches_get(experiment)
+
+    async def shutdown_cache(self, cache_id: UUID) -> Message:
+        return await self._authed_caches().shutdown_cache_caches_cache_id_delete(
+            cache_id
         )
