@@ -15,8 +15,7 @@ from pydantic import validate_call, Field, StrictFloat, StrictStr, StrictInt
 from typing import Any, Dict, List, Optional, Tuple, Union
 from typing_extensions import Annotated
 
-from pydantic import StrictBool, StrictStr
-from typing import Optional
+from pydantic import StrictStr
 from uuid import UUID
 from lclstream_api_client._generated.models.caches_public import CachesPublic
 from lclstream_api_client._generated.models.message import Message
@@ -409,7 +408,6 @@ class CachesApi:
     async def shutdown_cache_caches_cache_id_delete(
         self,
         cache_id: UUID,
-        force: Optional[StrictBool] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -428,8 +426,6 @@ class CachesApi:
 
         :param cache_id: (required)
         :type cache_id: UUID
-        :param force:
-        :type force: bool
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -454,7 +450,6 @@ class CachesApi:
 
         _param = self._shutdown_cache_caches_cache_id_delete_serialize(
             cache_id=cache_id,
-            force=force,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -481,7 +476,6 @@ class CachesApi:
     async def shutdown_cache_caches_cache_id_delete_with_http_info(
         self,
         cache_id: UUID,
-        force: Optional[StrictBool] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -500,8 +494,6 @@ class CachesApi:
 
         :param cache_id: (required)
         :type cache_id: UUID
-        :param force:
-        :type force: bool
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -526,7 +518,6 @@ class CachesApi:
 
         _param = self._shutdown_cache_caches_cache_id_delete_serialize(
             cache_id=cache_id,
-            force=force,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -553,7 +544,6 @@ class CachesApi:
     async def shutdown_cache_caches_cache_id_delete_without_preload_content(
         self,
         cache_id: UUID,
-        force: Optional[StrictBool] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -572,8 +562,6 @@ class CachesApi:
 
         :param cache_id: (required)
         :type cache_id: UUID
-        :param force:
-        :type force: bool
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -598,7 +586,6 @@ class CachesApi:
 
         _param = self._shutdown_cache_caches_cache_id_delete_serialize(
             cache_id=cache_id,
-            force=force,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -621,7 +608,6 @@ class CachesApi:
     def shutdown_cache_caches_cache_id_delete_sync(
         self,
         cache_id: UUID,
-        force: Optional[StrictBool] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -643,7 +629,6 @@ class CachesApi:
         return run_sync(
             self.shutdown_cache_caches_cache_id_delete(
                 cache_id=cache_id,
-                force=force,
                 _request_timeout=_request_timeout,
                 _request_auth=_request_auth,
                 _content_type=_content_type,
@@ -657,7 +642,6 @@ class CachesApi:
     def shutdown_cache_caches_cache_id_delete_sync_with_http_info(
         self,
         cache_id: UUID,
-        force: Optional[StrictBool] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -679,7 +663,6 @@ class CachesApi:
         return run_sync(
             self.shutdown_cache_caches_cache_id_delete_with_http_info(
                 cache_id=cache_id,
-                force=force,
                 _request_timeout=_request_timeout,
                 _request_auth=_request_auth,
                 _content_type=_content_type,
@@ -693,7 +676,6 @@ class CachesApi:
     def shutdown_cache_caches_cache_id_delete_sync_without_preload_content(
         self,
         cache_id: UUID,
-        force: Optional[StrictBool] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -715,7 +697,6 @@ class CachesApi:
         return run_sync(
             self.shutdown_cache_caches_cache_id_delete_without_preload_content(
                 cache_id=cache_id,
-                force=force,
                 _request_timeout=_request_timeout,
                 _request_auth=_request_auth,
                 _content_type=_content_type,
@@ -728,7 +709,6 @@ class CachesApi:
     def _shutdown_cache_caches_cache_id_delete_serialize(
         self,
         cache_id,
-        force,
         _request_auth,
         _content_type,
         _headers,
@@ -753,10 +733,6 @@ class CachesApi:
         if cache_id is not None:
             _path_params['cache_id'] = cache_id
         # process the query parameters
-        if force is not None:
-            
-            _query_params.append(('force', force))
-            
         # process the header parameters
         # process the form parameters
         # process the body parameter
