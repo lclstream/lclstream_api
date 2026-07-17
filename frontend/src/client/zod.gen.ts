@@ -209,6 +209,15 @@ export const zHdf5BinarySerializerParameters = z.object({
 });
 
 /**
+ * InsufficientTokenLifetimeError
+ */
+export const zInsufficientTokenLifetimeError = z.object({
+    detail: z.string(),
+    remaining_seconds: z.int(),
+    required_seconds: z.int()
+});
+
+/**
  * InternalEventSourceParameters
  *
  * Configuration parameters for the Internal Event Source
