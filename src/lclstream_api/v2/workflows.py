@@ -18,6 +18,7 @@ from ``core``.
 
 import logging
 from collections.abc import Iterable
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -28,12 +29,45 @@ from dbos import DBOS
 from pydantic import AwareDatetime
 
 from ..lclstreamer_param import Parameters
-from . import config, db, repo
+from . import auth, config, db, repo
 from .clients import fastcache, iri
 from .core import logs, producer as pcore, transfer as tcore
 from .models import TransferState, TransitionSource
 
 logger = logging.getLogger(__name__)
+
+
+class CredentialUnavailableError(RuntimeError):
+    """The owner has no decryptable, unexpired delegated credential."""
+
+    def __init__(self, owner: tcore.Principal) -> None:
+        super().__init__(
+            f"no valid stored credential for {owner.issuer} subject {owner.subject}"
+        )
+
+
+async def _token_for(owner: tcore.Principal) -> str:
+    """Read a token for use inside the current step.
+
+    Steps run outside any ``@db.transaction()``, so this opens its own session.
+    """
+
+    async with db.async_session() as session:
+        token = await auth.get_valid_token(
+            session, owner.issuer, owner.subject, now=datetime.now(UTC)
+        )
+    if token is None:
+        raise CredentialUnavailableError(owner)
+    return token
+
+
+def _is_authentication_failure(exc: BaseException) -> bool:
+    if isinstance(exc, CredentialUnavailableError | iri.IriAuthenticationError):
+        return True
+    if isinstance(exc, BaseExceptionGroup):
+        return any(_is_authentication_failure(child) for child in exc.exceptions)
+    return False
+
 
 # Statuses for which the reconciler should (idempotently) tear down resources.
 _TEARDOWN_STATES = frozenset(
@@ -53,11 +87,18 @@ RECONCILE_SCHEDULE = "*/10 * * * * *"
 # External IO steps
 # ---------------------------------------------------------------------------
 
+
+def _should_retry_step(exc: BaseException) -> bool:
+    """Retrying a missing token can't fix it -- skip the retry budget."""
+    return not _is_authentication_failure(exc)
+
+
 DEFAULT_RETRY_SETTINGS: dict[str, Any] = {
     "retries_allowed": True,
     "interval_seconds": 1.0,
     "max_attempts": 5,
     "backoff_rate": 2.0,
+    "should_retry": _should_retry_step,
 }
 
 
@@ -84,25 +125,29 @@ async def _create_cache(
 
 # TODO: this is not idempotent so we cannot retry
 @DBOS.step()
-async def _submit_producer(jobspec: JobSpec) -> str:
-    return await iri.client().submit_job(jobspec)
+async def _submit_producer(jobspec: JobSpec, owner: tcore.Principal) -> str:
+    token = await _token_for(owner)
+    return await iri.client().submit_job(jobspec, token)
 
 
 @DBOS.step(**DEFAULT_RETRY_SETTINGS)
-async def _upload_config(path: Path, content: str) -> None:
-    await iri.client().upload_file(path, content)
+async def _upload_config(path: Path, content: str, owner: tcore.Principal) -> None:
+    token = await _token_for(owner)
+    await iri.client().upload_file(path, content, token)
 
 
 @DBOS.step(**DEFAULT_RETRY_SETTINGS)
-async def _delete_config(path: Path) -> None:
-    await iri.client().delete(path)
+async def _delete_config(path: Path, owner: tcore.Principal) -> None:
+    token = await _token_for(owner)
+    await iri.client().delete(path, token)
 
 
 @DBOS.step(**DEFAULT_RETRY_SETTINGS)
-async def _delete_work_dir(work_dir: Path) -> None:
+async def _delete_work_dir(work_dir: Path, owner: tcore.Principal) -> None:
     # Provisioning rollback only: remove the whole per-transfer scratch dir
     # (config + any partial artifacts). Normal teardown leaves it intact.
-    await iri.client().delete(work_dir)
+    token = await _token_for(owner)
+    await iri.client().delete(work_dir, token)
 
 
 @DBOS.step(**DEFAULT_RETRY_SETTINGS)
@@ -112,8 +157,9 @@ async def _get_cache_state(cache_id: UUID) -> tcore.CacheState | None:
 
 
 @DBOS.step(**DEFAULT_RETRY_SETTINGS)
-async def _get_producer_state(job_id: str) -> JobState | None:
-    return await iri.client().get_job(job_id)
+async def _get_producer_state(job_id: str, owner: tcore.Principal) -> JobState | None:
+    token = await _token_for(owner)
+    return await iri.client().get_job(job_id, token)
 
 
 @DBOS.step(**DEFAULT_RETRY_SETTINGS)
@@ -122,8 +168,9 @@ async def _delete_cache(cache_id: UUID) -> None:
 
 
 @DBOS.step(**DEFAULT_RETRY_SETTINGS)
-async def _cancel_producer(job_id: str) -> None:
-    await iri.client().cancel_job(job_id)
+async def _cancel_producer(job_id: str, owner: tcore.Principal) -> None:
+    token = await _token_for(owner)
+    await iri.client().cancel_job(job_id, token)
 
 
 # ---------------------------------------------------------------------------
@@ -149,7 +196,10 @@ async def _load_setup_inputs(transfer_id: UUID) -> tcore.TransferSetup:
     if transfer is None:
         raise LookupError(f"transfer {transfer_id} disappeared during setup")
     return tcore.TransferSetup(
-        requested_by=transfer.user,
+        owner=tcore.Principal(
+            issuer=transfer.owner_issuer, subject=transfer.owner_subject
+        ),
+        requested_by=transfer.owner_email,
         exp=transfer.experiment,
         run=transfer.run,
         cache_mode=tcore.CacheMode(transfer.cache_mode),
@@ -209,6 +259,9 @@ async def _load_transfer_state(
         last_polled_at=transfer.last_polled_at,
     )
     resources = tcore.TransferResourceRefs(
+        owner=tcore.Principal(
+            issuer=transfer.owner_issuer, subject=transfer.owner_subject
+        ),
         cache_id=transfer.cache_id,
         cache_mode=tcore.CacheMode(transfer.cache_mode),
         producer_job_id=transfer.producer_job_id,
@@ -224,7 +277,14 @@ async def _list_unsettled() -> list[UUID]:
     ]
 
 
-async def _compensate(comps: Iterable[tcore.Compensation]) -> None:
+@db.transaction()
+async def _purge_expired_credentials(now: AwareDatetime) -> int:
+    return await repo.purge_expired_user_credentials(db.sql_session(), now=now)
+
+
+async def _compensate(
+    comps: Iterable[tcore.Compensation], owner: tcore.Principal
+) -> None:
     """Run the undo actions for a transfer."""
 
     failures: list[Exception] = []
@@ -232,13 +292,13 @@ async def _compensate(comps: Iterable[tcore.Compensation]) -> None:
         try:
             match comp:
                 case tcore.CancelProducer(job_id=job_id):
-                    await _cancel_producer(job_id)
+                    await _cancel_producer(job_id, owner)
                 case tcore.DeleteConfig(config_path=config_path):
-                    await _delete_config(config_path)
+                    await _delete_config(config_path, owner)
                 case tcore.DeleteCache(cache_id=cache_id):
                     await _delete_cache(cache_id)
                 case tcore.DeleteWorkDir(work_dir=work_dir):
-                    await _delete_work_dir(work_dir)
+                    await _delete_work_dir(work_dir, owner)
         except Exception as failure:
             logger.exception("compensation step %r failed", comp)
             failures.append(failure)
@@ -259,7 +319,7 @@ async def _teardown(resources: tcore.TransferResourceRefs) -> None:
         comps.append(tcore.CancelProducer(job_id=resources.producer_job_id))
     if resources.cache_id and resources.cache_mode is tcore.CacheMode.per_transfer:
         comps.append(tcore.DeleteCache(cache_id=resources.cache_id))
-    await _compensate(comps)
+    await _compensate(comps, resources.owner)
 
 
 # ---------------------------------------------------------------------------
@@ -270,6 +330,7 @@ async def _teardown(resources: tcore.TransferResourceRefs) -> None:
 @DBOS.workflow()
 async def provision_transfer(transfer_id: UUID) -> None:
     progress = tcore.ProvisionProgress()
+    setup: tcore.TransferSetup | None = None
     try:
         setup = await _load_setup_inputs(transfer_id)
         cache_log_path = logs.cache_log_path(
@@ -304,21 +365,39 @@ async def provision_transfer(transfer_id: UUID) -> None:
             raise LookupError(f"transfer {transfer_id} disappeared during setup")
         plan = pcore.plan_producer(inputs, config.get_producer(), transfer_id)
 
-        await _upload_config(plan.config_path, plan.config_yaml)
+        await _upload_config(plan.config_path, plan.config_yaml, setup.owner)
         progress = progress.with_config(plan.config_path)
 
-        job_id = await _submit_producer(plan.jobspec)
+        job_id = await _submit_producer(plan.jobspec, setup.owner)
         progress = progress.with_producer(job_id)
         await _save_producer(transfer_id, job_id)
     except Exception as exc:
         logger.exception("provisioning failed for transfer %s", transfer_id)
 
-        # Release what we created before finalizing.
-        await _compensate(progress.compensation())
+        # Release what we created before finalizing. If setup never loaded,
+        # progress has no steps recorded yet, so there's nothing to undo.
+        compensation_failure: Exception | None = None
+        if setup is not None:
+            try:
+                await _compensate(progress.compensation(), setup.owner)
+            except Exception as cleanup_exc:
+                compensation_failure = cleanup_exc
+                logger.exception(
+                    "provisioning compensation failed for transfer %s", transfer_id
+                )
+        auth_failed = _is_authentication_failure(exc) or (
+            compensation_failure is not None
+            and _is_authentication_failure(compensation_failure)
+        )
+        reason = (
+            "provisioning failed: delegated IRI credential unavailable or rejected"
+            if auth_failed
+            else f"provisioning failed: {exc}"
+        )
         await _record_state(
             transfer_id,
             TransferState.failed,
-            f"provisioning failed: {exc}",
+            reason,
             TransitionSource.orchestrator,
         )
         raise
@@ -330,7 +409,6 @@ async def _observe(
     """Fetch live cache/producer state for one reconcile pass."""
 
     ok = True
-
     cache_state: tcore.CacheState | None = None
     if resources.cache_id:
         try:
@@ -342,7 +420,11 @@ async def _observe(
     producer_state: JobState | None = None
     if resources.producer_job_id:
         try:
-            producer_state = await _get_producer_state(resources.producer_job_id)
+            producer_state = await _get_producer_state(
+                resources.producer_job_id, resources.owner
+            )
+        except CredentialUnavailableError, iri.IriAuthenticationError:
+            raise
         except Exception:
             logger.exception(
                 "failed to fetch producer state for transfer %s", transfer_id
@@ -350,7 +432,9 @@ async def _observe(
             ok = False
 
     return tcore.TransferObservation(
-        cache_state=cache_state, producer_state=producer_state, ok=ok
+        cache_state=cache_state,
+        producer_state=producer_state,
+        ok=ok,
     )
 
 
@@ -362,7 +446,22 @@ async def _reconcile_one(transfer_id: UUID, now: AwareDatetime) -> None:
     if snapshot.state.is_final():
         return
 
-    observation = await _observe(transfer_id, resources)
+    try:
+        observation = await _observe(transfer_id, resources)
+    except CredentialUnavailableError, iri.IriAuthenticationError:
+        # IRI can no longer be managed, but FastCache has its own mTLS authority.
+        # Complete that cleanup before making the auth failure terminal so an
+        # mTLS outage is retried on the next scheduled reconciliation pass.
+        if resources.cache_id and resources.cache_mode is tcore.CacheMode.per_transfer:
+            await _delete_cache(resources.cache_id)
+        await _record_state(
+            transfer_id,
+            TransferState.failed,
+            "delegated IRI credential unavailable or rejected",
+            TransitionSource.orchestrator,
+        )
+        return
+
     decision = tcore.decide_state_with_timeout(observation, snapshot, now=now)
 
     # Only a pass that actually observed fresh upstream state advances the
@@ -387,6 +486,7 @@ async def _reconcile_one(transfer_id: UUID, now: AwareDatetime) -> None:
 async def reconcile_transfers(scheduled_time: AwareDatetime, context: Any) -> None:
     """Scheduled driver: advance every unsettled transfer one step."""
 
+    await _purge_expired_credentials(scheduled_time)
     for transfer_id in await _list_unsettled():
         try:
             await _reconcile_one(transfer_id, scheduled_time)

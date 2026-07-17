@@ -9,6 +9,7 @@ from ... import service
 from ...auth import CurrentUser
 from ...core import logs as lcore, producer as pcore
 from ...db import get_session
+from ...exceptions import InsufficientTokenLifetimeError
 from ...models import (
     Message,
     TransferCancelOutcome,
@@ -43,7 +44,12 @@ async def get_transfer(
     return await service.get_transfer_detail(session, transfer_id)
 
 
-@router.post("/", response_model=TransferPublic, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/",
+    response_model=TransferPublic,
+    status_code=status.HTTP_201_CREATED,
+    responses={422: {"model": InsufficientTokenLifetimeError}},
+)
 async def new_transfer(
     body: TransferCreate, user: CurrentUser, session: SessionDep
 ) -> TransferPublic:
@@ -72,7 +78,7 @@ async def new_transfer(
 async def cancel_transfer(
     transfer_id: UUID, session: SessionDep, user: CurrentUser
 ) -> Message:
-    outcome = await service.cancel_transfer(session, transfer_id)
+    outcome = await service.cancel_transfer(session, transfer_id, user)
     if outcome == TransferCancelOutcome.already_final:
         return Message(message="Transfer is already in a final state")
     return Message(message="Cancellation requested")
@@ -82,7 +88,7 @@ async def cancel_transfer(
 async def get_transfer_logs(
     transfer_id: UUID, session: SessionDep, user: CurrentUser
 ) -> TransferLogIndex:
-    return await service.list_transfer_logs(session, transfer_id)
+    return await service.list_transfer_logs(session, transfer_id, user)
 
 
 @router.get("/{transfer_id}/logs/{stream}", response_class=PlainTextResponse)
@@ -100,6 +106,7 @@ async def get_transfer_log(
         session,
         transfer_id,
         stream,
+        user,
         mode=mode,
         lines=effective_lines,
         bytes_=bytes_,
