@@ -78,17 +78,9 @@ class IriClientSettings(BaseSettings):
 
     # Prod IRI API; override to https://iri-dev.slac.stanford.edu for dev.
     base_url: AnyHttpUrl = AnyHttpUrl("https://iri.slac.stanford.edu")
-    s3df_token_file: Path = Field(
-        description="Path to a file containing the S3DF Dex bearer token",
-    )
     facility: str = "s3df"
     resource: str = "milano"
     fs_resource: str = "sdfdata"
-
-    @property
-    def s3df_token(self) -> SecretStr:
-        """Read the S3DF bearer token from file."""
-        return SecretStr(self.s3df_token_file.read_text().strip())
 
 
 class LCLStreamerProducerSettings(BaseSettings):

@@ -10,18 +10,27 @@ committing the insert first so the workflow's first read sees the row.
 """
 
 import asyncio
+import logging
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
+import httpx
 from dbos import DBOS, SetWorkflowID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..lclstreamer_param import Parameters
 from . import config, repo, workflows
+from .auth import AuthenticatedUser
 from .clients import fastcache, iri
 from .core import logs as lcore, producer as pcore
 from .core.producer import JobSpec
-from .exceptions import CacheShutdownBlocked, NotFound, UpstreamError
+from .exceptions import (
+    CacheShutdownBlocked,
+    DelegatedCredentialRejected,
+    InsufficientTokenLifetime,
+    NotFound,
+    UpstreamError,
+)
 from .models import (
     CacheMode,
     CachesPublic,
@@ -36,10 +45,12 @@ from .models import (
     TransitionSource,
 )
 
+logger = logging.getLogger(__name__)
+
 
 async def create_transfer(
     session: AsyncSession,
-    user: str,
+    user: AuthenticatedUser,
     parameters: Parameters,
     cache_mode: CacheMode = CacheMode.per_transfer,
     *,
@@ -57,11 +68,24 @@ async def create_transfer(
         transfer_id=transfer_id,
         job_spec_override=job_spec_override,
     )
+    required_seconds = pcore.required_token_lifetime_seconds(
+        job_spec, config.get_credentials().lifecycle_grace_seconds
+    )
+    remaining_seconds = max(
+        0, int((user.expires_at - datetime.now(UTC)).total_seconds())
+    )
+    if remaining_seconds < required_seconds:
+        raise InsufficientTokenLifetime(
+            required_seconds=required_seconds,
+            remaining_seconds=remaining_seconds,
+        )
     async with session.begin():
         transfer = await repo.insert_transfer(
             session,
             transfer_id=transfer_id,
-            user=user,
+            owner_issuer=user.issuer,
+            owner_subject=user.subject,
+            owner_email=user.email,
             parameters=parameters.model_dump(mode="json"),
             experiment=experiment,
             run=run,
@@ -101,22 +125,47 @@ async def get_transfer_detail(
 
 
 async def cancel_transfer(
-    session: AsyncSession, transfer_id: UUID
+    session: AsyncSession, transfer_id: UUID, user: AuthenticatedUser
 ) -> TransferCancelOutcome:
-    """Request cancellation and start reconcile workflow."""
+    """Request owner cancellation and prompt durable reconciliation."""
 
     async with session.begin():
-        transfer = await repo.get_transfer(session, transfer_id)
+        transfer = await repo.get_owned_transfer(
+            session,
+            transfer_id,
+            owner_issuer=user.issuer,
+            owner_subject=user.subject,
+        )
         if transfer is None:
             raise NotFound(f"transfer {transfer_id} not found")
         if TransferState(transfer.state).is_final():
             return TransferCancelOutcome.already_final
+        producer_job_id = transfer.producer_job_id
+        cache_id = transfer.cache_id
+        cache_mode = CacheMode(transfer.cache_mode)
         await repo.record_state(
             session,
             transfer_id,
             TransferState.canceling,
             source=TransitionSource.user,
         )
+
+    # Cancel now with the caller's own token.
+    # The reconciler gets only the transfer id.
+    if producer_job_id is not None:
+        try:
+            await iri.client().cancel_job(
+                producer_job_id, user.token.get_secret_value()
+            )
+        except Exception:
+            logger.exception(
+                "immediate producer cancellation failed for %s", transfer_id
+            )
+    if cache_id is not None and cache_mode is CacheMode.per_transfer:
+        try:
+            await fastcache.client().delete_cache(cache_id)
+        except httpx.HTTPError:
+            logger.exception("immediate cache cancellation failed for %s", transfer_id)
     await DBOS.start_workflow_async(
         workflows.reconcile_now, transfer_id, datetime.now(UTC)
     )
@@ -141,6 +190,7 @@ async def read_transfer_log(
     session: AsyncSession,
     transfer_id: UUID,
     stream: lcore.LogStream,
+    user: AuthenticatedUser,
     *,
     mode: lcore.LogReadMode = lcore.LogReadMode.tail,
     lines: int | None = None,
@@ -154,14 +204,20 @@ async def read_transfer_log(
     client = iri.client()
     try:
         if mode is lcore.LogReadMode.head:
-            return await client.head(path, lines=lines, bytes_=bytes_)
-        return await client.tail(path, lines=lines, bytes_=bytes_)
+            return await client.head(
+                path, user.token.get_secret_value(), lines=lines, bytes_=bytes_
+            )
+        return await client.tail(
+            path, user.token.get_secret_value(), lines=lines, bytes_=bytes_
+        )
+    except iri.IriAuthenticationError as exc:
+        raise DelegatedCredentialRejected(str(exc)) from exc
     except iri.FilesystemError as exc:
         # TODO: stat collapses any failure (missing file or broken upstream) to
         # exists=False, so we still can't tell the two apart here.
         # so this is the right idea but it would be better to have a more specific
         # exception...
-        stat = await client.stat(path)
+        stat = await client.stat(path, user.token.get_secret_value())
         if not stat.exists:
             raise NotFound(
                 f"log {stream.value} not found for transfer {transfer_id}"
@@ -172,7 +228,7 @@ async def read_transfer_log(
 
 
 async def list_transfer_logs(
-    session: AsyncSession, transfer_id: UUID
+    session: AsyncSession, transfer_id: UUID, user: AuthenticatedUser
 ) -> TransferLogIndex:
     """Index every log stream for a transfer with its resolved path and, when
     the file exists, its size and last-modified time."""
@@ -192,11 +248,16 @@ async def list_transfer_logs(
         )
         for stream in lcore.LogStream
     ]
-    stats = await asyncio.gather(*(client.stat(path) for _, path in paths))
+    try:
+        stats = await asyncio.gather(
+            *(client.stat(path, user.token.get_secret_value()) for _, path in paths)
+        )
+    except iri.IriAuthenticationError as exc:
+        raise DelegatedCredentialRejected(str(exc)) from exc
     streams = [
         TransferLogStreamInfo(
             stream=stream,
-            path=str(path),
+            path=path,
             available=stat.exists,
             size=stat.size,
             modified_at=stat.modified_at,
