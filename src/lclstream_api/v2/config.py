@@ -1,0 +1,183 @@
+from functools import lru_cache
+from pathlib import Path
+from typing import Annotated, Any
+
+from pydantic import AnyHttpUrl, BeforeValidator, Field, PostgresDsn, SecretStr
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+
+
+def _parse_comma_list(v: Any) -> Any:
+    if isinstance(v, str) and not v.startswith("["):
+        return [item.strip() for item in v.split(",") if item.strip()]
+    return v
+
+
+def _ensure_psycopg_driver(v: Any) -> Any:
+    """Coerce driverless ``postgresql://`` DSN to the ``postgresql+psycopg``
+    driver the async engine expects."""
+    if isinstance(v, str) and v.startswith("postgresql://"):
+        return "postgresql+psycopg://" + v.removeprefix("postgresql://")
+    return v
+
+
+PsycopgDsn = Annotated[PostgresDsn, BeforeValidator(_ensure_psycopg_driver)]
+
+
+class DatabaseSettings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_prefix="LCLSTREAM_DB_", frozen=True, validate_default=True
+    )
+
+    url: PsycopgDsn = PostgresDsn(
+        url="postgresql+psycopg://postgres:postgres@localhost:5432/lclstream_api"
+    )
+
+
+class DbosSettings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_prefix="LCLSTREAM_DBOS_", frozen=True, validate_default=True
+    )
+
+    name: str = "lclstream-api-dbos"
+    system_schema: str = "dbos"
+
+
+class FastcacheClientSettings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_prefix="LCLSTREAM_FASTCACHE_", frozen=True, validate_default=True
+    )
+
+    base_url: AnyHttpUrl = AnyHttpUrl("https://sdfdtn003.sdf.slac.stanford.edu:8000")
+    # Path to the shared 12h SLAC bearer token (re-read on each request so the
+    # mint can rotate it without a restart). Same file IRI uses.
+    token_file: Path = Field(
+        description="Path to a file containing the shared SLAC bearer token",
+    )
+    # mTLS: CA bundle that signs the fastcache server cert, plus our client cert.
+    verify: bool | str = True
+    client_cert: Path
+    client_key: Path
+    timeout_s: float = 30.0
+
+    @property
+    def token(self) -> str:
+        """Read the bearer token from file (fresh each call)."""
+        return self.token_file.read_text().strip()
+
+
+class IriClientSettings(BaseSettings):
+    """Connection + placement settings for IRI submission at S3DF.
+
+    Reads ``LCLSTREAM_IRI_*`` environment variables.
+    Requires ``s3df_token_file`` pointing to a file containing the S3DF Dex bearer token.
+    """
+
+    model_config = SettingsConfigDict(
+        env_prefix="LCLSTREAM_IRI_", frozen=True, validate_default=True
+    )
+
+    # Prod IRI API; override to https://iri-dev.slac.stanford.edu for dev.
+    base_url: AnyHttpUrl = AnyHttpUrl("https://iri.slac.stanford.edu")
+    facility: str = "s3df"
+    resource: str = "milano"
+    fs_resource: str = "sdfdata"
+
+
+class LCLStreamerProducerSettings(BaseSettings):
+    """Static, deployment-level knobs for the producer (lclstreamer) IRI job."""
+
+    model_config = SettingsConfigDict(
+        env_prefix="LCLSTREAM_PRODUCER_", frozen=True, validate_default=True
+    )
+
+    # Root of the per-experiment data tree on S3DF. The per-transfer job
+    # directory is built underneath this (see ``core.producer.transfer_work_dir``).
+    data_base_dir: str = "/sdf/data/lcls/ds"
+    # Environment variables keyed by psana env name ("psana1" / "psana2").
+    # Complex value: override via a JSON-encoded ``LCLSTREAM_PRODUCER_ENVIRONMENTS``.
+    environments: dict[str, dict[str, str]] = Field(default_factory=dict)
+    # Override this with a pre-pulled .sif file
+    container_image: str = "docker://ghcr.io/lclstream/lclstreamer-psana2extmpi:latest"
+
+
+# NoDecode stops pydantic-settings from JSON-decoding the env value in the
+# source (which a bare string like "s3df" fails)
+CommaSeparatedList = Annotated[list[str], NoDecode, BeforeValidator(_parse_comma_list)]
+
+
+class OidcSettings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_prefix="LCLSTREAM_OIDC_", frozen=True, validate_default=True
+    )
+
+    issuer_url: str = "https://dex.example/dex"
+    jwks_uri: str = "https://dex.example/dex/keys"
+    audiences: CommaSeparatedList = Field(default_factory=list)
+    # Verified emails allowed to use the service (the access allowlist).
+    expected_users: CommaSeparatedList = Field(default_factory=list)
+
+
+class AppSettings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_prefix="LCLSTREAM_APP_", frozen=True, validate_default=True
+    )
+    root_path: str = "/api/v2"
+    cors_origins: CommaSeparatedList = Field(default_factory=list)
+
+
+class CredentialsSettings(BaseSettings):
+    """Encrypted delegated-token storage and admission policy."""
+
+    model_config = SettingsConfigDict(
+        env_prefix="LCLSTREAM_CREDENTIALS_", frozen=True, validate_default=True
+    )
+
+    fernet_key: SecretStr = Field(
+        description="Base64 Fernet key encrypting stored user bearer tokens"
+    )
+    lifecycle_grace_seconds: int = Field(
+        default=900,
+        ge=0,
+        description="Token lifetime reserved beyond the requested producer limit",
+    )
+
+
+# Settings are constructed lazily and then cached
+@lru_cache
+def get_database() -> DatabaseSettings:
+    return DatabaseSettings()
+
+
+@lru_cache
+def get_dbos() -> DbosSettings:
+    return DbosSettings()
+
+
+@lru_cache
+def get_fastcache() -> FastcacheClientSettings:
+    return FastcacheClientSettings()
+
+
+@lru_cache
+def get_iri() -> IriClientSettings:
+    return IriClientSettings()
+
+
+@lru_cache
+def get_producer() -> LCLStreamerProducerSettings:
+    return LCLStreamerProducerSettings()
+
+
+@lru_cache
+def get_oidc() -> OidcSettings:
+    return OidcSettings()
+
+
+@lru_cache
+def get_app() -> AppSettings:
+    return AppSettings()
+
+
+@lru_cache
+def get_credentials() -> CredentialsSettings:
+    return CredentialsSettings()
