@@ -136,6 +136,48 @@ export type BinaryFileWritingDataHandlerParameters = {
 export type CacheMode = 'per_transfer' | 'shared';
 
 /**
+ * CacheShutdownConflict
+ */
+export type CacheShutdownConflict = {
+    /**
+     * Active Transfer Count
+     */
+    active_transfer_count: number;
+    /**
+     * Message
+     */
+    message: string;
+};
+
+/**
+ * CacheState
+ *
+ * Observed fastcache cache lifecycle.
+ */
+export type CacheState = 'new' | 'queued' | 'active' | 'completed' | 'failed' | 'canceled';
+
+/**
+ * CacheStatusPublic
+ */
+export type CacheStatusPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    state: CacheState;
+};
+
+/**
+ * CachesPublic
+ */
+export type CachesPublic = {
+    /**
+     * Data
+     */
+    data: Array<CacheStatusPublic>;
+};
+
+/**
  * ConstValueParameters
  *
  * Parameters for ConstValue class
@@ -1072,6 +1114,75 @@ export type VolumeMount = {
      */
     target: string;
 };
+
+export type GetCachesCachesGetData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Experiment
+         */
+        experiment: string;
+    };
+    url: '/caches/';
+};
+
+export type GetCachesCachesGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetCachesCachesGetError = GetCachesCachesGetErrors[keyof GetCachesCachesGetErrors];
+
+export type GetCachesCachesGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: CachesPublic;
+};
+
+export type GetCachesCachesGetResponse = GetCachesCachesGetResponses[keyof GetCachesCachesGetResponses];
+
+export type ShutdownCacheCachesCacheIdDeleteData = {
+    body?: never;
+    path: {
+        /**
+         * Cache Id
+         */
+        cache_id: string;
+    };
+    query?: {
+        /**
+         * Force
+         */
+        force?: boolean;
+    };
+    url: '/caches/{cache_id}';
+};
+
+export type ShutdownCacheCachesCacheIdDeleteErrors = {
+    /**
+     * Conflict
+     */
+    409: CacheShutdownConflict;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ShutdownCacheCachesCacheIdDeleteError = ShutdownCacheCachesCacheIdDeleteErrors[keyof ShutdownCacheCachesCacheIdDeleteErrors];
+
+export type ShutdownCacheCachesCacheIdDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    200: Message;
+};
+
+export type ShutdownCacheCachesCacheIdDeleteResponse = ShutdownCacheCachesCacheIdDeleteResponses[keyof ShutdownCacheCachesCacheIdDeleteResponses];
 
 export type GetTransfersTransfersGetData = {
     body?: never;
