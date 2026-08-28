@@ -228,7 +228,7 @@
         "type": "object"
       },
       "ConsumerConnectionInfo": {
-        "description": "The cache push socket the consumer connects to.",
+        "description": "The cache socket the consumer connects to, and how to dial it.",
         "properties": {
           "host": {
             "title": "Host",
@@ -238,6 +238,9 @@
             "title": "Port",
             "type": "integer"
           },
+          "socket": {
+            "$ref": "#/components/schemas/ConsumerSocket"
+          },
           "uri": {
             "title": "Uri",
             "type": "string"
@@ -246,10 +249,21 @@
         "required": [
           "host",
           "port",
-          "uri"
+          "uri",
+          "socket"
         ],
         "title": "ConsumerConnectionInfo",
         "type": "object"
+      },
+      "ConsumerSocket": {
+        "description": "ZMQ socket the consumer connects with.\n\n``dealer`` and ``req`` are request-driven: the consumer asks for each\nmessage. fastcache only reports metrics under ``pull``.",
+        "enum": [
+          "pull",
+          "dealer",
+          "req"
+        ],
+        "title": "ConsumerSocket",
+        "type": "string"
       },
       "Container": {
         "description": "Represents a container specification for job execution.  Implementation notes: The value of gpu_cores_per_process in ResourceSpec should be used to determine if the container should be run with GPU support. Likewise, the value of launcher in JobSpec should be used to determine if the container should be run with MPI support. The container should by default. be run with host networking.",
@@ -1321,6 +1335,10 @@
           "cache_mode": {
             "$ref": "#/components/schemas/CacheMode",
             "default": "per_transfer"
+          },
+          "consumer_socket": {
+            "$ref": "#/components/schemas/ConsumerSocket",
+            "default": "pull"
           },
           "job_spec_override": {
             "anyOf": [

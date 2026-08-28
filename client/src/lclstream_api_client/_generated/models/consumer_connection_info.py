@@ -19,19 +19,21 @@ import json
 
 from pydantic import BaseModel, ConfigDict, StrictInt, StrictStr
 from typing import Any, ClassVar, Dict, List
+from lclstream_api_client._generated.models.consumer_socket import ConsumerSocket
 from typing import Optional, Set
 from typing_extensions import Self
 from pydantic_core import to_jsonable_python
 
 class ConsumerConnectionInfo(BaseModel):
     """
-    The cache push socket the consumer connects to.
+    The cache socket the consumer connects to, and how to dial it.
     """ # noqa: E501
     host: StrictStr
     port: StrictInt
+    socket: ConsumerSocket
     uri: StrictStr
     additional_properties: Dict[str, Any] = {}
-    __properties: ClassVar[List[str]] = ["host", "port", "uri"]
+    __properties: ClassVar[List[str]] = ["host", "port", "socket", "uri"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -93,6 +95,7 @@ class ConsumerConnectionInfo(BaseModel):
         _obj = cls.model_validate({
             "host": obj.get("host"),
             "port": obj.get("port"),
+            "socket": obj.get("socket"),
             "uri": obj.get("uri")
         })
         # store additional fields in additional_properties
