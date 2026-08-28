@@ -13,7 +13,12 @@ from lclstream_api.v2 import auth
 EXP = 1_893_499_200
 
 
-def _credentials(*, subject: str = "user-123", email: str = "user@example.org"):
+def _credentials(
+    *,
+    subject: str = "user-123",
+    email: str = "user@example.org",
+    name: str | None = "user",
+):
     return JWKSAuthCredentials(
         scheme="Bearer",
         credentials="raw-secret-token",
@@ -24,6 +29,7 @@ def _credentials(*, subject: str = "user-123", email: str = "user@example.org"):
             email=email,
             email_verified=True,
             sub=subject,
+            name=name,
         ),
     )
 
@@ -45,6 +51,7 @@ async def test_require_user_returns_immutable_principal_and_captures_token(
     assert user.issuer == "https://idp.example.org"
     assert user.subject == "user-123"
     assert user.email == "user@example.org"
+    assert user.username == "user"
     assert user.token.get_secret_value() == "raw-secret-token"
     assert user.expires_at == datetime.fromtimestamp(EXP, UTC)
     assert user.principal == ("https://idp.example.org", "user-123")
@@ -80,5 +87,38 @@ async def test_require_user_preserves_allowlist_policy(
 
     with pytest.raises(HTTPException) as exc_info:
         await auth.require_user(_credentials(), fake_session)
+
+    assert exc_info.value.status_code == 403
+
+
+def _oidc(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        auth,
+        "get_oidc",
+        lambda: SimpleNamespace(expected_users=["user@example.org"]),
+    )
+    monkeypatch.setattr(auth, "capture_token", AsyncMock(return_value=True))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "name",
+    [
+        None,
+        "",
+        "Sam Welborn",  # a display name, not a unix username
+        "../../etc",  # would escape home_base_dir
+        "user/nested",
+        "1leading-digit",
+    ],
+)
+async def test_unusable_name_claim_is_rejected(
+    monkeypatch: pytest.MonkeyPatch, fake_session: AsyncSession, name
+) -> None:
+    """Every transfer writes under this name, so never guess at a bad one."""
+    _oidc(monkeypatch)
+
+    with pytest.raises(HTTPException) as exc_info:
+        await auth.require_user(_credentials(name=name), fake_session)
 
     assert exc_info.value.status_code == 403

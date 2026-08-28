@@ -200,6 +200,7 @@ async def _load_setup_inputs(transfer_id: UUID) -> tcore.TransferSetup:
             issuer=transfer.owner_issuer, subject=transfer.owner_subject
         ),
         requested_by=transfer.owner_email,
+        username=transfer.owner_username,
         exp=transfer.experiment,
         run=transfer.run,
         cache_mode=tcore.CacheMode(transfer.cache_mode),
@@ -333,11 +334,13 @@ async def provision_transfer(transfer_id: UUID) -> None:
     setup: tcore.TransferSetup | None = None
     try:
         setup = await _load_setup_inputs(transfer_id)
+        username = setup.username
         cache_log_path = logs.cache_log_path(
             config.get_producer(),
             setup.exp,
             setup.run,
             transfer_id,
+            username,
             cache_mode=setup.cache_mode,
         )
         key = (
@@ -352,7 +355,7 @@ async def provision_transfer(transfer_id: UUID) -> None:
             pcore.cache_idle_timeout_ms(setup.cache_mode),
         )
         work_dir = pcore.transfer_work_dir(
-            config.get_producer(), setup.exp, setup.run, transfer_id
+            config.get_producer(), setup.exp, setup.run, transfer_id, username
         )
         # _create_cache succeeding means the work dir exists
         progress = progress.with_work_dir(work_dir).with_cache(
@@ -363,7 +366,7 @@ async def provision_transfer(transfer_id: UUID) -> None:
         inputs = await _load_producer_inputs(transfer_id, endpoint)
         if inputs is None:
             raise LookupError(f"transfer {transfer_id} disappeared during setup")
-        plan = pcore.plan_producer(inputs, config.get_producer(), transfer_id)
+        plan = pcore.plan_producer(inputs, config.get_producer(), transfer_id, username)
 
         await _upload_config(plan.config_path, plan.config_yaml, setup.owner)
         progress = progress.with_config(plan.config_path)

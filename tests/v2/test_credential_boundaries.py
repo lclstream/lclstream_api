@@ -34,12 +34,14 @@ def _user(
     issuer: str = "https://issuer.example",
     subject: str = "subject-1",
     email: str = "user@example.org",
+    username: str = "user",
     token: str = RAW_TOKEN,
 ) -> AuthenticatedUser:
     return AuthenticatedUser(
         issuer=issuer,
         subject=subject,
         email=email,
+        username=username,
         token=token,
         expires_at=datetime.now(UTC) + timedelta(hours=12),
     )
@@ -168,6 +170,7 @@ async def test_transfer_creation_rejects_short_lived_token_before_persistence(
         issuer="https://issuer.example",
         subject="subject-1",
         email="user@example.org",
+        username="user",
         token=RAW_TOKEN,
         expires_at=datetime.now(UTC) + timedelta(seconds=100),
     )
@@ -230,6 +233,8 @@ async def test_log_read_uses_current_caller_token_not_owner_credential(
         run="42",
         cache_mode=CacheMode.per_transfer,
         owner_subject="different-owner",
+        owner_email="owner@example.org",
+        owner_username="owner",
     )
     io.tail.return_value = "log output"
 
