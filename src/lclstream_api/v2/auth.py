@@ -1,3 +1,4 @@
+import re
 from datetime import UTC, datetime
 from typing import Annotated
 
@@ -17,8 +18,12 @@ from . import config, repo
 from .config import get_oidc
 from .db import get_session
 
-# Claims every accepted token must carry (validated by pyjwt's ``require``).
+# Claims every accepted token must carry.
 _REQUIRED_JWT_FIELDS = ["exp", "iss", "aud", "sub"]
+
+# Becomes a path segment, so keep "/" and ".." out.
+# POSIX name rule: "name" is a display name by spec.
+_UNIX_USERNAME = re.compile(r"^[a-z_][a-z0-9_-]{0,31}$")
 
 
 class TokenPayload(BaseModel):
@@ -30,6 +35,7 @@ class TokenPayload(BaseModel):
     email: str
     email_verified: bool = False
     sub: str = Field(min_length=1)
+    # Dex/S3DF puts the unix username here.
     name: str | None = None
 
 
@@ -55,6 +61,7 @@ class AuthenticatedUser(BaseModel):
     issuer: str
     subject: str
     email: str
+    username: str
     token: SecretStr
     expires_at: datetime
 
@@ -108,6 +115,20 @@ async def get_valid_token(
         return None
 
 
+def _unix_username(payload: TokenPayload) -> str:
+    """Read the SDF unix username from the token's ``name`` claim.
+
+    Every transfer writes under this name, so a token without a usable one
+    is rejected rather than guessed at from the email.
+    """
+    if payload.name is None or not _UNIX_USERNAME.fullmatch(payload.name):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Token claim 'name' is not a usable unix username",
+        )
+    return payload.name
+
+
 async def require_user(
     auth_credentials: Annotated[JWKSAuthCredentials, Depends(_jwks_auth)],
     session: Annotated[AsyncSession, Depends(get_session)],
@@ -122,6 +143,7 @@ async def require_user(
         issuer=payload.iss,
         subject=payload.sub,
         email=payload.email,
+        username=_unix_username(payload),
         token=auth_credentials.credentials,
         expires_at=datetime.fromtimestamp(payload.exp, UTC),
     )

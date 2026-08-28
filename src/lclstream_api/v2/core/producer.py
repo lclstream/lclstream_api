@@ -156,26 +156,41 @@ def short_id(transfer_id: UUID) -> str:
     return str(transfer_id)[:8]
 
 
+def user_scratch_root(settings: LCLStreamerProducerSettings, username: str) -> Path:
+    """Home-directory root for a transfer's config and logs.
+
+    The shared scratch tree needs group access S3DF can't grant;
+    a user's own home needs only their uid.
+    """
+    return Path(settings.home_base_dir) / username[0] / username
+
+
 def transfer_work_dir(
-    settings: LCLStreamerProducerSettings, exp: str, run: str, transfer_id: UUID
+    settings: LCLStreamerProducerSettings,
+    exp: str,
+    run: str,
+    transfer_id: UUID,
+    username: str,
 ) -> Path:
-    """Per-transfer working directory."""
-    instrument = exp[:3]
+    """Per-transfer working directory, under the owner's home."""
     return (
-        Path(settings.data_base_dir)
-        / instrument
-        / exp
-        / "scratch"
+        user_scratch_root(settings, username)
         / "lclstreamer"
         / f"lclstreamer_{exp}_{run}_{short_id(transfer_id)}"
     )
 
 
 def producer_config_path(
-    settings: LCLStreamerProducerSettings, exp: str, run: str, transfer_id: UUID
+    settings: LCLStreamerProducerSettings,
+    exp: str,
+    run: str,
+    transfer_id: UUID,
+    username: str,
 ) -> Path:
     """Remote producer config filepath."""
-    return transfer_work_dir(settings, exp, run, transfer_id) / CONFIG_FILENAME
+    return (
+        transfer_work_dir(settings, exp, run, transfer_id, username) / CONFIG_FILENAME
+    )
 
 
 def shared_cache_dir(settings: LCLStreamerProducerSettings, exp: str) -> Path:
@@ -210,6 +225,7 @@ def build_job_spec(
     exp: str,
     run: str,
     transfer_id: UUID,
+    username: str,
     job_spec_override: JobSpec | None = None,
 ) -> JobSpec:
     """Resolve the full producer JobSpec for a transfer. Deterministic given
@@ -220,8 +236,8 @@ def build_job_spec(
     psana_env = _PSANA_ENV[params.event_source.type]
     psana_environment = settings.environments.get(psana_env) or {}
 
-    job_dir = transfer_work_dir(settings, exp, run, transfer_id)
-    config_path = producer_config_path(settings, exp, run, transfer_id)
+    job_dir = transfer_work_dir(settings, exp, run, transfer_id, username)
+    config_path = producer_config_path(settings, exp, run, transfer_id, username)
 
     jobspec = DEFAULT_JOB_SPEC.model_copy(deep=True)
     jobspec.attributes.account = f"lcls:{exp}"  # pyrefly: ignore[missing-attribute]
@@ -252,12 +268,13 @@ def build_producer_plan(
     exp: str,
     run: str,
     transfer_id: UUID,
+    username: str,
 ) -> ProducerPlan:
     """Pair an already-resolved JobSpec (see ``build_job_spec``) with the
     config file to upload for this transfer."""
     return ProducerPlan(
         jobspec=jobspec,
-        config_path=producer_config_path(settings, exp, run, transfer_id),
+        config_path=producer_config_path(settings, exp, run, transfer_id, username),
         config_yaml=render_config_yaml(params),
     )
 
@@ -273,6 +290,7 @@ def plan_producer(
     inputs: ProducerInputs,
     settings: LCLStreamerProducerSettings,
     transfer_id: UUID,
+    username: str,
 ) -> ProducerPlan:
     """Compose the full producer plan for a transfer."""
     params = inject_cache_handlers(inputs.parameters, inputs.endpoint.pull_uri)
@@ -283,4 +301,5 @@ def plan_producer(
         exp=inputs.exp,
         run=inputs.run,
         transfer_id=transfer_id,
+        username=username,
     )

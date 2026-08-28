@@ -84,10 +84,12 @@ def make_producer_settings() -> SettingsFactory:
     def _make(
         *,
         data_base_dir: str = "/sdf/data/lcls/ds",
+        home_base_dir: str = "/sdf/home",
         environments: dict[str, dict[str, str]] | None = None,
     ) -> LCLStreamerProducerSettings:
         return LCLStreamerProducerSettings(
             data_base_dir=data_base_dir,
+            home_base_dir=home_base_dir,
             environments=environments or {},
         )
 
