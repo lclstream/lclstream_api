@@ -15,6 +15,7 @@ from sqlalchemy.orm import (
     relationship,
 )
 
+from .core.enums import ConsumerSocket
 from .core.producer import CacheMode
 from .models import TransferState
 
@@ -92,6 +93,11 @@ class Transfer(DTMixin, Base):
     cache_mode: Mapped[str] = mapped_column(
         default=CacheMode.per_transfer,
         doc="CacheMode: per_transfer or shared; stored as the string value",
+    )
+
+    consumer_socket: Mapped[str] = mapped_column(
+        default=ConsumerSocket.pull,
+        doc="ConsumerSocket the consumer dials; stored as the string value",
     )
 
     # Cache reference (lives in fastcache_api's DB on the DTN).

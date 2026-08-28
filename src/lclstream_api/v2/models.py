@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -6,7 +7,13 @@ from uuid import UUID
 from pydantic import AwareDatetime, BaseModel, ConfigDict
 
 from ..lclstreamer_param import Parameters as LCLStreamerParameters
-from .core.enums import CacheMode, CacheState, TransferState, TransitionSource
+from .core.enums import (
+    CacheMode,
+    CacheState,
+    ConsumerSocket,
+    TransferState,
+    TransitionSource,
+)
 from .core.logs import LogStream
 from .core.producer import JobSpec
 
@@ -24,20 +31,24 @@ class TransferCancelOutcome(StrEnum):
 
 
 class ConsumerConnectionInfo(BaseModel):
-    """The cache push socket the consumer connects to."""
+    """The cache socket the consumer connects to, and how to dial it."""
 
     host: str
     port: int
     uri: str
+    socket: ConsumerSocket
 
     @classmethod
-    def from_endpoint(cls, host: str, port: int) -> ConsumerConnectionInfo:
-        return cls(host=host, port=port, uri=f"tcp://{host}:{port}")
+    def from_endpoint(
+        cls, host: str, port: int, socket: ConsumerSocket
+    ) -> ConsumerConnectionInfo:
+        return cls(host=host, port=port, uri=f"tcp://{host}:{port}", socket=socket)
 
 
 class TransferCreate(BaseModel):
     parameters: LCLStreamerParameters
     cache_mode: CacheMode = CacheMode.per_transfer
+    consumer_socket: ConsumerSocket = ConsumerSocket.pull
     # Optional escape hatch
     job_spec_override: JobSpec | None = None
 
@@ -62,15 +73,22 @@ class TransferPublic(BaseModel):
     connection_info: ConsumerConnectionInfo | None = None
 
     @classmethod
-    def from_transfer(cls, transfer: Transfer) -> TransferPublic:
+    def from_transfer(
+        cls, transfer: Transfer, consumer_hosts: Mapping[str, str] | None = None
+    ) -> TransferPublic:
         connection_info: ConsumerConnectionInfo | None = None
         if (
             transfer.state == TransferState.ready
             and transfer.cache_hostname is not None
             and transfer.push_port is not None
         ):
+            hostname = (consumer_hosts or {}).get(
+                transfer.cache_hostname, transfer.cache_hostname
+            )
             connection_info = ConsumerConnectionInfo.from_endpoint(
-                transfer.cache_hostname, transfer.push_port
+                hostname,
+                transfer.push_port,
+                ConsumerSocket(transfer.consumer_socket),
             )
         return cls(
             id=transfer.id,
@@ -88,8 +106,10 @@ class TransferDetail(TransferPublic):
     transitions: list[TransitionPublic] = []
 
     @classmethod
-    def from_transfer(cls, transfer: Transfer) -> TransferDetail:
-        base = TransferPublic.from_transfer(transfer)
+    def from_transfer(
+        cls, transfer: Transfer, consumer_hosts: Mapping[str, str] | None = None
+    ) -> TransferDetail:
+        base = TransferPublic.from_transfer(transfer, consumer_hosts)
         return cls(
             **base.model_dump(),
             transitions=[
@@ -125,4 +145,3 @@ class CacheStatusPublic(BaseModel):
 
 class CachesPublic(BaseModel):
     data: list[CacheStatusPublic]
-
