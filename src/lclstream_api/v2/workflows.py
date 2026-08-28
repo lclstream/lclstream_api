@@ -1,19 +1,7 @@
-"""DBOS durable workflows for the transfer lifecycle (the imperative shell).
+"""DBOS durable workflows for the transfer lifecycle.
 
-* ``provision_transfer`` — a saga that creates the cache then submits the
-  producer. Each external call is an idempotent ``@DBOS.step``; on failure the
-  completed steps are compensated in reverse order. It records ``provisioning``
-  and exits; it does not poll.
-* ``reconcile_transfers`` — a scheduled workflow that drives status after
-  setup. It observes the cache and producer, runs the pure
-  ``decide_state_with_timeout``, writes on change only, and tears down
-  resources on terminal/cancel.
-
-DB access goes through ``@db.transaction`` functions, recorded for exactly-once
-execution inside a workflow. Each one injects the datasource-tx session and maps
-the ORM row to a frozen pydantic model before returning. External IO goes
-through ``@DBOS.step`` wrappers around the shell clients; pure decisions come
-from ``core``.
+Exceptions raised from steps get persisted, so keep credentials and request
+details out of their messages.
 """
 
 import logging
@@ -69,7 +57,7 @@ def _is_authentication_failure(exc: BaseException) -> bool:
     return False
 
 
-# Statuses for which the reconciler should (idempotently) tear down resources.
+# The reconciler tears down resources in these states.
 _TEARDOWN_STATES = frozenset(
     {
         TransferState.failed,
@@ -146,8 +134,7 @@ async def _delete_config(path: Path, owner: tcore.Principal) -> None:
 
 @DBOS.step(**DEFAULT_RETRY_SETTINGS)
 async def _delete_work_dir(work_dir: Path, owner: tcore.Principal) -> None:
-    # Provisioning rollback only: remove the whole per-transfer scratch dir
-    # (config + any partial artifacts). Normal teardown leaves it intact.
+    # Rollback only; normal teardown keeps the dir.
     token = await _token_for(owner)
     await iri.client().delete(work_dir, token)
 
@@ -381,8 +368,7 @@ async def provision_transfer(transfer_id: UUID) -> None:
     except Exception as exc:
         logger.exception("provisioning failed for transfer %s", transfer_id)
 
-        # Release what we created before finalizing. If setup never loaded,
-        # progress has no steps recorded yet, so there's nothing to undo.
+        # Release what we created before finalizing.
         compensation_failure: Exception | None = None
         if setup is not None:
             try:
@@ -456,9 +442,8 @@ async def _reconcile_one(transfer_id: UUID, now: AwareDatetime) -> None:
     try:
         observation = await _observe(transfer_id, resources)
     except CredentialUnavailableError, iri.IriAuthenticationError:
-        # IRI can no longer be managed, but FastCache has its own mTLS authority.
-        # Complete that cleanup before making the auth failure terminal so an
-        # mTLS outage is retried on the next scheduled reconciliation pass.
+        # FastCache auth is separate; clean it up first.
+        # An mTLS outage then retries on the next pass.
         if resources.cache_id and resources.cache_mode is tcore.CacheMode.per_transfer:
             await _delete_cache(resources.cache_id)
         await _record_state(
@@ -471,12 +456,10 @@ async def _reconcile_one(transfer_id: UUID, now: AwareDatetime) -> None:
 
     decision = tcore.decide_state_with_timeout(observation, snapshot, now=now)
 
-    # Only a pass that actually observed fresh upstream state advances the
-    # staleness watermark...
+    # Only a fresh observation advances the watermark.
     observed_at = now if observation.ok else None
 
-    # Tear down before persisting a final state: next reconcile pass retries it
-    # instead of leaking the cache/producer forever.
+    # Tear down before the final state, so failures retry.
     if decision.state in _TEARDOWN_STATES:
         await _teardown(resources)
 

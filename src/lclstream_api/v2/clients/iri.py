@@ -55,8 +55,9 @@ def _raise_operation_error(exc: BaseException, operation: str) -> NoReturn:
 
 
 class PosixStat(BaseModel):
-    """The flat POSIX stat dict S3DF IRI returns in a completed task result.
-    TODO: this may change as we add other facilities, but for now it matches:
+    """Flat POSIX stat dict S3DF IRI returns in a task result.
+
+    TODO: mirrors fs-facade-service's filesystem models; other facilities may differ.
     https://github.com/slaclab/fs-facade-service/blob/main/app/models/filesystem.py
     """
 
@@ -160,7 +161,7 @@ class IriClient:
             self._resource(token).job(job_id).cancel()
         except DestroyError as exc:
             _raise_auth_error(exc)
-            # Cancelling a job that is already gone/terminal is a no-op.
+            # Already gone or terminal: no-op.
             pass
         except Exception as exc:
             _raise_operation_error(exc, "job cancellation")
@@ -184,7 +185,7 @@ class IriClient:
         try:
             parsed = PosixStat.model_validate(result)
         except ValidationError:
-            # best effort, it still exists if this could not be validated
+            # unparsable stat still means the file exists
             return LogStat(exists=True)
         return LogStat(exists=True, stat=parsed)
 
@@ -193,11 +194,10 @@ class IriClient:
             result = self._fs(token).stat(str(path)).result
         except FilesystemError as exc:
             _raise_auth_error(exc)
-            # amscrot's FilesystemError only ever carries status in
-            # {"failed", "canceled", "timeout"} with no errno/
-            # reason distinguishing ENOENT from something broken.
-            # No way to differentiate, so stat failure reads as "missing".
-            # TODO: if this changes, we should update this...
+            # FilesystemError carries no errno, so ENOENT is
+            # indistinguishable from a real failure. Status is only ever
+            # {"failed", "canceled", "timeout"}.
+            # TODO: narrow this once upstream distinguishes them.
             return LogStat(exists=False)
         except Exception as exc:
             _raise_operation_error(exc, "file stat")
