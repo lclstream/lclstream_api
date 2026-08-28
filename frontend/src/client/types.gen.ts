@@ -56,6 +56,11 @@ export type BatchProcessingPipelineParameters = {
  *
  * socket_type: Socket pattern to use. Currently only ``"push"`` is
  * supported. Defaults to ``"push"``
+ *
+ * linger: How long, in milliseconds, close() blocks to flush messages still
+ * queued in the send buffer. -1 blocks until they are all delivered, 0
+ * discards them immediately. Set to -1 or a positive value to avoid
+ * dropping the tail of the stream when the process exits
  */
 export type BinaryDataStreamingDataHandlerParameters = {
     /**
@@ -70,6 +75,10 @@ export type BinaryDataStreamingDataHandlerParameters = {
      * Library
      */
     library?: 'zmq';
+    /**
+     * Linger
+     */
+    linger?: number;
     /**
      * Role
      */
@@ -241,6 +250,25 @@ export type Container = {
      * List of volume mounts for the container
      */
     volume_mounts?: Array<VolumeMount> | null;
+};
+
+/**
+ * CrystfelPreprocessingPipelineParameters
+ *
+ * Configuration parameters for the CrystFEL Preprocessing Pipeline
+ *
+ * This pipeline lays out the data in a format that is understood by the
+ * CrystFEL Serial Crystalography Processing software.
+ *
+ * Attributes:
+ *
+ * type: Discriminator field, must be ``"CrystfelPreprocessingPipeline"``
+ */
+export type CrystfelPreprocessingPipelineParameters = {
+    /**
+     * Type
+     */
+    type: 'CrystfelPreprocessingPipeline';
 };
 
 /**
@@ -528,6 +556,25 @@ export type Message = {
 };
 
 /**
+ * MsgpackBinarySerializerParameters
+ *
+ * Configuration parameters for the MsgPack binary serializer
+ *
+ * This serializer encodes a batch of event data arrays into a MsgPack binary
+ * object.
+ *
+ * Attributes:
+ *
+ * type: Discriminator field, must be ``"MsgpackBinarySerializer"``
+ */
+export type MsgpackBinarySerializerParameters = {
+    /**
+     * Type
+     */
+    type: 'MsgpackBinarySerializer';
+};
+
+/**
  * Parameters
  *
  * Top-level configuration parameters for an lclstreamer run
@@ -572,7 +619,9 @@ export type Parameters = {
         type: 'HDF5BinarySerializer';
     } & Hdf5BinarySerializerParameters) | ({
         type: 'SimplonBinarySerializer';
-    } & SimplonBinarySerializerParameters);
+    } & SimplonBinarySerializerParameters) | ({
+        type: 'MsgpackBinarySerializer';
+    } & MsgpackBinarySerializerParameters);
     /**
      * Data Sources
      */
@@ -612,7 +661,9 @@ export type Parameters = {
         type: 'BatchProcessingPipeline';
     } & BatchProcessingPipelineParameters) | ({
         type: 'PeaknetPreprocessingPipeline';
-    } & PeaknetPreprocessingPipelineParameters);
+    } & PeaknetPreprocessingPipelineParameters) | ({
+        type: 'CrystfelPreprocessingPipeline';
+    } & CrystfelPreprocessingPipelineParameters);
     /**
      * Skip Incomplete Events
      */
@@ -879,6 +930,14 @@ export type ResourceSpec = {
  * detector_name: Human-readable name of the detector
  *
  * detector_type: Model or type string identifying the detector hardware
+ *
+ * photon_wavelength_source: Optional flattened data key of the photon_wavelength
+ * PV (e.g. ``"SIOC:SYS0:ML00:AO192"``). When unset, photon_wavelength is 0.
+ *
+ * spectrometer_source: Optional flattened data key of a spectrometer source to
+ * embed in each image message (e.g. ``"feespec.raw.hproj"``). When unset, no
+ * spectrometer fields are added; when set but missing for an event, the frame
+ * is still sent without them.
  */
 export type SimplonBinarySerializerParameters = {
     /**
@@ -898,6 +957,10 @@ export type SimplonBinarySerializerParameters = {
      */
     detector_type: string;
     /**
+     * Photon Wavelength Source
+     */
+    photon_wavelength_source?: string | null;
+    /**
      * Polarization Axis
      */
     polarization_axis: Array<number>;
@@ -905,6 +968,10 @@ export type SimplonBinarySerializerParameters = {
      * Polarization Fraction
      */
     polarization_fraction: number;
+    /**
+     * Spectrometer Source
+     */
+    spectrometer_source?: string | null;
     /**
      * Type
      */
