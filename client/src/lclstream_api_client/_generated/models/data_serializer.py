@@ -18,12 +18,13 @@ import pprint
 from pydantic import BaseModel, ConfigDict, Field, StrictStr, ValidationError, field_validator
 from typing import Any, List, Optional
 from lclstream_api_client._generated.models.hdf5_binary_serializer_parameters import HDF5BinarySerializerParameters
+from lclstream_api_client._generated.models.msgpack_binary_serializer_parameters import MsgpackBinarySerializerParameters
 from lclstream_api_client._generated.models.simplon_binary_serializer_parameters import SimplonBinarySerializerParameters
 from pydantic import StrictStr, Field
 from typing import Union, List, Set, Optional, Dict
 from typing_extensions import Literal, Self
 
-DATASERIALIZER_ONE_OF_SCHEMAS = ["HDF5BinarySerializerParameters", "SimplonBinarySerializerParameters"]
+DATASERIALIZER_ONE_OF_SCHEMAS = ["HDF5BinarySerializerParameters", "MsgpackBinarySerializerParameters", "SimplonBinarySerializerParameters"]
 
 class DataSerializer(BaseModel):
     """
@@ -33,8 +34,10 @@ class DataSerializer(BaseModel):
     oneof_schema_1_validator: Optional[HDF5BinarySerializerParameters] = None
     # data type: SimplonBinarySerializerParameters
     oneof_schema_2_validator: Optional[SimplonBinarySerializerParameters] = None
-    actual_instance: Optional[Union[HDF5BinarySerializerParameters, SimplonBinarySerializerParameters]] = None
-    one_of_schemas: Set[str] = { "HDF5BinarySerializerParameters", "SimplonBinarySerializerParameters" }
+    # data type: MsgpackBinarySerializerParameters
+    oneof_schema_3_validator: Optional[MsgpackBinarySerializerParameters] = None
+    actual_instance: Optional[Union[HDF5BinarySerializerParameters, MsgpackBinarySerializerParameters, SimplonBinarySerializerParameters]] = None
+    one_of_schemas: Set[str] = { "HDF5BinarySerializerParameters", "MsgpackBinarySerializerParameters", "SimplonBinarySerializerParameters" }
 
     model_config = ConfigDict(
         validate_assignment=True,
@@ -70,12 +73,17 @@ class DataSerializer(BaseModel):
             error_messages.append(f"Error! Input type `{type(v)}` is not `SimplonBinarySerializerParameters`")
         else:
             match += 1
+        # validate data type: MsgpackBinarySerializerParameters
+        if not isinstance(v, MsgpackBinarySerializerParameters):
+            error_messages.append(f"Error! Input type `{type(v)}` is not `MsgpackBinarySerializerParameters`")
+        else:
+            match += 1
         if match > 1:
             # more than 1 match
-            raise ValueError("Multiple matches found when setting `actual_instance` in DataSerializer with oneOf schemas: HDF5BinarySerializerParameters, SimplonBinarySerializerParameters. Details: " + ", ".join(error_messages))
+            raise ValueError("Multiple matches found when setting `actual_instance` in DataSerializer with oneOf schemas: HDF5BinarySerializerParameters, MsgpackBinarySerializerParameters, SimplonBinarySerializerParameters. Details: " + ", ".join(error_messages))
         elif match == 0:
             # no match
-            raise ValueError("No match found when setting `actual_instance` in DataSerializer with oneOf schemas: HDF5BinarySerializerParameters, SimplonBinarySerializerParameters. Details: " + ", ".join(error_messages))
+            raise ValueError("No match found when setting `actual_instance` in DataSerializer with oneOf schemas: HDF5BinarySerializerParameters, MsgpackBinarySerializerParameters, SimplonBinarySerializerParameters. Details: " + ", ".join(error_messages))
         else:
             return v
 
@@ -102,13 +110,19 @@ class DataSerializer(BaseModel):
             match += 1
         except (ValidationError, ValueError) as e:
             error_messages.append(str(e))
+        # deserialize data into MsgpackBinarySerializerParameters
+        try:
+            instance.actual_instance = MsgpackBinarySerializerParameters.from_json(json_str)
+            match += 1
+        except (ValidationError, ValueError) as e:
+            error_messages.append(str(e))
 
         if match > 1:
             # more than 1 match
-            raise ValueError("Multiple matches found when deserializing the JSON string into DataSerializer with oneOf schemas: HDF5BinarySerializerParameters, SimplonBinarySerializerParameters. Details: " + ", ".join(error_messages))
+            raise ValueError("Multiple matches found when deserializing the JSON string into DataSerializer with oneOf schemas: HDF5BinarySerializerParameters, MsgpackBinarySerializerParameters, SimplonBinarySerializerParameters. Details: " + ", ".join(error_messages))
         elif match == 0:
             # no match
-            raise ValueError("No match found when deserializing the JSON string into DataSerializer with oneOf schemas: HDF5BinarySerializerParameters, SimplonBinarySerializerParameters. Details: " + ", ".join(error_messages))
+            raise ValueError("No match found when deserializing the JSON string into DataSerializer with oneOf schemas: HDF5BinarySerializerParameters, MsgpackBinarySerializerParameters, SimplonBinarySerializerParameters. Details: " + ", ".join(error_messages))
         else:
             return instance
 
@@ -122,7 +136,7 @@ class DataSerializer(BaseModel):
         else:
             return json.dumps(self.actual_instance)
 
-    def to_dict(self) -> Optional[Union[Dict[str, Any], HDF5BinarySerializerParameters, SimplonBinarySerializerParameters]]:
+    def to_dict(self) -> Optional[Union[Dict[str, Any], HDF5BinarySerializerParameters, MsgpackBinarySerializerParameters, SimplonBinarySerializerParameters]]:
         """Returns the dict representation of the actual instance"""
         if self.actual_instance is None:
             return None

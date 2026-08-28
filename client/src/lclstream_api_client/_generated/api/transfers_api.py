@@ -15,8 +15,9 @@ from pydantic import validate_call, Field, StrictFloat, StrictStr, StrictInt
 from typing import Any, Dict, List, Optional, Tuple, Union
 from typing_extensions import Annotated
 
-from pydantic import StrictInt, StrictStr
+from pydantic import Field, StrictInt, StrictStr
 from typing import Any, Optional
+from typing_extensions import Annotated
 from uuid import UUID
 from lclstream_api_client._generated.models.log_stream import LogStream
 from lclstream_api_client._generated.models.message import Message
@@ -414,8 +415,8 @@ class TransfersApi:
         transfer_id: UUID,
         stream: LogStream,
         mode: Optional[Any] = None,
-        lines: Optional[StrictInt] = None,
-        bytes: Optional[StrictInt] = None,
+        lines: Optional[Annotated[int, Field(le=10000, strict=True, gt=0)]] = None,
+        bytes: Optional[Annotated[int, Field(le=10000000, strict=True, gt=0)]] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -497,8 +498,8 @@ class TransfersApi:
         transfer_id: UUID,
         stream: LogStream,
         mode: Optional[Any] = None,
-        lines: Optional[StrictInt] = None,
-        bytes: Optional[StrictInt] = None,
+        lines: Optional[Annotated[int, Field(le=10000, strict=True, gt=0)]] = None,
+        bytes: Optional[Annotated[int, Field(le=10000000, strict=True, gt=0)]] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -580,8 +581,8 @@ class TransfersApi:
         transfer_id: UUID,
         stream: LogStream,
         mode: Optional[Any] = None,
-        lines: Optional[StrictInt] = None,
-        bytes: Optional[StrictInt] = None,
+        lines: Optional[Annotated[int, Field(le=10000, strict=True, gt=0)]] = None,
+        bytes: Optional[Annotated[int, Field(le=10000000, strict=True, gt=0)]] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -659,8 +660,8 @@ class TransfersApi:
         transfer_id: UUID,
         stream: LogStream,
         mode: Optional[Any] = None,
-        lines: Optional[StrictInt] = None,
-        bytes: Optional[StrictInt] = None,
+        lines: Optional[Annotated[int, Field(le=10000, strict=True, gt=0)]] = None,
+        bytes: Optional[Annotated[int, Field(le=10000000, strict=True, gt=0)]] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -701,8 +702,8 @@ class TransfersApi:
         transfer_id: UUID,
         stream: LogStream,
         mode: Optional[Any] = None,
-        lines: Optional[StrictInt] = None,
-        bytes: Optional[StrictInt] = None,
+        lines: Optional[Annotated[int, Field(le=10000, strict=True, gt=0)]] = None,
+        bytes: Optional[Annotated[int, Field(le=10000000, strict=True, gt=0)]] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -743,8 +744,8 @@ class TransfersApi:
         transfer_id: UUID,
         stream: LogStream,
         mode: Optional[Any] = None,
-        lines: Optional[StrictInt] = None,
-        bytes: Optional[StrictInt] = None,
+        lines: Optional[Annotated[int, Field(le=10000, strict=True, gt=0)]] = None,
+        bytes: Optional[Annotated[int, Field(le=10000000, strict=True, gt=0)]] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],

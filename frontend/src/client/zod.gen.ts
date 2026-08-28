@@ -158,6 +158,22 @@ export const zConsumerConnectionInfo = z.object({
 });
 
 /**
+ * CrystfelPreprocessingPipelineParameters
+ *
+ * Configuration parameters for the CrystFEL Preprocessing Pipeline
+ *
+ * This pipeline lays out the data in a format that is understood by the
+ * CrystFEL Serial Crystalography Processing software.
+ *
+ * Attributes:
+ *
+ * type: Discriminator field, must be ``"CrystfelPreprocessingPipeline"``
+ */
+export const zCrystfelPreprocessingPipelineParameters = z.object({
+    type: z.literal('CrystfelPreprocessingPipeline')
+});
+
+/**
  * GenericRandomNumpyArrayParameters
  *
  * Parameters for the GenericRandomNumpyArray class
@@ -271,6 +287,22 @@ export const zLogStream = z.enum([
  */
 export const zMessage = z.object({
     message: z.string()
+});
+
+/**
+ * MsgpackBinarySerializerParameters
+ *
+ * Configuration parameters for the MsgPack binary serializer
+ *
+ * This serializer encodes a batch of event data arrays into a MsgPack binary
+ * object.
+ *
+ * Attributes:
+ *
+ * type: Discriminator field, must be ``"MsgpackBinarySerializer"``
+ */
+export const zMsgpackBinarySerializerParameters = z.object({
+    type: z.literal('MsgpackBinarySerializer')
 });
 
 /**
@@ -499,7 +531,10 @@ export const zParameters = z.object({
         }).and(zHdf5BinarySerializerParameters),
         z.object({
             type: z.literal('SimplonBinarySerializer')
-        }).and(zSimplonBinarySerializerParameters)
+        }).and(zSimplonBinarySerializerParameters),
+        z.object({
+            type: z.literal('MsgpackBinarySerializer')
+        }).and(zMsgpackBinarySerializerParameters)
     ]),
     data_sources: z.record(z.string(), z.union([
         z.object({
@@ -544,7 +579,10 @@ export const zParameters = z.object({
         }).and(zBatchProcessingPipelineParameters),
         z.object({
             type: z.literal('PeaknetPreprocessingPipeline')
-        }).and(zPeaknetPreprocessingPipelineParameters)
+        }).and(zPeaknetPreprocessingPipelineParameters),
+        z.object({
+            type: z.literal('CrystfelPreprocessingPipeline')
+        }).and(zCrystfelPreprocessingPipelineParameters)
     ]),
     skip_incomplete_events: z.boolean(),
     source_identifier: z.string()
@@ -812,8 +850,8 @@ export const zGetTransferLogTransfersTransferIdLogsStreamGetData = z.object({
     }),
     query: z.object({
         mode: zLogReadMode.optional().default('tail'),
-        lines: z.int().optional().default(200),
-        bytes: z.int().nullish()
+        lines: z.int().gt(0).lte(10000).optional().default(200),
+        bytes: z.int().gt(0).lte(10000000).nullish()
     }).optional()
 });
 

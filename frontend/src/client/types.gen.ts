@@ -244,6 +244,25 @@ export type Container = {
 };
 
 /**
+ * CrystfelPreprocessingPipelineParameters
+ *
+ * Configuration parameters for the CrystFEL Preprocessing Pipeline
+ *
+ * This pipeline lays out the data in a format that is understood by the
+ * CrystFEL Serial Crystalography Processing software.
+ *
+ * Attributes:
+ *
+ * type: Discriminator field, must be ``"CrystfelPreprocessingPipeline"``
+ */
+export type CrystfelPreprocessingPipelineParameters = {
+    /**
+     * Type
+     */
+    type: 'CrystfelPreprocessingPipeline';
+};
+
+/**
  * GenericRandomNumpyArrayParameters
  *
  * Parameters for the GenericRandomNumpyArray class
@@ -528,6 +547,25 @@ export type Message = {
 };
 
 /**
+ * MsgpackBinarySerializerParameters
+ *
+ * Configuration parameters for the MsgPack binary serializer
+ *
+ * This serializer encodes a batch of event data arrays into a MsgPack binary
+ * object.
+ *
+ * Attributes:
+ *
+ * type: Discriminator field, must be ``"MsgpackBinarySerializer"``
+ */
+export type MsgpackBinarySerializerParameters = {
+    /**
+     * Type
+     */
+    type: 'MsgpackBinarySerializer';
+};
+
+/**
  * Parameters
  *
  * Top-level configuration parameters for an lclstreamer run
@@ -572,7 +610,9 @@ export type Parameters = {
         type: 'HDF5BinarySerializer';
     } & Hdf5BinarySerializerParameters) | ({
         type: 'SimplonBinarySerializer';
-    } & SimplonBinarySerializerParameters);
+    } & SimplonBinarySerializerParameters) | ({
+        type: 'MsgpackBinarySerializer';
+    } & MsgpackBinarySerializerParameters);
     /**
      * Data Sources
      */
@@ -612,7 +652,9 @@ export type Parameters = {
         type: 'BatchProcessingPipeline';
     } & BatchProcessingPipelineParameters) | ({
         type: 'PeaknetPreprocessingPipeline';
-    } & PeaknetPreprocessingPipelineParameters);
+    } & PeaknetPreprocessingPipelineParameters) | ({
+        type: 'CrystfelPreprocessingPipeline';
+    } & CrystfelPreprocessingPipelineParameters);
     /**
      * Skip Incomplete Events
      */
