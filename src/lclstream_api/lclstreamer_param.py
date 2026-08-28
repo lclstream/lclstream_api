@@ -1,8 +1,7 @@
 from pathlib import Path
-from typing import Dict, List, Literal, Self, Union, Any
+from typing import Annotated, Any, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator, field_validator
-from typing_extensions import Annotated
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class _CustomBaseModel(BaseModel):
@@ -66,22 +65,22 @@ class Psana2EventSourceParameters(_CustomBaseModel):
 
 
 EventSourceParameters = Annotated[
-    Union[
-        InternalEventSourceParameters,
-        Psana1EventSourceParameters,
-        Psana2EventSourceParameters,
-    ],
+    InternalEventSourceParameters
+    | Psana1EventSourceParameters
+    | Psana2EventSourceParameters,
     Field(discriminator="type"),
 ]
 
 
 ###### Data Sources #######
 
+
 class GenericRandomNumpyArrayParameters(_CustomBaseModel):
     """
     Parameters for the GenericRandomNumpyArray class
 
     """
+
     type: Literal["GenericRandomNumpyArray"]
     array_shape: int | tuple[int, ...]
     array_dtype: str
@@ -97,10 +96,12 @@ class GenericRandomNumpyArrayParameters(_CustomBaseModel):
             return (v,)
         return v
 
+
 class ConstValueParameters(_CustomBaseModel):
     """
     Parameters for ConstValue class
     """
+
     type: Literal["ConstValue"]
     value: int | float | list[int | float]
     dtype: str
@@ -108,15 +109,13 @@ class ConstValueParameters(_CustomBaseModel):
     @field_validator("value", mode="before")
     @classmethod
     def parse_value(cls, v: Any):
-        if isinstance(v, str): # "6," -> [6]
+        if isinstance(v, str):  # "6," -> [6]
             parts = [p.strip() for p in v.split(",") if p.strip()]
             if len(parts) == 1:
                 return int(parts[0]) if parts[0].isdigit() else float(parts[0])
-            return [
-                int(p) if p.isdigit() else float(p)
-                for p in parts
-            ]
+            return [int(p) if p.isdigit() else float(p) for p in parts]
         return v
+
 
 class _PsanaDetectorInterfaceParameters(_CustomBaseModel):
     psana_name: str
@@ -130,48 +129,57 @@ class _PsanaDetectorInterfaceParameters(_CustomBaseModel):
             )
         return self
 
+
 class Psana1DetectorInterfaceParameters(_PsanaDetectorInterfaceParameters):
     type: Literal["Psana1DetectorInterface"]
+
 
 class Psana2DetectorInterfaceParameters(_PsanaDetectorInterfaceParameters):
     type: Literal["Psana2DetectorInterface"]
     dtype: str | None = None
 
+
 class Psana2TimestampParameters(_CustomBaseModel):
     """
     Parameters for psana2 timestamp interface
     """
+
     type: Literal["Psana2Timestamp"]
+
 
 class Psana1TimestampParameters(_CustomBaseModel):
     """
     Parameters for psana1 timestamp interface
     """
+
     type: Literal["Psana1Timestamp"]
+
 
 class SourceIdentifierParameters(_CustomBaseModel):
     """
     Parameters for source identifier data source interface
     """
+
     type: Literal["SourceIdentifier"]
+
 
 class Psana2RunInfoParameters(_CustomBaseModel):
     """
     Parameters for run info data source interface
     """
+
     type: Literal["Psana2RunInfo"]
 
+
 DataSourceParameters = Annotated[
-    Union[
-        GenericRandomNumpyArrayParameters,
-        ConstValueParameters,
-        Psana1DetectorInterfaceParameters,
-        Psana2DetectorInterfaceParameters,
-        Psana1TimestampParameters,
-        Psana2TimestampParameters,
-        SourceIdentifierParameters,
-        Psana2RunInfoParameters,
-    ],
+    GenericRandomNumpyArrayParameters
+    | ConstValueParameters
+    | Psana1DetectorInterfaceParameters
+    | Psana2DetectorInterfaceParameters
+    | Psana1TimestampParameters
+    | Psana2TimestampParameters
+    | SourceIdentifierParameters
+    | Psana2RunInfoParameters,
     Field(discriminator="type"),
 ]
 
@@ -236,8 +244,25 @@ class PeaknetPreprocessingPipelineParameters(_CustomBaseModel):
     num_channels: int = 1
 
 
+class CrystfelPreprocessingPipelineParameters(_CustomBaseModel):
+    """
+    Configuration parameters for the CrystFEL Preprocessing Pipeline
+
+    This pipeline lays out the data in a format that is understood by the
+    CrystFEL Serial Crystalography Processing software.
+
+    Attributes:
+
+        type: Discriminator field, must be ``"CrystfelPreprocessingPipeline"``
+    """
+
+    type: Literal["CrystfelPreprocessingPipeline"]
+
+
 ProcessingPipelineParameters = Annotated[
-    Union[BatchProcessingPipelineParameters, PeaknetPreprocessingPipelineParameters],
+    BatchProcessingPipelineParameters
+    | PeaknetPreprocessingPipelineParameters
+    | CrystfelPreprocessingPipelineParameters,
     Field(discriminator="type"),
 ]
 
@@ -271,15 +296,25 @@ class SimplonBinarySerializerParameters(_CustomBaseModel):
         detector_name: Human-readable name of the detector
 
         detector_type: Model or type string identifying the detector hardware
+
+        photon_wavelength_source: Optional flattened data key of the photon_wavelength
+            PV (e.g. ``"SIOC:SYS0:ML00:AO192"``). When unset, photon_wavelength is 0.
+
+        spectrometer_source: Optional flattened data key of a spectrometer source to
+            embed in each image message (e.g. ``"feespec.raw.hproj"``). When unset, no
+            spectrometer fields are added; when set but missing for an event, the frame
+            is still sent without them.
     """
 
     type: Literal["SimplonBinarySerializer"]
     data_source_to_serialize: str
     polarization_fraction: float
-    polarization_axis: List[float]
+    polarization_axis: list[float]
     data_collection_rate: str
     detector_name: str
     detector_type: str
+    photon_wavelength_source: str | None = None
+    spectrometer_source: str | None = None
 
 
 class HDF5BinarySerializerParameters(_CustomBaseModel):
@@ -320,8 +355,25 @@ class HDF5BinarySerializerParameters(_CustomBaseModel):
     fields: dict[str, str]
 
 
+class MsgpackBinarySerializerParameters(_CustomBaseModel):
+    """
+    Configuration parameters for the MsgPack binary serializer
+
+    This serializer encodes a batch of event data arrays into a MsgPack binary
+    object.
+
+    Attributes:
+
+        type: Discriminator field, must be ``"MsgpackBinarySerializer"``
+    """
+
+    type: Literal["MsgpackBinarySerializer"]
+
+
 DataSerializerParameters = Annotated[
-    Union[HDF5BinarySerializerParameters, SimplonBinarySerializerParameters],
+    HDF5BinarySerializerParameters
+    | SimplonBinarySerializerParameters
+    | MsgpackBinarySerializerParameters,
     Field(discriminator="type"),
 ]
 
@@ -355,12 +407,18 @@ class BinaryDataStreamingDataHandlerParameters(_CustomBaseModel):
 
         socket_type: Socket pattern to use. Currently only ``"push"`` is
             supported. Defaults to ``"push"``
+
+        linger: How long, in milliseconds, close() blocks to flush messages still
+            queued in the send buffer. -1 blocks until they are all delivered, 0
+            discards them immediately. Set to -1 or a positive value to avoid
+            dropping the tail of the stream when the process exits
     """
 
     type: Literal["BinaryDataStreamingDataHandler"]
-    urls: List[str]
+    urls: list[str]
     distribute: bool = True
     buffer: int = 0
+    linger: int = 0
     role: Literal["server", "client"] = "client"
     library: Literal["zmq"] = "zmq"
     socket_type: Literal["push"] = "push"
@@ -396,9 +454,7 @@ class BinaryFileWritingDataHandlerParameters(_CustomBaseModel):
 
 
 DataHandlerParameters = Annotated[
-    Union[
-        BinaryDataStreamingDataHandlerParameters, BinaryFileWritingDataHandlerParameters
-    ],
+    BinaryDataStreamingDataHandlerParameters | BinaryFileWritingDataHandlerParameters,
     Field(discriminator="type"),
 ]
 
@@ -436,10 +492,10 @@ class Parameters(_CustomBaseModel):
     skip_incomplete_events: bool
 
     event_source: EventSourceParameters
-    data_sources: Dict[str, DataSourceParameters]
+    data_sources: dict[str, DataSourceParameters]
     processing_pipeline: ProcessingPipelineParameters
     data_serializer: DataSerializerParameters
-    data_handlers: List[DataHandlerParameters]
+    data_handlers: list[DataHandlerParameters]
 
     @model_validator(mode="after")
     def _check_model(self) -> Self:
