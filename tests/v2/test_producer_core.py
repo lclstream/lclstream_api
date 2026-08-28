@@ -9,6 +9,7 @@ from amsc_iri.models import JobAttributes, JobSpec
 from lclstream_api.lclstreamer_param import Parameters
 from lclstream_api.v2.config import LCLStreamerProducerSettings
 from lclstream_api.v2.core.producer import (
+    CACHE_SINK_LINGER_MS,
     CONFIG_FILENAME,
     CacheMode,
     apply_job_spec_update,
@@ -142,6 +143,9 @@ def test_inject_cache_sink_replaces_all_handlers_with_one_push(
     assert sink.urls == ["tcp://cache-host:5001"]
     assert sink.role == "client"
     assert sink.socket_type == "push"
+    # LINGER 0 truncates every transfer's tail.
+    assert sink.linger == CACHE_SINK_LINGER_MS
+    assert sink.linger > 0
 
 
 def test_inject_cache_sink_does_not_mutate_input(
