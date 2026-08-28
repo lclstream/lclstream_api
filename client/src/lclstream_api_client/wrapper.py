@@ -7,6 +7,7 @@ from ._generated.api_client import ApiClient
 from ._generated.configuration import Configuration
 from ._generated.models.cache_mode import CacheMode
 from ._generated.models.caches_public import CachesPublic
+from ._generated.models.consumer_socket import ConsumerSocket
 from ._generated.models.job_spec import JobSpec
 from ._generated.models.log_read_mode import LogReadMode
 from ._generated.models.log_stream import LogStream
@@ -61,12 +62,14 @@ class LclstreamApiClient:
         parameters: Parameters,
         *,
         cache_mode: CacheMode | None = None,
+        consumer_socket: ConsumerSocket | None = None,
         job_spec_override: JobSpec | None = None,
     ) -> TransferPublic:
         return self._authed().new_transfer_transfers_post_sync(
             TransferCreate(
                 parameters=parameters.to_generated(),
                 cache_mode=cache_mode,
+                consumer_socket=consumer_socket,
                 job_spec_override=job_spec_override,
             )
         )
@@ -144,12 +147,14 @@ class AsyncLclstreamApiClient:
         parameters: Parameters,
         *,
         cache_mode: CacheMode | None = None,
+        consumer_socket: ConsumerSocket | None = None,
         job_spec_override: JobSpec | None = None,
     ) -> TransferPublic:
         return await self._authed().new_transfer_transfers_post(
             TransferCreate(
                 parameters=parameters.to_generated(),
                 cache_mode=cache_mode,
+                consumer_socket=consumer_socket,
                 job_spec_override=job_spec_override,
             )
         )

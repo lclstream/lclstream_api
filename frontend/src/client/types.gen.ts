@@ -200,7 +200,7 @@ export type ConstValueParameters = {
 /**
  * ConsumerConnectionInfo
  *
- * The cache push socket the consumer connects to.
+ * The cache socket the consumer connects to, and how to dial it.
  */
 export type ConsumerConnectionInfo = {
     /**
@@ -211,11 +211,22 @@ export type ConsumerConnectionInfo = {
      * Port
      */
     port: number;
+    socket: ConsumerSocket;
     /**
      * Uri
      */
     uri: string;
 };
+
+/**
+ * ConsumerSocket
+ *
+ * ZMQ socket the consumer connects with.
+ *
+ * ``dealer`` and ``req`` are request-driven: the consumer asks for each
+ * message. fastcache only reports metrics under ``pull``.
+ */
+export type ConsumerSocket = 'pull' | 'dealer' | 'req';
 
 /**
  * Container
@@ -970,6 +981,7 @@ export type SourceIdentifierParameters = {
  */
 export type TransferCreate = {
     cache_mode?: CacheMode;
+    consumer_socket?: ConsumerSocket;
     job_spec_override?: JobSpec | null;
     parameters: Parameters;
 };
