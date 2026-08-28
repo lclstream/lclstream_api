@@ -38,11 +38,16 @@ def cache_log_path(
     exp: str,
     run: str,
     transfer_id: UUID,
+    username: str,
     cache_mode: CacheMode = CacheMode.per_transfer,
 ) -> Path:
     if cache_mode is CacheMode.shared:
+        # Shared cache is experiment-wide, not per-user.
         return shared_cache_dir(settings, exp) / CACHE_LOG_FILENAME
-    return transfer_work_dir(settings, exp, run, transfer_id) / CACHE_LOG_FILENAME
+    return (
+        transfer_work_dir(settings, exp, run, transfer_id, username)
+        / CACHE_LOG_FILENAME
+    )
 
 
 def producer_log_path(
@@ -51,9 +56,11 @@ def producer_log_path(
     exp: str,
     run: str,
     transfer_id: UUID,
+    username: str,
 ) -> Path:
     return (
-        transfer_work_dir(settings, exp, run, transfer_id) / _STREAM_FILENAMES[stream]
+        transfer_work_dir(settings, exp, run, transfer_id, username)
+        / _STREAM_FILENAMES[stream]
     )
 
 
@@ -63,9 +70,10 @@ def log_stream_path(
     exp: str,
     run: str,
     transfer_id: UUID,
+    username: str,
     cache_mode: CacheMode = CacheMode.per_transfer,
 ) -> Path:
     """Dispatch for callers that handle an arbitrary log stream."""
     if stream is LogStream.cache:
-        return cache_log_path(settings, exp, run, transfer_id, cache_mode)
-    return producer_log_path(stream, settings, exp, run, transfer_id)
+        return cache_log_path(settings, exp, run, transfer_id, username, cache_mode)
+    return producer_log_path(stream, settings, exp, run, transfer_id, username)

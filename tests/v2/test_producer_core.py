@@ -89,32 +89,34 @@ def test_short_id_is_first_eight_chars() -> None:
 def test_producer_job_path_layout(
     make_producer_settings: SettingsFactory,
 ) -> None:
-    settings = make_producer_settings(data_base_dir="/sdf/data/lcls/ds")
+    settings = make_producer_settings(home_base_dir="/sdf/home")
     path = transfer_work_dir(
-        settings, exp="mfxl1001", run="42", transfer_id=TRANSFER_ID
+        settings, exp="mfxl1001", run="42", transfer_id=TRANSFER_ID, username="dwmoreau"
     )
     assert path == Path(
-        "/sdf/data/lcls/ds/mfx/mfxl1001/scratch/lclstreamer/lclstreamer_mfxl1001_42_12345678"
+        "/sdf/home/d/dwmoreau/lclstreamer/lclstreamer_mfxl1001_42_12345678"
     )
 
 
-def test_instrument_is_first_three_chars_of_exp(
+def test_work_dir_is_rooted_in_the_users_home(
     make_producer_settings: SettingsFactory,
 ) -> None:
-    settings = make_producer_settings(data_base_dir="/base")
+    settings = make_producer_settings(home_base_dir="/base")
     path = transfer_work_dir(
-        settings, exp="cxic00118", run="7", transfer_id=TRANSFER_ID
+        settings, exp="cxic00118", run="7", transfer_id=TRANSFER_ID, username="abc"
     )
-    assert path.parts[1:3] == ("base", "cxi")
+    assert path.parts[1:4] == ("base", "a", "abc")
 
 
 def test_config_path_is_job_dir_plus_filename(
     make_producer_settings: SettingsFactory,
 ) -> None:
-    settings = make_producer_settings(data_base_dir="/base")
-    job = transfer_work_dir(settings, exp="mfxl1001", run="42", transfer_id=TRANSFER_ID)
+    settings = make_producer_settings(home_base_dir="/base")
+    job = transfer_work_dir(
+        settings, exp="mfxl1001", run="42", transfer_id=TRANSFER_ID, username="dwmoreau"
+    )
     cfg = producer_config_path(
-        settings, exp="mfxl1001", run="42", transfer_id=TRANSFER_ID
+        settings, exp="mfxl1001", run="42", transfer_id=TRANSFER_ID, username="dwmoreau"
     )
     assert cfg == job / CONFIG_FILENAME
     assert cfg.name == "lclstreamer.yaml"
@@ -175,7 +177,7 @@ def test_build_job_spec_and_producer_plan_assemble_jobspec_and_config(
 ) -> None:
     params = make_params()  # InternalEventSource -> psana2 environment
     settings = make_producer_settings(
-        data_base_dir="/sdf/data/lcls/ds",
+        home_base_dir="/sdf/home",
         environments={"psana2": {"PSANA_VERSION": "2"}},
     )
 
@@ -186,12 +188,19 @@ def test_build_job_spec_and_producer_plan_assemble_jobspec_and_config(
         exp="mfxl1001",
         run="42",
         transfer_id=TRANSFER_ID,
+        username="dwmoreau",
     )
     plan = build_producer_plan(
-        jobspec, params, settings, exp="mfxl1001", run="42", transfer_id=TRANSFER_ID
+        jobspec,
+        params,
+        settings,
+        exp="mfxl1001",
+        run="42",
+        transfer_id=TRANSFER_ID,
+        username="dwmoreau",
     )
 
-    expected_dir = "/sdf/data/lcls/ds/mfx/mfxl1001/scratch/lclstreamer/lclstreamer_mfxl1001_42_12345678"
+    expected_dir = "/sdf/home/d/dwmoreau/lclstreamer/lclstreamer_mfxl1001_42_12345678"
     assert str(plan.config_path) == f"{expected_dir}/{CONFIG_FILENAME}"
     assert plan.config_yaml == render_config_yaml(params)
 
@@ -238,7 +247,13 @@ def test_build_job_spec_without_matching_environment_keeps_defaults(
     settings = make_producer_settings(environments={})  # nothing for psana2
 
     jobspec = build_job_spec(
-        params, settings, name="job", exp="mfxl1001", run="42", transfer_id=TRANSFER_ID
+        params,
+        settings,
+        name="job",
+        exp="mfxl1001",
+        run="42",
+        transfer_id=TRANSFER_ID,
+        username="dwmoreau",
     )
     assert jobspec.environment == {
         "TMPDIR": "/tmp",
@@ -260,11 +275,23 @@ def test_build_job_spec_does_not_mutate_default_spec(
     settings = make_producer_settings()
 
     first = build_job_spec(
-        params, settings, name="a", exp="mfxl1001", run="1", transfer_id=TRANSFER_ID
+        params,
+        settings,
+        name="a",
+        exp="mfxl1001",
+        run="1",
+        transfer_id=TRANSFER_ID,
+        username="dwmoreau",
     )
     other_id = UUID("87654321-4321-8765-4321-876543218765")
     second = build_job_spec(
-        params, settings, name="b", exp="cxic00118", run="9", transfer_id=other_id
+        params,
+        settings,
+        name="b",
+        exp="cxic00118",
+        run="9",
+        transfer_id=other_id,
+        username="dwmoreau",
     )
 
     assert first.name == "a"
@@ -340,6 +367,7 @@ def test_build_job_spec_applies_job_spec_update(
         exp="mfx100848724",
         run="51",
         transfer_id=TRANSFER_ID,
+        username="dwmoreau",
         job_spec_override=override,
     )
 

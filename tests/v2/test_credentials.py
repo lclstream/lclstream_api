@@ -54,6 +54,7 @@ async def test_capture_encrypts_token_and_uses_composite_identity(
         issuer="https://issuer.example",
         subject="subject-1",
         email="user@example.org",
+        username="user",
         token="raw-token",
         expires_at=NOW + timedelta(hours=1),
     )

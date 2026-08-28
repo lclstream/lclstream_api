@@ -76,9 +76,10 @@ class LCLStreamerProducerSettings(BaseSettings):
         env_prefix="LCLSTREAM_PRODUCER_", frozen=True, validate_default=True
     )
 
-    # Root of the per-experiment data tree on S3DF. The per-transfer job
-    # directory is built underneath this (see ``core.producer.transfer_work_dir``).
+    # Per-experiment data tree on S3DF. Shared cache only.
     data_base_dir: str = "/sdf/data/lcls/ds"
+    # S3DF home root: {home_base_dir}/{username[0]}/{username}.
+    home_base_dir: str = "/sdf/home"
     # Environment variables keyed by psana env name ("psana1" / "psana2").
     # Complex value: override via a JSON-encoded ``LCLSTREAM_PRODUCER_ENVIRONMENTS``.
     environments: dict[str, dict[str, str]] = Field(default_factory=dict)

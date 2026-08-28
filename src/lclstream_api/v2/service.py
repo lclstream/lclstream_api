@@ -66,6 +66,7 @@ async def create_transfer(
         exp=experiment,
         run=run,
         transfer_id=transfer_id,
+        username=user.username,
         job_spec_override=job_spec_override,
     )
     required_seconds = pcore.required_token_lifetime_seconds(
@@ -86,6 +87,7 @@ async def create_transfer(
             owner_issuer=user.issuer,
             owner_subject=user.subject,
             owner_email=user.email,
+            owner_username=user.username,
             parameters=parameters.model_dump(mode="json"),
             experiment=experiment,
             run=run,
@@ -179,11 +181,12 @@ async def cancel_transfer(
 
 async def _resolve_transfer_context(
     session: AsyncSession, transfer_id: UUID
-) -> tuple[str, str, CacheMode]:
+) -> tuple[str, str, CacheMode, str]:
     transfer = await repo.get_transfer(session, transfer_id)
     if transfer is None:
         raise NotFound(f"transfer {transfer_id} not found")
-    return transfer.experiment, transfer.run, CacheMode(transfer.cache_mode)
+    username = transfer.owner_username
+    return transfer.experiment, transfer.run, CacheMode(transfer.cache_mode), username
 
 
 async def read_transfer_log(
@@ -197,9 +200,17 @@ async def read_transfer_log(
     bytes_: int | None = None,
 ) -> str:
     """Return the head/tail of a single log stream as decoded text."""
-    exp, run, cache_mode = await _resolve_transfer_context(session, transfer_id)
+    exp, run, cache_mode, username = await _resolve_transfer_context(
+        session, transfer_id
+    )
     path = lcore.log_stream_path(
-        stream, config.get_producer(), exp, run, transfer_id, cache_mode=cache_mode
+        stream,
+        config.get_producer(),
+        exp,
+        run,
+        transfer_id,
+        username,
+        cache_mode=cache_mode,
     )
     client = iri.client()
     try:
@@ -232,7 +243,9 @@ async def list_transfer_logs(
 ) -> TransferLogIndex:
     """Index every log stream for a transfer with its resolved path and, when
     the file exists, its size and last-modified time."""
-    exp, run, cache_mode = await _resolve_transfer_context(session, transfer_id)
+    exp, run, cache_mode, username = await _resolve_transfer_context(
+        session, transfer_id
+    )
     client = iri.client()
     paths = [
         (
@@ -243,6 +256,7 @@ async def list_transfer_logs(
                 exp,
                 run,
                 transfer_id,
+                username,
                 cache_mode=cache_mode,
             ),
         )
