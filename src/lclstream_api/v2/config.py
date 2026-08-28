@@ -13,8 +13,7 @@ def _parse_comma_list(v: Any) -> Any:
 
 
 def _ensure_psycopg_driver(v: Any) -> Any:
-    """Coerce driverless ``postgresql://`` DSN to the ``postgresql+psycopg``
-    driver the async engine expects."""
+    """Coerce a driverless ``postgresql://`` DSN to ``postgresql+psycopg``."""
     if isinstance(v, str) and v.startswith("postgresql://"):
         return "postgresql+psycopg://" + v.removeprefix("postgresql://")
     return v
@@ -79,19 +78,17 @@ class LCLStreamerProducerSettings(BaseSettings):
         env_prefix="LCLSTREAM_PRODUCER_", frozen=True, validate_default=True
     )
 
-    # Per-experiment data tree on S3DF. Shared cache only.
+    # S3DF data tree; shared cache only.
     data_base_dir: str = "/sdf/data/lcls/ds"
     # S3DF home root: {home_base_dir}/{username[0]}/{username}.
     home_base_dir: str = "/sdf/home"
-    # Environment variables keyed by psana env name ("psana1" / "psana2").
-    # Complex value: override via a JSON-encoded ``LCLSTREAM_PRODUCER_ENVIRONMENTS``.
+    # Keyed by psana env name: psana1/psana2.
     environments: dict[str, dict[str, str]] = Field(default_factory=dict)
-    # Override this with a pre-pulled .sif file
+    # Override with a pre-pulled .sif.
     container_image: str = "docker://ghcr.io/lclstream/lclstreamer-psana2extmpi:latest"
 
 
-# NoDecode stops pydantic-settings from JSON-decoding the env value in the
-# source (which a bare string like "s3df" fails)
+# NoDecode: env values are plain, not JSON.
 CommaSeparatedList = Annotated[list[str], NoDecode, BeforeValidator(_parse_comma_list)]
 
 
@@ -103,7 +100,7 @@ class OidcSettings(BaseSettings):
     issuer_url: str = "https://dex.example/dex"
     jwks_uri: str = "https://dex.example/dex/keys"
     audiences: CommaSeparatedList = Field(default_factory=list)
-    # Verified emails allowed to use the service (the access allowlist).
+    # Verified emails allowed to use the service.
     expected_users: CommaSeparatedList = Field(default_factory=list)
 
 
@@ -132,7 +129,6 @@ class CredentialsSettings(BaseSettings):
     )
 
 
-# Settings are constructed lazily and then cached
 @lru_cache
 def get_database() -> DatabaseSettings:
     return DatabaseSettings()
