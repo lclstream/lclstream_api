@@ -164,8 +164,16 @@ class PeaknetPreprocessingPipelineParameters(_CustomBaseModel):
     num_channels: int = 1
 
 
+class CrystfelPreprocessingPipelineParameters(_CustomBaseModel):
+    """Lays the data out in the format CrystFEL understands."""
+
+    type: Literal["CrystfelPreprocessingPipeline"]
+
+
 ProcessingPipelineParameters = Annotated[
-    BatchProcessingPipelineParameters | PeaknetPreprocessingPipelineParameters,
+    BatchProcessingPipelineParameters
+    | PeaknetPreprocessingPipelineParameters
+    | CrystfelPreprocessingPipelineParameters,
     Field(discriminator="type"),
 ]
 
@@ -203,8 +211,16 @@ class HDF5BinarySerializerParameters(_CustomBaseModel):
     fields: dict[str, str]
 
 
+class MsgpackBinarySerializerParameters(_CustomBaseModel):
+    """Encodes a batch of event data arrays into a MsgPack binary object."""
+
+    type: Literal["MsgpackBinarySerializer"]
+
+
 DataSerializerParameters = Annotated[
-    HDF5BinarySerializerParameters | SimplonBinarySerializerParameters,
+    HDF5BinarySerializerParameters
+    | SimplonBinarySerializerParameters
+    | MsgpackBinarySerializerParameters,
     Field(discriminator="type"),
 ]
 
