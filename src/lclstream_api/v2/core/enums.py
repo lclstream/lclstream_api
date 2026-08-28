@@ -31,6 +31,30 @@ class CacheMode(StrEnum):
     shared = "shared"
 
 
+class ConsumerSocket(StrEnum):
+    """ZMQ socket the consumer connects with.
+
+    ``dealer`` and ``req`` are request-driven: the consumer asks for each
+    message. fastcache only reports metrics under ``pull``.
+    """
+
+    pull = "pull"  # fastcache pushes; the default
+    dealer = "dealer"  # fastcache binds ROUTER
+    req = "req"  # fastcache binds REP
+
+    @property
+    def cache_output(self) -> str:
+        """fastcache_api's matching CacheOutput value."""
+        return _CACHE_OUTPUT[self]
+
+
+_CACHE_OUTPUT = {
+    ConsumerSocket.pull: "push",
+    ConsumerSocket.dealer: "router",
+    ConsumerSocket.req: "rep",
+}
+
+
 class CacheState(StrEnum):
     """Observed fastcache cache lifecycle."""
 
