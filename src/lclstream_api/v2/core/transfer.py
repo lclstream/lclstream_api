@@ -15,14 +15,12 @@ from .enums import (
     TransitionSource,
 )
 
-# Cache states that mean the cache is no longer running.
 _CACHE_TERMINAL = frozenset(
     {CacheState.completed, CacheState.failed, CacheState.canceled}
 )
-# Cache states that mean the cache crashed / was killed (not a clean drain).
+# Crashed or killed, not a clean drain.
 _CACHE_FAILED = frozenset({CacheState.failed, CacheState.canceled})
 
-# Producer states that mean the IRI job is no longer running.
 _PRODUCER_TERMINAL = frozenset({JobState.COMPLETED, JobState.FAILED, JobState.CANCELED})
 
 
@@ -43,42 +41,32 @@ def _decide_state(
     cache_state = observation.cache_state
     producer_state = observation.producer_state
 
-    # 1. A user cancel is in progress: hold until both sides are confirmed
-    #    torn down, then settle to canceled.
     if current == TransferState.canceling:
         if _cache_torn_down(cache_state) and _producer_torn_down(producer_state):
             return TransferState.canceled, TransitionSource.orchestrator
         return TransferState.canceling, TransitionSource.orchestrator
 
-    # 2. Cache crash.
     if cache_state in _CACHE_FAILED:
         return TransferState.failed, TransitionSource.cache
 
-    # 3-4. Producer is the authority for failure. External IRI cancel
-    #    (preempt/walltime) surfaces as failed; ``canceled`` is reserved for
-    #    user-initiated cancels.
+    # IRI-side cancel means failed; canceled is user-initiated.
     if producer_state in (JobState.FAILED, JobState.CANCELED):
         return TransferState.failed, TransitionSource.producer
 
-    # 5. Success: producer finished AND the cache drained.
     if producer_state == JobState.COMPLETED and cache_state == CacheState.completed:
         return TransferState.completed, TransitionSource.orchestrator
 
-    # 6. Producer done but cache still draining to the consumer -> stay ready.
+    # Cache still draining to the consumer.
     if producer_state == JobState.COMPLETED:
         return TransferState.ready, TransitionSource.orchestrator
 
-    # 7. Steady state: both running.
     if producer_state == JobState.ACTIVE and cache_state == CacheState.active:
         return TransferState.ready, TransitionSource.orchestrator
 
-    # 8. Once ready, the only exits are terminal (handled
-    #    above) or canceling, so a idle-timeout or a lagging
-    #    notification can't regress it to provisioning.
+    # Ready never regresses on a lagging notification.
     if current == TransferState.ready:
         return TransferState.ready, TransitionSource.orchestrator
 
-    # 9. Still spinning up.
     return TransferState.provisioning, TransitionSource.orchestrator
 
 
@@ -113,9 +101,7 @@ _LEGAL_TRANSITIONS: dict[TransferState, frozenset[TransferState]] = {
         }
     ),
     TransferState.canceling: frozenset({TransferState.canceled, TransferState.failed}),
-    # Final states (canceled/completed/failed) are omitted: they have no
-    # out-edges, so can_transition's .get default returns False for them.
-    # TransferState.is_final() is the single source of truth for finality.
+    # Final states omitted: they have no out-edges.
 }
 
 
@@ -131,11 +117,9 @@ class StateDecision(BaseModel):
     reason: str | None = None
 
 
-# A `provisioning` transfer stuck this long since creation never reached
-# `ready` (e.g. it crashed before recording the producer job).
+# Stuck past this never reached `ready`.
 DEFAULT_MAX_PROVISIONING_AGE_S = 1800.0
-# A `ready` transfer whose cache/producer status hasn't been successfully
-# observed in this long is forced to `failed` instead of staying wedged forever.
+# Unobserved this long: fail instead of wedging.
 DEFAULT_MAX_READY_STALE_S = 1800.0
 
 
@@ -149,12 +133,8 @@ def decide_state_with_timeout(
 ) -> StateDecision:
     """Decide the state, forcing stuck transfers to ``failed``.
 
-    Two fail-safes apply only when the live decision makes no forward
-    progress (``state == snapshot.state``), so a genuinely advancing or
-    already-final transfer is never touched: ``provisioning`` stuck past
-    ``max_provisioning_age_s`` since creation, or ``ready`` with no
-    successful observation recorded within ``max_ready_stale_s`` (catches a
-    persistently erroring upstream, which would otherwise never settle).
+    Fail-safes apply only when the state does not advance, so a
+    progressing or already-final transfer is never touched.
     """
 
     current = snapshot.state
@@ -207,7 +187,6 @@ class DeleteCache(BaseModel):
     cache_id: UUID
 
 
-# Each variant carries exactly the ref its undo needs; the shell matches on type.
 Compensation = Annotated[
     CancelProducer | DeleteConfig | DeleteWorkDir | DeleteCache,
     Field(discriminator="kind"),
@@ -221,7 +200,6 @@ class ProvisionProgress(BaseModel):
 
     steps: tuple[Compensation, ...] = ()
 
-    # New instances are returned, since we want immutability baked in.
     def with_cache(self, cache_id: UUID, *, mode: CacheMode) -> ProvisionProgress:
         if mode is not CacheMode.per_transfer:
             return self
@@ -244,12 +222,7 @@ class ProvisionProgress(BaseModel):
 
 
 class CacheEndpoint(BaseModel):
-    """The transfer-domain projection of a freshly created cache.
-
-    The workflow step pulls the raw fields off the fastcache ``CachePublic``
-    and calls :meth:`from_uris`, so ``repo``/``db`` never see a client model.
-    The ZMQ ports are parsed out of the cache's pull/push URIs.
-    """
+    """Transfer-domain view of an allocated cache."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -280,8 +253,7 @@ class CacheEndpoint(BaseModel):
 
 
 class TransferSnapshot(BaseModel):
-    """Point-in-time read of a transfer's lifecycle state, for the pure
-    reconcile decision (decide_state_with_timeout)."""
+    """Point-in-time read of a transfer's lifecycle state."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -332,7 +304,7 @@ class TransferObservation(BaseModel):
 
     cache_state: CacheState | None
     producer_state: JobState | None
-    ok: bool = True  # false if getting cache/producer state fails
+    ok: bool = True  # false if the state fetch failed
 
 
 class ProducerInputs(BaseModel):
@@ -341,10 +313,8 @@ class ProducerInputs(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     parameters: Parameters
-    # The allocated cache the producer pushes to (hostname + ZMQ ports).
     endpoint: CacheEndpoint
-    # Resolved at request time (body override or parsed source_identifier);
-    # used to place the per-transfer job directory and the account.
+    # From a body override or the parsed source_identifier.
     exp: str
     run: str
     job_spec: JobSpec

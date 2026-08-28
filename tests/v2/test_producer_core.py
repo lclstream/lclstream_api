@@ -239,9 +239,8 @@ def test_build_job_spec_without_matching_environment_keeps_defaults(
     make_params: ParamsFactory,
     make_producer_settings: SettingsFactory,
 ) -> None:
-    """If no environment is configured for the resolved psana env, the jobspec
-    environment still carries DEFAULT_JOB_SPEC's own MPI/PMIx/PATH vars
-    (those are unconditional, not psana-version-gated)."""
+    """DEFAULT_JOB_SPEC's MPI/PMIx/PATH vars are unconditional, not
+    psana-version-gated."""
 
     params = make_params()
     settings = make_producer_settings(environments={})  # nothing for psana2

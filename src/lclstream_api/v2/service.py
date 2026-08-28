@@ -1,12 +1,7 @@
-"""Application service: the router-facing API (commands + queries).
+"""Router-facing commands and queries.
 
-Async functions the HTTP routers call, each taking the request-scoped
-``AsyncSession``. Reads map the ORM row to a frozen pydantic model so an ORM
-object never escapes this layer. Writes own their transaction boundary via
-``async with session.begin()``.
-
-``create_transfer`` also starts the durable ``provision_transfer`` workflow,
-committing the insert first so the workflow's first read sees the row.
+``create_transfer`` commits the insert before starting the workflow, so the
+workflow's first read sees the row.
 """
 
 import asyncio
@@ -117,7 +112,6 @@ async def create_transfer(
         )
         # Still provisioning, so it carries no connection info.
         public = TransferPublic.from_transfer(transfer)
-    # here we just start the workflow
     with SetWorkflowID(str(transfer_id)):
         await DBOS.start_workflow_async(workflows.provision_transfer, transfer_id)
     return public
@@ -248,10 +242,7 @@ async def read_transfer_log(
     except iri.IriAuthenticationError as exc:
         raise DelegatedCredentialRejected(str(exc)) from exc
     except iri.FilesystemError as exc:
-        # TODO: stat collapses any failure (missing file or broken upstream) to
-        # exists=False, so we still can't tell the two apart here.
-        # so this is the right idea but it would be better to have a more specific
-        # exception...
+        # TODO: stat collapses missing file and upstream failure.
         stat = await client.stat(path, user.token.get_secret_value())
         if not stat.exists:
             raise NotFound(
@@ -265,8 +256,7 @@ async def read_transfer_log(
 async def list_transfer_logs(
     session: AsyncSession, transfer_id: UUID, user: AuthenticatedUser
 ) -> TransferLogIndex:
-    """Index every log stream for a transfer with its resolved path and, when
-    the file exists, its size and last-modified time."""
+    """Index every log stream with its path and, when present, size and mtime."""
     exp, run, cache_mode, username = await _resolve_transfer_context(
         session, transfer_id
     )
@@ -327,8 +317,8 @@ async def shutdown_cache(session: AsyncSession, cache_id: UUID) -> None:
         if count > 0:
             raise CacheShutdownBlocked(count)
 
-        # Keep the registry row locked across deletion. Provisioning either
-        # attached before this count (and blocks shutdown), or waits and sees
-        # retired_at after commit, so it cannot attach to a deleted cache.
+        # Keep the row locked across deletion. Provisioning either
+        # attached before the count above (blocking shutdown), or waits
+        # and sees retired_at after commit -- never a deleted cache.
         await fastcache.client().delete_cache(cache_id)
         await repo.retire_cache(session, cache, retired_at=datetime.now(UTC))

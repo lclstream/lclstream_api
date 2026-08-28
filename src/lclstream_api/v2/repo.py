@@ -127,16 +127,12 @@ async def set_cache_endpoints(
     pull_port: int,
     push_port: int,
 ) -> None:
-    """Record the cache location returned by fastcache_api on the transfer."""
-
     transfer = await session.get(Transfer, transfer_id)
     if transfer is None:
         raise LookupError(f"transfer {transfer_id} not found")
     if tcore.CacheMode(transfer.cache_mode) is tcore.CacheMode.shared:
-        # The registry row is the serialization point between provisioning and
-        # explicit shared-cache shutdown. A shutdown transaction locks and
-        # retires this row; an attachment racing behind it must fail rather
-        # than bind a transfer to a cache that was just deleted.
+        # Serializes attachment against shared-cache shutdown.
+        # Shutdown locks and retires this row first.
         await session.execute(
             insert(Cache)
             .values(id=cache_id, experiment=transfer.experiment)

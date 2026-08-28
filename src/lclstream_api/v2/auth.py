@@ -118,8 +118,7 @@ async def get_valid_token(
 def _unix_username(payload: TokenPayload) -> str:
     """Read the SDF unix username from the token's ``name`` claim.
 
-    Every transfer writes under this name, so a token without a usable one
-    is rejected rather than guessed at from the email.
+    Every transfer writes under this name, so reject tokens without one.
     """
     if payload.name is None or not _UNIX_USERNAME.fullmatch(payload.name):
         raise HTTPException(

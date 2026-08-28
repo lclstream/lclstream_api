@@ -100,7 +100,6 @@ class Transfer(DTMixin, Base):
         doc="ConsumerSocket the consumer dials; stored as the string value",
     )
 
-    # Cache reference (lives in fastcache_api's DB on the DTN).
     cache_id: Mapped[UUID | None] = mapped_column(
         default=None, doc="Soft link to fastcache_api Cache.id"
     )
@@ -108,7 +107,7 @@ class Transfer(DTMixin, Base):
         default=None, doc="DTN hostname running the cache; routes follow-up calls"
     )
 
-    # ZMQ port pair allocated by fastcache_api.
+    # Allocated by fastcache_api.
     pull_port: Mapped[int | None] = mapped_column(
         default=None, doc="Producer/internal side port"
     )
@@ -116,13 +115,11 @@ class Transfer(DTMixin, Base):
         default=None, doc="Consumer/external side port (= pull_port + 1)"
     )
 
-    # Producer reference (IRI job, submitted via amscrot).
     producer_job_id: Mapped[str | None] = mapped_column(
         default=None, doc="IRI job id of the producer"
     )
 
-    # Used to reject out-of-order observations so a slow reconcile cannot
-    # regress state. ``None`` until the first observation is applied.
+    # Rejects out-of-order reconcile observations.
     last_polled_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         default=None,
@@ -149,7 +146,7 @@ class UserCredential(UpdatedAtMixin, Base):
         doc="Verified email at the time this credential was captured"
     )
     encrypted_token: Mapped[bytes] = mapped_column(doc="Fernet-encrypted bearer token")
-    # Plaintext so expiry checks don't need to decrypt the token.
+    # Plaintext so expiry checks skip decryption.
     expires_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), doc="Token expiry"
     )
