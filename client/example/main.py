@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     api_url: AnyHttpUrl = AnyHttpUrl(
         "https://lcls-data-portal.slac.stanford.edu/lclstream-dev"
     )
-    token_file: Path
+    token_file: Path = Path("~/.s3df-access-token").expanduser()
     source_identifier: str = (
         "exp=mfx100848724,run=51,dir=/sdf/data/lcls/ds/prj/public01/xtc"
     )
@@ -52,14 +52,14 @@ class Settings(BaseSettings):
         except FileNotFoundError:
             raise SystemExit(
                 f"Token file not found: {self.token_file}\n"
-                "Run ./scripts/dev-token.py to mint one (see .env.example)."
+                "Run ./scripts/s3df-login to mint one (see .env.example)."
             ) from None
         if token.lower().startswith("bearer "):
             token = token.split(None, 1)[1].strip()
         if not token:
             raise SystemExit(
                 f"Token file is empty: {self.token_file}\n"
-                "Run ./scripts/dev-token.py to mint one (see .env.example)."
+                "Run ./scripts/s3df-login to mint one (see .env.example)."
             )
         return token
 
