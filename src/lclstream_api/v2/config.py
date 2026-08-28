@@ -53,6 +53,9 @@ class FastcacheClientSettings(BaseSettings):
     client_cert: Path
     client_key: Path
     timeout_s: float = 30.0
+    # Hand consumers an address, not a DTN name they cannot resolve.
+    # ZMQ retries a bad name forever instead of failing.
+    resolve_consumer_host: bool = True
 
 
 class IriClientSettings(BaseSettings):

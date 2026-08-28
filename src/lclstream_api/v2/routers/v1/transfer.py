@@ -70,6 +70,7 @@ async def new_transfer(
         body.cache_mode,
         experiment=exp,
         run=run,
+        consumer_socket=body.consumer_socket,
         job_spec_override=body.job_spec_override,
     )
 
