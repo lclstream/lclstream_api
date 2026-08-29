@@ -84,8 +84,8 @@ async def get_transfer_log(
     session: SessionDep,
     user: CurrentUser,
     mode: lcore.LogReadMode = lcore.LogReadMode.tail,
-    lines: int = 200,
-    bytes_: Annotated[int | None, Query(alias="bytes")] = None,
+    lines: Annotated[int, Query(gt=0, le=10_000)] = 200,
+    bytes_: Annotated[int | None, Query(alias="bytes", gt=0, le=10_000_000)] = None,
 ) -> str:
     effective_lines = None if bytes_ is not None else lines
     return await service.read_transfer_log(
