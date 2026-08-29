@@ -192,6 +192,7 @@ async def _load_producer_inputs(
         endpoint=endpoint,
         exp=transfer.experiment,
         run=transfer.run,
+        job_spec=JobSpec.model_validate(transfer.job_spec),
     )
 
 

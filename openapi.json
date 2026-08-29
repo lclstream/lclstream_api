@@ -186,6 +186,43 @@
         "title": "ConsumerConnectionInfo",
         "type": "object"
       },
+      "Container": {
+        "description": "Represents a container specification for job execution.  Implementation notes: The value of gpu_cores_per_process in ResourceSpec should be used to determine if the container should be run with GPU support. Likewise, the value of launcher in JobSpec should be used to determine if the container should be run with MPI support. The container should by default. be run with host networking.",
+        "properties": {
+          "additional_properties": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Additional Properties",
+            "type": "object"
+          },
+          "image": {
+            "description": "The container image to use (e.g., 'docker.io/library/ubuntu:latest')",
+            "minLength": 1,
+            "title": "Image",
+            "type": "string"
+          },
+          "volume_mounts": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/VolumeMount"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "List of volume mounts for the container",
+            "title": "Volume Mounts"
+          }
+        },
+        "required": [
+          "image"
+        ],
+        "title": "Container",
+        "type": "object"
+      },
       "GenericRandomNumpyArrayParameters": {
         "additionalProperties": false,
         "description": "Parameters for the GenericRandomNumpyArray class",
@@ -306,6 +343,286 @@
           "number_of_events_to_generate"
         ],
         "title": "InternalEventSourceParameters",
+        "type": "object"
+      },
+      "JobAttributes": {
+        "description": "Additional attributes and scheduling parameters for a job.",
+        "properties": {
+          "account": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Account or project to charge for resource usage",
+            "title": "Account"
+          },
+          "additional_properties": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Additional Properties",
+            "type": "object"
+          },
+          "custom_attributes": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Custom scheduler-specific attributes as key-value pairs",
+            "title": "Custom Attributes"
+          },
+          "duration": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Duration in seconds",
+            "title": "Duration"
+          },
+          "queue_name": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Name of the queue or partition to submit the job to",
+            "title": "Queue Name"
+          },
+          "reservation_id": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ID of a reservation to use for the job",
+            "title": "Reservation Id"
+          }
+        },
+        "title": "JobAttributes",
+        "type": "object"
+      },
+      "JobSpec": {
+        "description": "Specification for a job.",
+        "properties": {
+          "arguments": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Command-line arguments to pass to the executable or container",
+            "title": "Arguments"
+          },
+          "attributes": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JobAttributes"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Additional job attributes such as duration, queue, and account"
+          },
+          "container": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Container"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Container specification for containerized execution"
+          },
+          "directory": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Working directory for the job",
+            "title": "Directory"
+          },
+          "environment": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Environment variables to set for the job. If container is specified, these will be set inside the container.",
+            "title": "Environment"
+          },
+          "executable": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Path to the executable to run. If container is specified, this will be used as the entrypoint to the container.",
+            "title": "Executable"
+          },
+          "inherit_environment": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": true,
+            "description": "Whether to inherit the environment variables from the submission environment",
+            "title": "Inherit Environment"
+          },
+          "launcher": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Job launcher to use (e.g., 'mpirun', 'srun')",
+            "title": "Launcher"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Name of the job",
+            "title": "Name"
+          },
+          "post_launch": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Script or commands to run after the job completes",
+            "title": "Post Launch"
+          },
+          "pre_launch": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Script or commands to run before launching the job",
+            "title": "Pre Launch"
+          },
+          "resources": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResourceSpec"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Resource requirements for the job"
+          },
+          "stderr_path": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Path to file to write standard error",
+            "title": "Stderr Path"
+          },
+          "stdin_path": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Path to file to use as standard input",
+            "title": "Stdin Path"
+          },
+          "stdout_path": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Path to file to write standard output",
+            "title": "Stdout Path"
+          }
+        },
+        "title": "JobSpec",
         "type": "object"
       },
       "LogReadMode": {
@@ -702,6 +1019,110 @@
         "title": "Psana2TimestampParameters",
         "type": "object"
       },
+      "ResourceSpec": {
+        "description": "Specification of computational resources required for a job.",
+        "properties": {
+          "additional_properties": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Additional Properties",
+            "type": "object"
+          },
+          "cpu_cores_per_process": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Number of CPU cores to allocate per process",
+            "title": "Cpu Cores Per Process"
+          },
+          "exclusive_node_use": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": true,
+            "description": "Whether to request exclusive use of allocated nodes",
+            "title": "Exclusive Node Use"
+          },
+          "gpu_cores_per_process": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Number of GPU cores to allocate per process",
+            "title": "Gpu Cores Per Process"
+          },
+          "memory": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Amount of memory to allocate in bytes",
+            "title": "Memory"
+          },
+          "node_count": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Number of compute nodes to allocate",
+            "title": "Node Count"
+          },
+          "process_count": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Total number of processes to launch",
+            "title": "Process Count"
+          },
+          "processes_per_node": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Number of processes to launch per node",
+            "title": "Processes Per Node"
+          }
+        },
+        "title": "ResourceSpec",
+        "type": "object"
+      },
       "SimplonBinarySerializerParameters": {
         "additionalProperties": false,
         "description": "Configuration parameters for the Simplon binary serializer\n\nThis serializer encodes event data into the Simplon 1.8 binary message\nformat as specified by Dectris\n\nAttributes:\n\n    type: Discriminator field, must be ``\"SimplonBinarySerializer\"``\n\n    data_source_to_serialize: Name of the data source whose array will be\n        compressed and embedded in each Simplon image message\n\n    polarization_fraction: Fraction of linear polarization of the X-ray\n        beam (between 0 and 1)\n\n    polarization_axis: Three-element list representing the polarization\n        axis direction vector\n\n    data_collection_rate: Human-readable string describing the nominal\n        data collection rate (e.g. ``\"120 Hz\"``)\n\n    detector_name: Human-readable name of the detector\n\n    detector_type: Model or type string identifying the detector hardware",
@@ -772,6 +1193,16 @@
           "cache_mode": {
             "$ref": "#/components/schemas/CacheMode",
             "default": "per_transfer"
+          },
+          "job_spec_override": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JobSpec"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "parameters": {
             "$ref": "#/components/schemas/Parameters"
@@ -1086,6 +1517,48 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "VolumeMount": {
+        "description": "Represents a volume mount for a container.",
+        "properties": {
+          "additional_properties": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Additional Properties",
+            "type": "object"
+          },
+          "read_only": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": true,
+            "description": "Whether the mount should be read-only",
+            "title": "Read Only"
+          },
+          "source": {
+            "description": "The source path on the host system to mount",
+            "minLength": 1,
+            "title": "Source",
+            "type": "string"
+          },
+          "target": {
+            "description": "The target path inside the container where the volume will be mounted",
+            "minLength": 1,
+            "title": "Target",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "target"
+        ],
+        "title": "VolumeMount",
         "type": "object"
       }
     },

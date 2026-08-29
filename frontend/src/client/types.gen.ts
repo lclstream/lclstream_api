@@ -176,6 +176,32 @@ export type ConsumerConnectionInfo = {
 };
 
 /**
+ * Container
+ *
+ * Represents a container specification for job execution.  Implementation notes: The value of gpu_cores_per_process in ResourceSpec should be used to determine if the container should be run with GPU support. Likewise, the value of launcher in JobSpec should be used to determine if the container should be run with MPI support. The container should by default. be run with host networking.
+ */
+export type Container = {
+    /**
+     * Additional Properties
+     */
+    additional_properties?: {
+        [key: string]: unknown;
+    };
+    /**
+     * Image
+     *
+     * The container image to use (e.g., 'docker.io/library/ubuntu:latest')
+     */
+    image: string;
+    /**
+     * Volume Mounts
+     *
+     * List of volume mounts for the container
+     */
+    volume_mounts?: Array<VolumeMount> | null;
+};
+
+/**
  * GenericRandomNumpyArrayParameters
  *
  * Parameters for the GenericRandomNumpyArray class
@@ -279,6 +305,146 @@ export type InternalEventSourceParameters = {
      */
     type: 'InternalEventSource';
     [key: string]: unknown;
+};
+
+/**
+ * JobAttributes
+ *
+ * Additional attributes and scheduling parameters for a job.
+ */
+export type JobAttributes = {
+    /**
+     * Account
+     *
+     * Account or project to charge for resource usage
+     */
+    account?: string | null;
+    /**
+     * Additional Properties
+     */
+    additional_properties?: {
+        [key: string]: unknown;
+    };
+    /**
+     * Custom Attributes
+     *
+     * Custom scheduler-specific attributes as key-value pairs
+     */
+    custom_attributes?: {
+        [key: string]: string;
+    } | null;
+    /**
+     * Duration
+     *
+     * Duration in seconds
+     */
+    duration?: number | null;
+    /**
+     * Queue Name
+     *
+     * Name of the queue or partition to submit the job to
+     */
+    queue_name?: string | null;
+    /**
+     * Reservation Id
+     *
+     * ID of a reservation to use for the job
+     */
+    reservation_id?: string | null;
+};
+
+/**
+ * JobSpec
+ *
+ * Specification for a job.
+ */
+export type JobSpec = {
+    /**
+     * Arguments
+     *
+     * Command-line arguments to pass to the executable or container
+     */
+    arguments?: Array<string> | null;
+    /**
+     * Additional job attributes such as duration, queue, and account
+     */
+    attributes?: JobAttributes | null;
+    /**
+     * Container specification for containerized execution
+     */
+    container?: Container | null;
+    /**
+     * Directory
+     *
+     * Working directory for the job
+     */
+    directory?: string | null;
+    /**
+     * Environment
+     *
+     * Environment variables to set for the job. If container is specified, these will be set inside the container.
+     */
+    environment?: {
+        [key: string]: string;
+    } | null;
+    /**
+     * Executable
+     *
+     * Path to the executable to run. If container is specified, this will be used as the entrypoint to the container.
+     */
+    executable?: string | null;
+    /**
+     * Inherit Environment
+     *
+     * Whether to inherit the environment variables from the submission environment
+     */
+    inherit_environment?: boolean | null;
+    /**
+     * Launcher
+     *
+     * Job launcher to use (e.g., 'mpirun', 'srun')
+     */
+    launcher?: string | null;
+    /**
+     * Name
+     *
+     * Name of the job
+     */
+    name?: string | null;
+    /**
+     * Post Launch
+     *
+     * Script or commands to run after the job completes
+     */
+    post_launch?: string | null;
+    /**
+     * Pre Launch
+     *
+     * Script or commands to run before launching the job
+     */
+    pre_launch?: string | null;
+    /**
+     * Resource requirements for the job
+     */
+    resources?: ResourceSpec | null;
+    /**
+     * Stderr Path
+     *
+     * Path to file to write standard error
+     */
+    stderr_path?: string | null;
+    /**
+     * Stdin Path
+     *
+     * Path to file to use as standard input
+     */
+    stdin_path?: string | null;
+    /**
+     * Stdout Path
+     *
+     * Path to file to write standard output
+     */
+    stdout_path?: string | null;
 };
 
 /**
@@ -571,6 +737,62 @@ export type Psana2TimestampParameters = {
 };
 
 /**
+ * ResourceSpec
+ *
+ * Specification of computational resources required for a job.
+ */
+export type ResourceSpec = {
+    /**
+     * Additional Properties
+     */
+    additional_properties?: {
+        [key: string]: unknown;
+    };
+    /**
+     * Cpu Cores Per Process
+     *
+     * Number of CPU cores to allocate per process
+     */
+    cpu_cores_per_process?: number | null;
+    /**
+     * Exclusive Node Use
+     *
+     * Whether to request exclusive use of allocated nodes
+     */
+    exclusive_node_use?: boolean | null;
+    /**
+     * Gpu Cores Per Process
+     *
+     * Number of GPU cores to allocate per process
+     */
+    gpu_cores_per_process?: number | null;
+    /**
+     * Memory
+     *
+     * Amount of memory to allocate in bytes
+     */
+    memory?: number | null;
+    /**
+     * Node Count
+     *
+     * Number of compute nodes to allocate
+     */
+    node_count?: number | null;
+    /**
+     * Process Count
+     *
+     * Total number of processes to launch
+     */
+    process_count?: number | null;
+    /**
+     * Processes Per Node
+     *
+     * Number of processes to launch per node
+     */
+    processes_per_node?: number | null;
+};
+
+/**
  * SimplonBinarySerializerParameters
  *
  * Configuration parameters for the Simplon binary serializer
@@ -646,6 +868,7 @@ export type SourceIdentifierParameters = {
  */
 export type TransferCreate = {
     cache_mode?: CacheMode;
+    job_spec_override?: JobSpec | null;
     parameters: Parameters;
 };
 
@@ -816,6 +1039,38 @@ export type ValidationError = {
      * Error Type
      */
     type: string;
+};
+
+/**
+ * VolumeMount
+ *
+ * Represents a volume mount for a container.
+ */
+export type VolumeMount = {
+    /**
+     * Additional Properties
+     */
+    additional_properties?: {
+        [key: string]: unknown;
+    };
+    /**
+     * Read Only
+     *
+     * Whether the mount should be read-only
+     */
+    read_only?: boolean | null;
+    /**
+     * Source
+     *
+     * The source path on the host system to mount
+     */
+    source: string;
+    /**
+     * Target
+     *
+     * The target path inside the container where the volume will be mounted
+     */
+    target: string;
 };
 
 export type GetTransfersTransfersGetData = {
