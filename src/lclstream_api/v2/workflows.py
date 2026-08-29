@@ -61,13 +61,18 @@ DEFAULT_RETRY_SETTINGS: dict[str, Any] = {
 }
 
 
-# TODO: this is not idempotent so we cannot retry
-@DBOS.step()
+@DBOS.step(**DEFAULT_RETRY_SETTINGS)
 async def _create_cache(
-    transfer_id: UUID, requested_by: str, cache_log_path: Path
+    requested_by: str,
+    cache_log_path: Path,
+    key: str,
+    idle_timeout_ms: int | None,
 ) -> tcore.CacheEndpoint:
     cache = await fastcache.client().create_cache(
-        transfer_id, requested_by, cache_log_path
+        key=key,
+        requested_by=requested_by,
+        log_path=cache_log_path,
+        idle_timeout_ms=idle_timeout_ms,
     )
     return tcore.CacheEndpoint.from_uris(
         cache.id,
@@ -139,14 +144,16 @@ async def _save_cache(transfer_id: UUID, endpoint: tcore.CacheEndpoint) -> None:
 
 
 @db.transaction()
-async def _load_setup_inputs(transfer_id: UUID) -> tuple[str, str, str]:
-    """Load the inputs the saga needs before provisioning: the requesting
-    user plus the resolved (exp, run) that pin the transfer work dir."""
+async def _load_setup_inputs(transfer_id: UUID) -> tcore.TransferSetup:
     transfer = await repo.get_transfer(db.sql_session(), transfer_id)
     if transfer is None:
         raise LookupError(f"transfer {transfer_id} disappeared during setup")
-    exp, run = pcore.resolve_exp_run(Parameters.model_validate(transfer.parameters))
-    return transfer.user, exp, run
+    return tcore.TransferSetup(
+        requested_by=transfer.user,
+        exp=transfer.experiment,
+        run=transfer.run,
+        cache_mode=tcore.CacheMode(transfer.cache_mode),
+    )
 
 
 @db.transaction()
@@ -180,9 +187,11 @@ async def _load_producer_inputs(
     if transfer is None:
         return None
     parameters = Parameters.model_validate(transfer.parameters)
-    exp, run = pcore.resolve_exp_run(parameters)
     return tcore.ProducerInputs(
-        parameters=parameters, endpoint=endpoint, exp=exp, run=run
+        parameters=parameters,
+        endpoint=endpoint,
+        exp=transfer.experiment,
+        run=transfer.run,
     )
 
 
@@ -200,6 +209,7 @@ async def _load_transfer_state(
     )
     resources = tcore.TransferResourceRefs(
         cache_id=transfer.cache_id,
+        cache_mode=tcore.CacheMode(transfer.cache_mode),
         producer_job_id=transfer.producer_job_id,
     )
     return snapshot, resources
@@ -237,12 +247,16 @@ async def _compensate(comps: Iterable[tcore.Compensation]) -> None:
 
 
 async def _teardown(resources: tcore.TransferResourceRefs) -> None:
-    """Reclaim a transfer's live resources (producer job + cache)."""
+    """Reclaim the producer job and the cache.
+
+    A shared cache is left alone -- other transfers may still push into it, so
+    only an operator stops it.
+    """
 
     comps: list[tcore.Compensation] = []
     if resources.producer_job_id:
         comps.append(tcore.CancelProducer(job_id=resources.producer_job_id))
-    if resources.cache_id:
+    if resources.cache_id and resources.cache_mode is tcore.CacheMode.per_transfer:
         comps.append(tcore.DeleteCache(cache_id=resources.cache_id))
     await _compensate(comps)
 
@@ -256,14 +270,32 @@ async def _teardown(resources: tcore.TransferResourceRefs) -> None:
 async def provision_transfer(transfer_id: UUID) -> None:
     progress = tcore.ProvisionProgress()
     try:
-        requested_by, exp, run = await _load_setup_inputs(transfer_id)
-        cache_log_path = logs.log_stream_path(
-            logs.LogStream.cache, config.get_producer(), exp, run, transfer_id
+        setup = await _load_setup_inputs(transfer_id)
+        cache_log_path = logs.cache_log_path(
+            config.get_producer(),
+            setup.exp,
+            setup.run,
+            transfer_id,
+            cache_mode=setup.cache_mode,
         )
-        endpoint = await _create_cache(transfer_id, requested_by, cache_log_path)
-        work_dir = pcore.transfer_work_dir(config.get_producer(), exp, run, transfer_id)
-        # if _create_cache succeeds, then we know the working directory exists
-        progress = progress.with_work_dir(work_dir).with_cache(endpoint.cache_id)
+        key = (
+            setup.exp
+            if setup.cache_mode is tcore.CacheMode.shared
+            else str(transfer_id)
+        )
+        endpoint = await _create_cache(
+            setup.requested_by,
+            cache_log_path,
+            key,
+            pcore.cache_idle_timeout_ms(setup.cache_mode),
+        )
+        work_dir = pcore.transfer_work_dir(
+            config.get_producer(), setup.exp, setup.run, transfer_id
+        )
+        # _create_cache succeeding means the work dir exists
+        progress = progress.with_work_dir(work_dir).with_cache(
+            endpoint.cache_id, mode=setup.cache_mode
+        )
         await _save_cache(transfer_id, endpoint)
 
         inputs = await _load_producer_inputs(transfer_id, endpoint)
