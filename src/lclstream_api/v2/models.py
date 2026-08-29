@@ -1,10 +1,12 @@
 from enum import StrEnum
+from pathlib import Path
 from typing import TYPE_CHECKING
 from uuid import UUID
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict
 
 from ..lclstreamer_param import Parameters as LCLStreamerParameters
+from .core.logs import LogStream
 
 if TYPE_CHECKING:
     from .tables import Transfer
@@ -111,3 +113,18 @@ class TransferDetail(TransferPublic):
 class TransfersPublic(BaseModel):
     data: list[TransferPublic]
     count: int
+
+
+class TransferLogStreamInfo(BaseModel):
+    """One log stream's resolved location and (best-effort) availability."""
+
+    stream: LogStream
+    path: Path
+    available: bool
+    size: int | None = None
+    modified_at: AwareDatetime | None = None
+
+
+class TransferLogIndex(BaseModel):
+    transfer_id: UUID
+    streams: list[TransferLogStreamInfo]
