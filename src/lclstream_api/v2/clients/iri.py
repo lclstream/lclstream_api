@@ -95,6 +95,15 @@ class LogStat(BaseModel):
         return self.stat.modified_at if self.stat else None
 
 
+# amsc client returns this instead of 404.
+_ASSUMED_COMPLETED_SNIPPET = "assumed completed"
+
+
+def _is_assumed_completed(job: Any) -> bool:
+    message = job.message
+    return message is not None and _ASSUMED_COMPLETED_SNIPPET in message.lower()
+
+
 # amscrot's status() returns AmSCROT JobState strings (upper case). Map them
 # back to the canonical amsc_iri JobState the core consumes; an unmapped/UNKNOWN
 # state means the job is gone (reads as None).
@@ -146,12 +155,12 @@ class IriClient:
         return job.id
 
     def _get(self, job_id: JobId, token: str) -> JobState | None:
-        # TODO: eventually we should use historical=True when that is
-        # supported by IRI. Right now it is unsupported in s3df IRI
-        # related to avoiding hammering slurmdb
+        # amscrot guesses COMPLETED; historical=True gets real state.
         try:
             job = self._resource(token).job(job_id)
             state = job.refresh(historical=False)
+            if _is_assumed_completed(job):
+                state = job.refresh(historical=True)
         except Exception as exc:
             _raise_operation_error(exc, "job status")
         if state == "UNKNOWN" and job.message:
