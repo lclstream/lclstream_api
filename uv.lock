@@ -587,6 +587,7 @@ source = { editable = "." }
 dependencies = [
     { name = "alembic" },
     { name = "amscrot-py" },
+    { name = "cryptography" },
     { name = "dbos" },
     { name = "fastapi" },
     { name = "fastapi-jwks" },
@@ -618,6 +619,7 @@ dev = [
 requires-dist = [
     { name = "alembic", specifier = ">=1.18.5" },
     { name = "amscrot-py", git = "https://github.com/doe-iri/iri-facility-api-toolkit?rev=577a6e6d668ce743fb4f09486f21f2b8260193f2" },
+    { name = "cryptography", specifier = ">=49.0.0" },
     { name = "dbos", specifier = ">=2.0" },
     { name = "fastapi", specifier = ">=0.136.3" },
     { name = "fastapi-jwks", specifier = ">=2.0.2" },
