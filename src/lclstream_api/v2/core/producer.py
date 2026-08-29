@@ -98,6 +98,10 @@ def apply_job_spec_update(jobspec: JobSpec, update: JobSpec | None) -> JobSpec:
     return JobSpec.model_validate(merged)
 
 
+# default linger
+CACHE_SINK_LINGER_MS = 30_000
+
+
 def inject_cache_handlers(params: Parameters, pull_uri: str) -> Parameters:
     """Replace the data handlers with a single ZMQ push to the cache socket."""
 
@@ -106,6 +110,7 @@ def inject_cache_handlers(params: Parameters, pull_uri: str) -> Parameters:
         urls=[pull_uri],
         distribute=True,  # TODO: why?
         buffer=0,  # TODO: why?
+        linger=CACHE_SINK_LINGER_MS,
         role="client",
         library="zmq",
         socket_type="push",
