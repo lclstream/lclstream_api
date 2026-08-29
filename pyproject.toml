@@ -25,6 +25,7 @@ dependencies = [
     "sqlalchemy>=2.0.51",
     "httpx>=0.28.1",
     "dbos>=2.0",
+    "alembic>=1.18.5",
 ]
 
 [dependency-groups]
@@ -37,6 +38,7 @@ dev = [
     "pytest-asyncio>=1.4.0",
     "ruff>=0.15.17",
     "types-pyyaml>=6.0.12.20260518",
+    "testcontainers[postgres]>=4.14.2",
 ]
 
 [build-system]
@@ -49,6 +51,21 @@ include-package-data = false
 [tool.setuptools.packages.find]
 where = ["src"]
 #include = ["lclstream_api*"]
+
+[tool.alembic]
+script_location = "lclstream_api.v2:alembic"
+
+[[tool.alembic.post_write_hooks]]
+name = "ruff_format"
+type = "exec"
+executable = "uv"
+options = "run ruff format REVISION_SCRIPT_FILENAME"
+
+[[tool.alembic.post_write_hooks]]
+name = "ruff_check"
+type = "exec"
+executable = "uv"
+options = "run ruff check --fix REVISION_SCRIPT_FILENAME"
 
 [tool.ruff]
 line-length = 88
