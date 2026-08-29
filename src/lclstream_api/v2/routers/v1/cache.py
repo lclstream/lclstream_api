@@ -7,7 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ... import service
 from ...auth import CurrentUser
 from ...db import get_session
-from ...models import CacheShutdownConflict, CachesPublic, Message
+from ...exceptions import CacheShutdownConflict
+from ...models import CachesPublic, Message
 
 router = APIRouter(prefix="/caches", tags=["caches"])
 
@@ -29,7 +30,7 @@ async def get_caches(
     responses={409: {"model": CacheShutdownConflict}},
 )
 async def shutdown_cache(
-    cache_id: UUID, session: SessionDep, user: CurrentUser, force: bool = False
+    cache_id: UUID, session: SessionDep, user: CurrentUser
 ) -> Message:
-    await service.shutdown_cache(session, cache_id, force=force)
+    await service.shutdown_cache(session, cache_id)
     return Message(message="Cache shutdown requested")
