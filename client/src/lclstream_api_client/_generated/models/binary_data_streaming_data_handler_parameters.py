@@ -25,16 +25,17 @@ from pydantic_core import to_jsonable_python
 
 class BinaryDataStreamingDataHandlerParameters(BaseModel):
     """
-    Configuration parameters for the Binary Data Streaming Data Handler  This data handler forwards serialized byte objects to one or more remote endpoints over a ZMQ PUSH socket  Attributes:      type: Discriminator field, must be ``\"BinaryDataStreamingDataHandler\"``      urls: List of endpoint URLs to bind to (server mode) or connect to         (client mode)      distribute: Boolean, if True: round robin connect the ranks, False: all ranks connect to all urls and send the same data      buffer: buffer size, if set to 0 the OS default is used      role: Whether this node acts as the ZMQ ``\"server\"`` (binds) or         ``\"client\"`` (connects). Defaults to ``\"server\"``      library: Underlying transport library to use. Currently only ``\"zmq\"``         is supported. Defaults to ``\"zmq\"``      socket_type: Socket pattern to use. Currently only ``\"push\"`` is         supported. Defaults to ``\"push\"``
+    Configuration parameters for the Binary Data Streaming Data Handler  This data handler forwards serialized byte objects to one or more remote endpoints over a ZMQ PUSH socket  Attributes:      type: Discriminator field, must be ``\"BinaryDataStreamingDataHandler\"``      urls: List of endpoint URLs to bind to (server mode) or connect to         (client mode)      distribute: Boolean, if True: round robin connect the ranks, False: all ranks connect to all urls and send the same data      buffer: buffer size, if set to 0 the OS default is used      role: Whether this node acts as the ZMQ ``\"server\"`` (binds) or         ``\"client\"`` (connects). Defaults to ``\"server\"``      library: Underlying transport library to use. Currently only ``\"zmq\"``         is supported. Defaults to ``\"zmq\"``      socket_type: Socket pattern to use. Currently only ``\"push\"`` is         supported. Defaults to ``\"push\"``      linger: How long, in milliseconds, close() blocks to flush messages still         queued in the send buffer. -1 blocks until they are all delivered, 0         discards them immediately. Set to -1 or a positive value to avoid         dropping the tail of the stream when the process exits
     """ # noqa: E501
     buffer: Optional[StrictInt] = 0
     distribute: Optional[StrictBool] = True
     library: Optional[StrictStr] = 'zmq'
+    linger: Optional[StrictInt] = 0
     role: Optional[StrictStr] = 'client'
     socket_type: Optional[StrictStr] = 'push'
     type: StrictStr
     urls: List[StrictStr]
-    __properties: ClassVar[List[str]] = ["buffer", "distribute", "library", "role", "socket_type", "type", "urls"]
+    __properties: ClassVar[List[str]] = ["buffer", "distribute", "library", "linger", "role", "socket_type", "type", "urls"]
 
     @field_validator('library')
     def library_validate_enum(cls, value):
@@ -127,6 +128,7 @@ class BinaryDataStreamingDataHandlerParameters(BaseModel):
             "buffer": obj.get("buffer") if obj.get("buffer") is not None else 0,
             "distribute": obj.get("distribute") if obj.get("distribute") is not None else True,
             "library": obj.get("library") if obj.get("library") is not None else 'zmq',
+            "linger": obj.get("linger") if obj.get("linger") is not None else 0,
             "role": obj.get("role") if obj.get("role") is not None else 'client',
             "socket_type": obj.get("socket_type") if obj.get("socket_type") is not None else 'push',
             "type": obj.get("type"),

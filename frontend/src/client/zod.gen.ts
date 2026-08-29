@@ -48,11 +48,17 @@ export const zBatchProcessingPipelineParameters = z.object({
  *
  * socket_type: Socket pattern to use. Currently only ``"push"`` is
  * supported. Defaults to ``"push"``
+ *
+ * linger: How long, in milliseconds, close() blocks to flush messages still
+ * queued in the send buffer. -1 blocks until they are all delivered, 0
+ * discards them immediately. Set to -1 or a positive value to avoid
+ * dropping the tail of the stream when the process exits
  */
 export const zBinaryDataStreamingDataHandlerParameters = z.object({
     buffer: z.int().optional().default(0),
     distribute: z.boolean().optional().default(true),
     library: z.literal('zmq').optional().default('zmq'),
+    linger: z.int().optional().default(0),
     role: z.enum(['server', 'client']).optional(),
     socket_type: z.literal('push').optional().default('push'),
     type: z.literal('BinaryDataStreamingDataHandler'),
@@ -155,6 +161,22 @@ export const zConsumerConnectionInfo = z.object({
     host: z.string(),
     port: z.int(),
     uri: z.string()
+});
+
+/**
+ * CrystfelPreprocessingPipelineParameters
+ *
+ * Configuration parameters for the CrystFEL Preprocessing Pipeline
+ *
+ * This pipeline lays out the data in a format that is understood by the
+ * CrystFEL Serial Crystalography Processing software.
+ *
+ * Attributes:
+ *
+ * type: Discriminator field, must be ``"CrystfelPreprocessingPipeline"``
+ */
+export const zCrystfelPreprocessingPipelineParameters = z.object({
+    type: z.literal('CrystfelPreprocessingPipeline')
 });
 
 /**
@@ -271,6 +293,22 @@ export const zLogStream = z.enum([
  */
 export const zMessage = z.object({
     message: z.string()
+});
+
+/**
+ * MsgpackBinarySerializerParameters
+ *
+ * Configuration parameters for the MsgPack binary serializer
+ *
+ * This serializer encodes a batch of event data arrays into a MsgPack binary
+ * object.
+ *
+ * Attributes:
+ *
+ * type: Discriminator field, must be ``"MsgpackBinarySerializer"``
+ */
+export const zMsgpackBinarySerializerParameters = z.object({
+    type: z.literal('MsgpackBinarySerializer')
 });
 
 /**
@@ -438,14 +476,24 @@ export const zResourceSpec = z.object({
  * detector_name: Human-readable name of the detector
  *
  * detector_type: Model or type string identifying the detector hardware
+ *
+ * photon_wavelength_source: Optional flattened data key of the photon_wavelength
+ * PV (e.g. ``"SIOC:SYS0:ML00:AO192"``). When unset, photon_wavelength is 0.
+ *
+ * spectrometer_source: Optional flattened data key of a spectrometer source to
+ * embed in each image message (e.g. ``"feespec.raw.hproj"``). When unset, no
+ * spectrometer fields are added; when set but missing for an event, the frame
+ * is still sent without them.
  */
 export const zSimplonBinarySerializerParameters = z.object({
     data_collection_rate: z.string(),
     data_source_to_serialize: z.string(),
     detector_name: z.string(),
     detector_type: z.string(),
+    photon_wavelength_source: z.string().nullish(),
     polarization_axis: z.array(z.number()),
     polarization_fraction: z.number(),
+    spectrometer_source: z.string().nullish(),
     type: z.literal('SimplonBinarySerializer')
 });
 
@@ -499,7 +547,10 @@ export const zParameters = z.object({
         }).and(zHdf5BinarySerializerParameters),
         z.object({
             type: z.literal('SimplonBinarySerializer')
-        }).and(zSimplonBinarySerializerParameters)
+        }).and(zSimplonBinarySerializerParameters),
+        z.object({
+            type: z.literal('MsgpackBinarySerializer')
+        }).and(zMsgpackBinarySerializerParameters)
     ]),
     data_sources: z.record(z.string(), z.union([
         z.object({
@@ -544,7 +595,10 @@ export const zParameters = z.object({
         }).and(zBatchProcessingPipelineParameters),
         z.object({
             type: z.literal('PeaknetPreprocessingPipeline')
-        }).and(zPeaknetPreprocessingPipelineParameters)
+        }).and(zPeaknetPreprocessingPipelineParameters),
+        z.object({
+            type: z.literal('CrystfelPreprocessingPipeline')
+        }).and(zCrystfelPreprocessingPipelineParameters)
     ]),
     skip_incomplete_events: z.boolean(),
     source_identifier: z.string()

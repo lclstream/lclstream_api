@@ -41,6 +41,7 @@ __all__ = [
     "ConstValueParameters",
     "ConsumerConnectionInfo",
     "Container",
+    "CrystfelPreprocessingPipelineParameters",
     "DataHandlersInner",
     "DataSerializer",
     "DataSourcesValue",
@@ -56,6 +57,7 @@ __all__ = [
     "LogReadMode",
     "LogStream",
     "Message",
+    "MsgpackBinarySerializerParameters",
     "Parameters",
     "PeaknetPreprocessingPipelineParameters",
     "ProcessingPipeline",
@@ -113,6 +115,7 @@ from lclstream_api_client._generated.models.caches_public import CachesPublic as
 from lclstream_api_client._generated.models.const_value_parameters import ConstValueParameters as ConstValueParameters
 from lclstream_api_client._generated.models.consumer_connection_info import ConsumerConnectionInfo as ConsumerConnectionInfo
 from lclstream_api_client._generated.models.container import Container as Container
+from lclstream_api_client._generated.models.crystfel_preprocessing_pipeline_parameters import CrystfelPreprocessingPipelineParameters as CrystfelPreprocessingPipelineParameters
 from lclstream_api_client._generated.models.data_handlers_inner import DataHandlersInner as DataHandlersInner
 from lclstream_api_client._generated.models.data_serializer import DataSerializer as DataSerializer
 from lclstream_api_client._generated.models.data_sources_value import DataSourcesValue as DataSourcesValue
@@ -128,6 +131,7 @@ from lclstream_api_client._generated.models.location_inner import LocationInner 
 from lclstream_api_client._generated.models.log_read_mode import LogReadMode as LogReadMode
 from lclstream_api_client._generated.models.log_stream import LogStream as LogStream
 from lclstream_api_client._generated.models.message import Message as Message
+from lclstream_api_client._generated.models.msgpack_binary_serializer_parameters import MsgpackBinarySerializerParameters as MsgpackBinarySerializerParameters
 from lclstream_api_client._generated.models.parameters import Parameters as Parameters
 from lclstream_api_client._generated.models.peaknet_preprocessing_pipeline_parameters import PeaknetPreprocessingPipelineParameters as PeaknetPreprocessingPipelineParameters
 from lclstream_api_client._generated.models.processing_pipeline import ProcessingPipeline as ProcessingPipeline

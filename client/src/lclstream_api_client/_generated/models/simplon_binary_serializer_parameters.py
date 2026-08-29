@@ -18,23 +18,25 @@ import re  # noqa: F401
 import json
 
 from pydantic import BaseModel, ConfigDict, StrictFloat, StrictInt, StrictStr, field_validator
-from typing import Any, ClassVar, Dict, List, Union
+from typing import Any, ClassVar, Dict, List, Optional, Union
 from typing import Optional, Set
 from typing_extensions import Self
 from pydantic_core import to_jsonable_python
 
 class SimplonBinarySerializerParameters(BaseModel):
     """
-    Configuration parameters for the Simplon binary serializer  This serializer encodes event data into the Simplon 1.8 binary message format as specified by Dectris  Attributes:      type: Discriminator field, must be ``\"SimplonBinarySerializer\"``      data_source_to_serialize: Name of the data source whose array will be         compressed and embedded in each Simplon image message      polarization_fraction: Fraction of linear polarization of the X-ray         beam (between 0 and 1)      polarization_axis: Three-element list representing the polarization         axis direction vector      data_collection_rate: Human-readable string describing the nominal         data collection rate (e.g. ``\"120 Hz\"``)      detector_name: Human-readable name of the detector      detector_type: Model or type string identifying the detector hardware
+    Configuration parameters for the Simplon binary serializer  This serializer encodes event data into the Simplon 1.8 binary message format as specified by Dectris  Attributes:      type: Discriminator field, must be ``\"SimplonBinarySerializer\"``      data_source_to_serialize: Name of the data source whose array will be         compressed and embedded in each Simplon image message      polarization_fraction: Fraction of linear polarization of the X-ray         beam (between 0 and 1)      polarization_axis: Three-element list representing the polarization         axis direction vector      data_collection_rate: Human-readable string describing the nominal         data collection rate (e.g. ``\"120 Hz\"``)      detector_name: Human-readable name of the detector      detector_type: Model or type string identifying the detector hardware      photon_wavelength_source: Optional flattened data key of the photon_wavelength         PV (e.g. ``\"SIOC:SYS0:ML00:AO192\"``). When unset, photon_wavelength is 0.      spectrometer_source: Optional flattened data key of a spectrometer source to         embed in each image message (e.g. ``\"feespec.raw.hproj\"``). When unset, no         spectrometer fields are added; when set but missing for an event, the frame         is still sent without them.
     """ # noqa: E501
     data_collection_rate: StrictStr
     data_source_to_serialize: StrictStr
     detector_name: StrictStr
     detector_type: StrictStr
+    photon_wavelength_source: Optional[StrictStr] = None
     polarization_axis: List[Union[StrictFloat, StrictInt]]
     polarization_fraction: Union[StrictFloat, StrictInt]
+    spectrometer_source: Optional[StrictStr] = None
     type: StrictStr
-    __properties: ClassVar[List[str]] = ["data_collection_rate", "data_source_to_serialize", "detector_name", "detector_type", "polarization_axis", "polarization_fraction", "type"]
+    __properties: ClassVar[List[str]] = ["data_collection_rate", "data_source_to_serialize", "detector_name", "detector_type", "photon_wavelength_source", "polarization_axis", "polarization_fraction", "spectrometer_source", "type"]
 
     @field_validator('type')
     def type_validate_enum(cls, value):
@@ -82,6 +84,16 @@ class SimplonBinarySerializerParameters(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # set to None if photon_wavelength_source (nullable) is None
+        # and model_fields_set contains the field
+        if self.photon_wavelength_source is None and "photon_wavelength_source" in self.model_fields_set:
+            _dict['photon_wavelength_source'] = None
+
+        # set to None if spectrometer_source (nullable) is None
+        # and model_fields_set contains the field
+        if self.spectrometer_source is None and "spectrometer_source" in self.model_fields_set:
+            _dict['spectrometer_source'] = None
+
         return _dict
 
     @classmethod
@@ -98,8 +110,10 @@ class SimplonBinarySerializerParameters(BaseModel):
             "data_source_to_serialize": obj.get("data_source_to_serialize"),
             "detector_name": obj.get("detector_name"),
             "detector_type": obj.get("detector_type"),
+            "photon_wavelength_source": obj.get("photon_wavelength_source"),
             "polarization_axis": obj.get("polarization_axis"),
             "polarization_fraction": obj.get("polarization_fraction"),
+            "spectrometer_source": obj.get("spectrometer_source"),
             "type": obj.get("type")
         })
         return _obj
