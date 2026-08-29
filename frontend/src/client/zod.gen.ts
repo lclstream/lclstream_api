@@ -95,6 +95,43 @@ export const zBinaryFileWritingDataHandlerParameters = z.object({
 export const zCacheMode = z.enum(['per_transfer', 'shared']);
 
 /**
+ * CacheShutdownConflict
+ */
+export const zCacheShutdownConflict = z.object({
+    active_transfer_count: z.int(),
+    message: z.string()
+});
+
+/**
+ * CacheState
+ *
+ * Observed fastcache cache lifecycle.
+ */
+export const zCacheState = z.enum([
+    'new',
+    'queued',
+    'active',
+    'completed',
+    'failed',
+    'canceled'
+]);
+
+/**
+ * CacheStatusPublic
+ */
+export const zCacheStatusPublic = z.object({
+    id: z.uuid(),
+    state: zCacheState
+});
+
+/**
+ * CachesPublic
+ */
+export const zCachesPublic = z.object({
+    data: z.array(zCacheStatusPublic)
+});
+
+/**
  * ConstValueParameters
  *
  * Parameters for ConstValue class
@@ -666,6 +703,34 @@ export const zTransferCreate = z.object({
     job_spec_override: zJobSpec.nullish(),
     parameters: zParameters
 });
+
+export const zGetCachesCachesGetData = z.object({
+    body: z.never().optional(),
+    path: z.never().optional(),
+    query: z.object({
+        experiment: z.string()
+    })
+});
+
+/**
+ * Successful Response
+ */
+export const zGetCachesCachesGetResponse = zCachesPublic;
+
+export const zShutdownCacheCachesCacheIdDeleteData = z.object({
+    body: z.never().optional(),
+    path: z.object({
+        cache_id: z.uuid()
+    }),
+    query: z.object({
+        force: z.boolean().optional().default(false)
+    }).optional()
+});
+
+/**
+ * Successful Response
+ */
+export const zShutdownCacheCachesCacheIdDeleteResponse = zMessage;
 
 export const zGetTransfersTransfersGetData = z.object({
     body: z.never().optional(),

@@ -4,8 +4,8 @@ import { queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 import type { AxiosError } from 'axios';
 
 import { client } from '../client.gen';
-import { type Options, TransfersService } from '../sdk.gen';
-import type { CancelTransferTransfersTransferIdDeleteData, CancelTransferTransfersTransferIdDeleteError, CancelTransferTransfersTransferIdDeleteResponse, GetTransferLogsTransfersTransferIdLogsGetData, GetTransferLogsTransfersTransferIdLogsGetError, GetTransferLogsTransfersTransferIdLogsGetResponse, GetTransferLogTransfersTransferIdLogsStreamGetData, GetTransferLogTransfersTransferIdLogsStreamGetError, GetTransferLogTransfersTransferIdLogsStreamGetResponse, GetTransfersTransfersGetData, GetTransfersTransfersGetError, GetTransfersTransfersGetResponse, GetTransferTransfersTransferIdGetData, GetTransferTransfersTransferIdGetError, GetTransferTransfersTransferIdGetResponse, NewTransferTransfersPostData, NewTransferTransfersPostError, NewTransferTransfersPostResponse } from '../types.gen';
+import { CachesService, type Options, TransfersService } from '../sdk.gen';
+import type { CancelTransferTransfersTransferIdDeleteData, CancelTransferTransfersTransferIdDeleteError, CancelTransferTransfersTransferIdDeleteResponse, GetCachesCachesGetData, GetCachesCachesGetError, GetCachesCachesGetResponse, GetTransferLogsTransfersTransferIdLogsGetData, GetTransferLogsTransfersTransferIdLogsGetError, GetTransferLogsTransfersTransferIdLogsGetResponse, GetTransferLogTransfersTransferIdLogsStreamGetData, GetTransferLogTransfersTransferIdLogsStreamGetError, GetTransferLogTransfersTransferIdLogsStreamGetResponse, GetTransfersTransfersGetData, GetTransfersTransfersGetError, GetTransfersTransfersGetResponse, GetTransferTransfersTransferIdGetData, GetTransferTransfersTransferIdGetError, GetTransferTransfersTransferIdGetResponse, NewTransferTransfersPostData, NewTransferTransfersPostError, NewTransferTransfersPostResponse, ShutdownCacheCachesCacheIdDeleteData, ShutdownCacheCachesCacheIdDeleteError, ShutdownCacheCachesCacheIdDeleteResponse } from '../types.gen';
 
 export type QueryKey<TOptions extends Options> = [
     Pick<TOptions, 'baseURL' | 'body' | 'headers' | 'path' | 'query'> & {
@@ -38,6 +38,41 @@ const createQueryKey = <TOptions extends Options>(id: string, options?: TOptions
         params.query = options.query;
     }
     return [params];
+};
+
+export const getCachesCachesGetQueryKey = (options: Options<GetCachesCachesGetData>) => createQueryKey('getCachesCachesGet', options);
+
+/**
+ * Get Caches
+ */
+export const getCachesCachesGetOptions = (options: Options<GetCachesCachesGetData>) => queryOptions<GetCachesCachesGetResponse, AxiosError<GetCachesCachesGetError>, GetCachesCachesGetResponse, ReturnType<typeof getCachesCachesGetQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await CachesService.getCachesCachesGet({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: getCachesCachesGetQueryKey(options)
+});
+
+/**
+ * Shutdown Cache
+ */
+export const shutdownCacheCachesCacheIdDeleteMutation = (options?: Partial<Options<ShutdownCacheCachesCacheIdDeleteData>>): UseMutationOptions<ShutdownCacheCachesCacheIdDeleteResponse, AxiosError<ShutdownCacheCachesCacheIdDeleteError>, Options<ShutdownCacheCachesCacheIdDeleteData>> => {
+    const mutationOptions: UseMutationOptions<ShutdownCacheCachesCacheIdDeleteResponse, AxiosError<ShutdownCacheCachesCacheIdDeleteError>, Options<ShutdownCacheCachesCacheIdDeleteData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await CachesService.shutdownCacheCachesCacheIdDelete({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
 };
 
 export const getTransfersTransfersGetQueryKey = (options?: Options<GetTransfersTransfersGetData>) => createQueryKey('getTransfersTransfersGet', options);
