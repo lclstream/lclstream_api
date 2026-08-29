@@ -4,7 +4,7 @@ from alembic import context
 from sqlalchemy import create_engine, pool
 
 import lclstream_api.v2.tables as _tables  # noqa: F401 - registers tables
-from lclstream_api.v2.config import database
+from lclstream_api.v2.config import get_database
 from lclstream_api.v2.tables import Base
 
 config = context.config
@@ -18,7 +18,7 @@ def get_url() -> str:
     if url:
         return url
     # for running migrations against real db
-    return str(database.url)
+    return str(get_database().url)
 
 
 def run_migrations() -> None:
