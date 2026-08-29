@@ -2053,7 +2053,7 @@ class TransfersApi:
 
         _response_types_map: Dict[str, Optional[str]] = {
             '201': "TransferPublic",
-            '422': "HTTPValidationError",
+            '422': "InsufficientTokenLifetimeError",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -2120,7 +2120,7 @@ class TransfersApi:
 
         _response_types_map: Dict[str, Optional[str]] = {
             '201': "TransferPublic",
-            '422': "HTTPValidationError",
+            '422': "InsufficientTokenLifetimeError",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -2187,7 +2187,7 @@ class TransfersApi:
 
         _response_types_map: Dict[str, Optional[str]] = {
             '201': "TransferPublic",
-            '422': "HTTPValidationError",
+            '422': "InsufficientTokenLifetimeError",
         }
         response_data = await self.api_client.call_api(
             *_param,
