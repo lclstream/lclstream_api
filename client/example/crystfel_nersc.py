@@ -201,7 +201,8 @@ def main() -> int:
             cache_mode=CacheMode.PER_TRANSFER,
             consumer_socket=ConsumerSocket.REQ,
             job_spec_override=JobSpec(
-                attributes=JobAttributes(account=cfg.job_spec_account)
+                attributes=JobAttributes(account=cfg.job_spec_account),
+                environment={"LCLSTREAMER_DEBUG": "1"},
             ),
         )
     except exceptions.ApiException as exc:
