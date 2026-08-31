@@ -11,6 +11,7 @@ import {
 import { StatusPlaceholder } from "@/components/Common/StatusPlaceholder"
 import { LogViewer } from "@/components/Transfers/LogViewer"
 import { StateBadge } from "@/components/Transfers/StateBadge"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 
 export function TransferDetail({
@@ -115,8 +116,18 @@ export function TransferDetail({
 
       {transfer.connection_info && (
         <div className="rounded-md border p-3 text-sm">
-          <div className="text-muted-foreground">Consumer endpoint</div>
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground">Consumer endpoint</span>
+            <Badge variant="outline">
+              {transfer.connection_info.socket.toUpperCase()}
+            </Badge>
+          </div>
           <code className="text-xs">{transfer.connection_info.uri}</code>
+          {transfer.connection_info.socket !== "pull" && (
+            <div className="mt-1 text-xs text-muted-foreground">
+              Request-driven: ask for each message.
+            </div>
+          )}
         </div>
       )}
 

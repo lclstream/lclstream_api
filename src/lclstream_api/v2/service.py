@@ -11,6 +11,7 @@ committing the insert first so the workflow's first read sees the row.
 
 import asyncio
 import logging
+import socket
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
@@ -35,6 +36,7 @@ from .models import (
     CacheMode,
     CachesPublic,
     CacheStatusPublic,
+    ConsumerSocket,
     TransferCancelOutcome,
     TransferDetail,
     TransferLogIndex,
@@ -48,6 +50,23 @@ from .models import (
 logger = logging.getLogger(__name__)
 
 
+async def _consumer_hosts(*hostnames: str | None) -> dict[str, str]:
+    """Resolve cache hosts to addresses for off-site consumers.
+
+    We run inside SLAC, so our resolver knows the DTN names; the
+    consumer's may not. Resolves the distinct names, not one per row.
+    """
+    if not config.get_fastcache().resolve_consumer_host:
+        return {}
+    resolved: dict[str, str] = {}
+    for name in {host for host in hostnames if host}:
+        try:
+            resolved[name] = await asyncio.to_thread(socket.gethostbyname, name)
+        except OSError:
+            logger.warning("cache host %s did not resolve", name)
+    return resolved
+
+
 async def create_transfer(
     session: AsyncSession,
     user: AuthenticatedUser,
@@ -56,6 +75,7 @@ async def create_transfer(
     *,
     experiment: str,
     run: str,
+    consumer_socket: ConsumerSocket = ConsumerSocket.pull,
     job_spec_override: JobSpec | None = None,
 ) -> TransferPublic:
     transfer_id = uuid4()
@@ -92,8 +112,10 @@ async def create_transfer(
             experiment=experiment,
             run=run,
             cache_mode=cache_mode,
+            consumer_socket=consumer_socket,
             job_spec=job_spec.model_dump(mode="json"),
         )
+        # Still provisioning, so it carries no connection info.
         public = TransferPublic.from_transfer(transfer)
     # here we just start the workflow
     with SetWorkflowID(str(transfer_id)):
@@ -111,8 +133,9 @@ async def list_transfers(
     transfers, count = await repo.list_transfers(
         session, skip=skip, limit=limit, state=state
     )
+    hosts = await _consumer_hosts(*(transfer.cache_hostname for transfer in transfers))
     return TransfersPublic(
-        data=[TransferPublic.from_transfer(transfer) for transfer in transfers],
+        data=[TransferPublic.from_transfer(transfer, hosts) for transfer in transfers],
         count=count,
     )
 
@@ -123,7 +146,8 @@ async def get_transfer_detail(
     transfer = await repo.get_transfer_with_transitions(session, transfer_id)
     if transfer is None:
         raise NotFound(f"transfer {transfer_id} not found")
-    return TransferDetail.from_transfer(transfer)
+    hosts = await _consumer_hosts(transfer.cache_hostname)
+    return TransferDetail.from_transfer(transfer, hosts)
 
 
 async def cancel_transfer(

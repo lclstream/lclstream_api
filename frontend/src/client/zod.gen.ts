@@ -147,13 +147,28 @@ export const zConstValueParameters = z.object({
 });
 
 /**
+ * ConsumerSocket
+ *
+ * ZMQ socket the consumer connects with.
+ *
+ * ``dealer`` and ``req`` are request-driven: the consumer asks for each
+ * message. fastcache only reports metrics under ``pull``.
+ */
+export const zConsumerSocket = z.enum([
+    'pull',
+    'dealer',
+    'req'
+]);
+
+/**
  * ConsumerConnectionInfo
  *
- * The cache push socket the consumer connects to.
+ * The cache socket the consumer connects to, and how to dial it.
  */
 export const zConsumerConnectionInfo = z.object({
     host: z.string(),
     port: z.int(),
+    socket: zConsumerSocket,
     uri: z.string()
 });
 
@@ -747,6 +762,7 @@ export const zJobSpec = z.object({
  */
 export const zTransferCreate = z.object({
     cache_mode: zCacheMode.optional().default('per_transfer'),
+    consumer_socket: zConsumerSocket.optional().default('pull'),
     job_spec_override: zJobSpec.nullish(),
     parameters: zParameters
 });

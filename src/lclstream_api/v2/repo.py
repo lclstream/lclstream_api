@@ -30,6 +30,7 @@ async def insert_transfer(
     run: str,
     job_spec: dict[str, Any],
     cache_mode: tcore.CacheMode = tcore.CacheMode.per_transfer,
+    consumer_socket: tcore.ConsumerSocket = tcore.ConsumerSocket.pull,
 ) -> Transfer:
     transfer = Transfer(
         id=transfer_id,
@@ -42,6 +43,7 @@ async def insert_transfer(
         experiment=experiment,
         run=run,
         cache_mode=cache_mode,
+        consumer_socket=consumer_socket,
         job_spec=job_spec,
     )
     session.add(transfer)

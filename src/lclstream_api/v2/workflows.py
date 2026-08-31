@@ -108,12 +108,14 @@ async def _create_cache(
     cache_log_path: Path,
     key: str,
     idle_timeout_ms: int | None,
+    output: str,
 ) -> tcore.CacheEndpoint:
     cache = await fastcache.client().create_cache(
         key=key,
         requested_by=requested_by,
         log_path=cache_log_path,
         idle_timeout_ms=idle_timeout_ms,
+        output=output,
     )
     return tcore.CacheEndpoint.from_uris(
         cache.id,
@@ -204,6 +206,7 @@ async def _load_setup_inputs(transfer_id: UUID) -> tcore.TransferSetup:
         exp=transfer.experiment,
         run=transfer.run,
         cache_mode=tcore.CacheMode(transfer.cache_mode),
+        consumer_socket=tcore.ConsumerSocket(transfer.consumer_socket),
     )
 
 
@@ -353,6 +356,7 @@ async def provision_transfer(transfer_id: UUID) -> None:
             cache_log_path,
             key,
             pcore.cache_idle_timeout_ms(setup.cache_mode),
+            setup.consumer_socket.cache_output,
         )
         work_dir = pcore.transfer_work_dir(
             config.get_producer(), setup.exp, setup.run, transfer_id, username
