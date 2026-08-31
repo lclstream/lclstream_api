@@ -57,7 +57,9 @@ async def new_transfer(
                 "(e.g. 'exp=mfx100852324,run=355')."
             ),
         )
-    return await service.create_transfer(session, user, body.parameters)
+    return await service.create_transfer(
+        session, user, body.parameters, body.cache_mode, experiment=exp, run=run
+    )
 
 
 @router.delete("/{transfer_id}", response_model=Message)

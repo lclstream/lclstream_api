@@ -4,6 +4,7 @@ from uuid import UUID
 from ._generated.api.transfers_api import TransfersApi
 from ._generated.api_client import ApiClient
 from ._generated.configuration import Configuration
+from ._generated.models.cache_mode import CacheMode
 from ._generated.models.log_read_mode import LogReadMode
 from ._generated.models.log_stream import LogStream
 from ._generated.models.message import Message
@@ -46,9 +47,11 @@ class LclstreamApiClient:
     def get_transfer(self, transfer_id: UUID) -> TransferDetail:
         return self._authed().get_transfer_transfers_transfer_id_get_sync(transfer_id)
 
-    def create_transfer(self, parameters: Parameters) -> TransferPublic:
+    def create_transfer(
+        self, parameters: Parameters, *, cache_mode: CacheMode | None = None
+    ) -> TransferPublic:
         return self._authed().new_transfer_transfers_post_sync(
-            TransferCreate(parameters=parameters.to_generated())
+            TransferCreate(parameters=parameters.to_generated(), cache_mode=cache_mode)
         )
 
     def cancel_transfer(self, transfer_id: UUID) -> Message:
@@ -104,9 +107,11 @@ class AsyncLclstreamApiClient:
     async def get_transfer(self, transfer_id: UUID) -> TransferDetail:
         return await self._authed().get_transfer_transfers_transfer_id_get(transfer_id)
 
-    async def create_transfer(self, parameters: Parameters) -> TransferPublic:
+    async def create_transfer(
+        self, parameters: Parameters, *, cache_mode: CacheMode | None = None
+    ) -> TransferPublic:
         return await self._authed().new_transfer_transfers_post(
-            TransferCreate(parameters=parameters.to_generated())
+            TransferCreate(parameters=parameters.to_generated(), cache_mode=cache_mode)
         )
 
     async def cancel_transfer(self, transfer_id: UUID) -> Message:
