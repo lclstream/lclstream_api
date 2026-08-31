@@ -9,7 +9,7 @@ from test_jobs import param2
 
 from lclstream_api.models import TransferInfo, TransferStatus
 from lclstream_api.server import api
-from test_config import config, setup_lclstream_api  # noqa: F401
+
 
 ADDR = "tcp://127.0.0.1:28451"
 
