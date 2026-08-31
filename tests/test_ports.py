@@ -1,7 +1,7 @@
 import pytest
+from test_config import config  # noqa: F401
 
 from lclstream_api.ports import get_portusage
-from test_config import config  # noqa: F401
 
 
 def test_db(config):
