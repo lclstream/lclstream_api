@@ -322,6 +322,24 @@ export type HttpValidationError = {
 };
 
 /**
+ * InsufficientTokenLifetimeError
+ */
+export type InsufficientTokenLifetimeError = {
+    /**
+     * Detail
+     */
+    detail: string;
+    /**
+     * Remaining Seconds
+     */
+    remaining_seconds: number;
+    /**
+     * Required Seconds
+     */
+    required_seconds: number;
+};
+
+/**
  * InternalEventSourceParameters
  *
  * Configuration parameters for the Internal Event Source
@@ -1231,9 +1249,9 @@ export type NewTransferTransfersPostData = {
 
 export type NewTransferTransfersPostErrors = {
     /**
-     * Validation Error
+     * Unprocessable Content
      */
-    422: HttpValidationError;
+    422: InsufficientTokenLifetimeError;
 };
 
 export type NewTransferTransfersPostError = NewTransferTransfersPostErrors[keyof NewTransferTransfersPostErrors];
