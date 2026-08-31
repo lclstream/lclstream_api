@@ -180,7 +180,7 @@ _client: IriClient | None = None
 
 def startup() -> None:
     global _client
-    _client = IriClient(config.iri)
+    _client = IriClient(config.get_iri())
 
 
 async def shutdown() -> None:

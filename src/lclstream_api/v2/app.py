@@ -12,11 +12,12 @@ from .routers.v1.transfer import router as transfer_router
 
 
 def build_dbos_config() -> DBOSConfig:
-    system_database_url = str(config.database.url).replace("+psycopg", "")
+    system_database_url = str(config.get_database().url).replace("+psycopg", "")
+    cfg = config.get_dbos()
     return DBOSConfig(
-        name=config.dbos.name,
+        name=cfg.name,
         system_database_url=system_database_url,
-        dbos_system_schema=config.dbos.system_schema,
+        dbos_system_schema=cfg.system_schema,
     )
 
 
@@ -38,7 +39,7 @@ app = FastAPI(
     title="LCLStream API",
     summary="Durable lclstreamer-based data transfers.",
     lifespan=lifespan,
-    root_path=config.app.root_path,
+    root_path=config.get_app().root_path,
 )
 
 register_exception_handlers(app)
@@ -46,10 +47,10 @@ app.include_router(transfer_router)
 
 # Opt-in only (see AppSettings.cors_origins docstring) — production serves
 # frontend+API same-origin behind a gateway and never sets this.
-if config.app.cors_origins:
+if cors_origins := config.get_app().cors_origins:
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=config.app.cors_origins,
+        allow_origins=cors_origins,
         allow_credentials=True,
         allow_methods=["GET", "POST", "DELETE"],
         allow_headers=["Authorization", "Content-Type"],

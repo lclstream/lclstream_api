@@ -1,3 +1,4 @@
+from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -132,10 +133,37 @@ class AppSettings(BaseSettings):
     cors_origins: CommaSeparatedList = Field(default_factory=list)
 
 
-database = DatabaseSettings()
-dbos = DbosSettings()
-fastcache = FastcacheClientSettings()
-iri = IriClientSettings()
-producer = LCLStreamerProducerSettings()
-oidc = OidcSettings()
-app = AppSettings()
+# Settings are constructed lazily and then cached
+@lru_cache
+def get_database() -> DatabaseSettings:
+    return DatabaseSettings()
+
+
+@lru_cache
+def get_dbos() -> DbosSettings:
+    return DbosSettings()
+
+
+@lru_cache
+def get_fastcache() -> FastcacheClientSettings:
+    return FastcacheClientSettings()
+
+
+@lru_cache
+def get_iri() -> IriClientSettings:
+    return IriClientSettings()
+
+
+@lru_cache
+def get_producer() -> LCLStreamerProducerSettings:
+    return LCLStreamerProducerSettings()
+
+
+@lru_cache
+def get_oidc() -> OidcSettings:
+    return OidcSettings()
+
+
+@lru_cache
+def get_app() -> AppSettings:
+    return AppSettings()
