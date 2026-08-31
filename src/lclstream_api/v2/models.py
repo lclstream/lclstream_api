@@ -49,7 +49,6 @@ class TransferCreate(BaseModel):
     parameters: LCLStreamerParameters
     cache_mode: CacheMode = CacheMode.per_transfer
     consumer_socket: ConsumerSocket = ConsumerSocket.pull
-    # Optional escape hatch
     job_spec_override: JobSpec | None = None
 
 
@@ -65,7 +64,7 @@ class TransitionPublic(BaseModel):
 class TransferPublic(BaseModel):
     id: UUID
     created_at: AwareDatetime
-    requested_by: str  # user who requested the transfer
+    requested_by: str
     state: TransferState
     experiment: str
     run: str

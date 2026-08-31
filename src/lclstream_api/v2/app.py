@@ -48,8 +48,7 @@ register_exception_handlers(app)
 app.include_router(transfer_router)
 app.include_router(cache_router)
 
-# Opt-in only (see AppSettings.cors_origins docstring) — production serves
-# frontend+API same-origin behind a gateway and never sets this.
+# Opt-in only; production runs same-origin behind a gateway.
 if cors_origins := config.get_app().cors_origins:
     app.add_middleware(
         CORSMiddleware,

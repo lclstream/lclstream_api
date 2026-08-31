@@ -8,7 +8,7 @@ class NotFound(Exception):
 
 
 class UpstreamError(Exception):
-    """An upstream dependency (e.g. the IRI filesystem) failed unexpectedly."""
+    """An upstream dependency failed unexpectedly."""
 
 
 class DelegatedCredentialRejected(Exception):
