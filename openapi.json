@@ -288,6 +288,22 @@
         "title": "Container",
         "type": "object"
       },
+      "CrystfelPreprocessingPipelineParameters": {
+        "additionalProperties": false,
+        "description": "Configuration parameters for the CrystFEL Preprocessing Pipeline\n\nThis pipeline lays out the data in a format that is understood by the\nCrystFEL Serial Crystalography Processing software.\n\nAttributes:\n\n    type: Discriminator field, must be ``\"CrystfelPreprocessingPipeline\"``",
+        "properties": {
+          "type": {
+            "const": "CrystfelPreprocessingPipeline",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "title": "CrystfelPreprocessingPipelineParameters",
+        "type": "object"
+      },
       "GenericRandomNumpyArrayParameters": {
         "additionalProperties": false,
         "description": "Parameters for the GenericRandomNumpyArray class",
@@ -743,6 +759,22 @@
         "title": "Message",
         "type": "object"
       },
+      "MsgpackBinarySerializerParameters": {
+        "additionalProperties": false,
+        "description": "Configuration parameters for the MsgPack binary serializer\n\nThis serializer encodes a batch of event data arrays into a MsgPack binary\nobject.\n\nAttributes:\n\n    type: Discriminator field, must be ``\"MsgpackBinarySerializer\"``",
+        "properties": {
+          "type": {
+            "const": "MsgpackBinarySerializer",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "title": "MsgpackBinarySerializerParameters",
+        "type": "object"
+      },
       "Parameters": {
         "additionalProperties": false,
         "description": "Top-level configuration parameters for an lclstreamer run\n\nThis model aggregates all sub-component configuration into a single object\n\nAttributes:\n\n    source_identifier: A string that uniquely identifies the data source\n        (e.g. a psana data source string)\n\n    skip_incomplete_events: When ``True``, events for which one or more\n        data sources returned no data are silently dropped from the stream\n\n    event_source: Configuration for the event source\n\n    data_sources: Mapping from arbitrary data source names to the\n        configuration parameters of each data source\n\n    processing_pipeline: Configuration for the Processing Pipeline applied\n        to the event stream\n\n    data_serializer: Configuration for the serializer that converts\n        processed events into byte objects\n\n    data_handlers: Ordered list of data handler configurations; each\n        handler receives the serialized byte object in turn",
@@ -772,6 +804,7 @@
             "discriminator": {
               "mapping": {
                 "HDF5BinarySerializer": "#/components/schemas/HDF5BinarySerializerParameters",
+                "MsgpackBinarySerializer": "#/components/schemas/MsgpackBinarySerializerParameters",
                 "SimplonBinarySerializer": "#/components/schemas/SimplonBinarySerializerParameters"
               },
               "propertyName": "type"
@@ -782,6 +815,9 @@
               },
               {
                 "$ref": "#/components/schemas/SimplonBinarySerializerParameters"
+              },
+              {
+                "$ref": "#/components/schemas/MsgpackBinarySerializerParameters"
               }
             ],
             "title": "Data Serializer"
@@ -857,6 +893,7 @@
             "discriminator": {
               "mapping": {
                 "BatchProcessingPipeline": "#/components/schemas/BatchProcessingPipelineParameters",
+                "CrystfelPreprocessingPipeline": "#/components/schemas/CrystfelPreprocessingPipelineParameters",
                 "PeaknetPreprocessingPipeline": "#/components/schemas/PeaknetPreprocessingPipelineParameters"
               },
               "propertyName": "type"
@@ -867,6 +904,9 @@
               },
               {
                 "$ref": "#/components/schemas/PeaknetPreprocessingPipelineParameters"
+              },
+              {
+                "$ref": "#/components/schemas/CrystfelPreprocessingPipelineParameters"
               }
             ],
             "title": "Processing Pipeline"
@@ -2066,6 +2106,8 @@
             "required": false,
             "schema": {
               "default": 200,
+              "exclusiveMinimum": 0,
+              "maximum": 10000,
               "title": "Lines",
               "type": "integer"
             }
@@ -2077,6 +2119,8 @@
             "schema": {
               "anyOf": [
                 {
+                  "exclusiveMinimum": 0,
+                  "maximum": 10000000,
                   "type": "integer"
                 },
                 {
