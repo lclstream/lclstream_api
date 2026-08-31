@@ -18,7 +18,14 @@ import zmq.asyncio
 from pydantic import AnyHttpUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from lclstream_api_client import AsyncLclstreamApiClient, CacheMode, exceptions, params
+from lclstream_api_client import (
+    AsyncLclstreamApiClient,
+    CacheMode,
+    JobAttributes,
+    JobSpec,
+    exceptions,
+    params,
+)
 
 FINAL_STATES = {"canceled", "completed", "failed"}
 POLL_TIMEOUT_S = 180.0
@@ -35,6 +42,7 @@ class Settings(BaseSettings):
     source_identifier: str = (
         "exp=mfx100848724,run=51,dir=/sdf/data/lcls/ds/prj/public01/xtc"
     )
+    job_spec_account: str = "lcls:mfx100848724@milano"
 
     @property
     def token(self) -> str:
@@ -175,9 +183,12 @@ async def run(settings: Settings) -> int:
     last_state: str | None = None
     try:
         parameters = default_parameters(settings.source_identifier)
+        override = JobSpec(attributes=JobAttributes(account=settings.job_spec_account))
         try:
             created = await client.create_transfer(
-                parameters, cache_mode=CacheMode.SHARED
+                parameters,
+                cache_mode=CacheMode.SHARED,
+                job_spec_override=override,
             )
         except exceptions.ApiException as exc:
             raise SystemExit(
