@@ -15,11 +15,20 @@ concurrency:
 permissions:
   contents: read
 
-env:
-  IMAGE: ghcr.io/lclstream/lclstream_api
-
 jobs:
   build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: backend
+            image: ghcr.io/lclstream/lclstream_api
+            context: .
+            file: container/Containerfile
+          - name: frontend
+            image: ghcr.io/lclstream/lclstream-api-frontend
+            context: ./frontend
+            file: frontend/Dockerfile
     # Skip fork PRs (read-only GITHUB_TOKEN can't push images/cache).
     # Maintainers: push the fork branch to this repo to trigger, or use workflow_dispatch.
     if: >
@@ -47,7 +56,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@80c7e94dd9b9319bd5eb7a0e0fe9291e23a2a2e9 # v6
         with:
-          images: ${{ env.IMAGE }}
+          images: ${{ matrix.image }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -59,11 +68,11 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
         with:
-          context: .
-          file: container/Containerfile
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
           # Push on non-PR events, and on PRs that originate from this repo (not external forks). 
           push: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
