@@ -1,5 +1,6 @@
 import { formatDistanceToNow } from "date-fns"
 import type { TransferPublic } from "@/client"
+import { SharedCacheBadge } from "@/components/Transfers/SharedCacheBadge"
 import { StateBadge } from "@/components/Transfers/StateBadge"
 
 export function TransferCard({
@@ -10,25 +11,33 @@ export function TransferCard({
   onClick: () => void
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="w-full rounded-lg border bg-card p-4 text-left hover:bg-accent/50"
-    >
-      <div className="flex items-center gap-3">
-        <span className="font-mono text-xs text-muted-foreground">
-          {transfer.id.slice(0, 8)}
-        </span>
-        <StateBadge state={transfer.state} />
-        <div className="flex-1" />
-        <span className="text-xs text-muted-foreground whitespace-nowrap">
-          {formatDistanceToNow(new Date(transfer.created_at), {
-            addSuffix: true,
-          })}
-        </span>
-      </div>
-      <p className="mt-2 text-sm">{transfer.requested_by}</p>
-    </button>
+    // Shutdown control is a sibling: nested <button>s are invalid HTML.
+    <div className="w-full rounded-lg border bg-card">
+      <button
+        type="button"
+        onClick={onClick}
+        className="w-full rounded-lg p-4 text-left hover:bg-accent/50"
+      >
+        <div className="flex items-center gap-3">
+          <span className="font-mono text-xs text-muted-foreground">
+            {transfer.id.slice(0, 8)}
+          </span>
+          <StateBadge state={transfer.state} />
+          <div className="flex-1" />
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
+            {formatDistanceToNow(new Date(transfer.created_at), {
+              addSuffix: true,
+            })}
+          </span>
+        </div>
+        <p className="mt-2 text-sm">{transfer.requested_by}</p>
+      </button>
+      {transfer.cache_mode === "shared" && (
+        <div className="border-t px-4 py-2">
+          <SharedCacheBadge experiment={transfer.experiment} />
+        </div>
+      )}
+    </div>
   )
 }
 

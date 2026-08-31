@@ -18,12 +18,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..lclstreamer_param import Parameters
 from . import config, repo, workflows
-from .clients import iri
+from .clients import fastcache, iri
 from .core import logs as lcore, producer as pcore
 from .core.producer import JobSpec
-from .exceptions import NotFound, UpstreamError
+from .exceptions import CacheShutdownBlocked, NotFound, UpstreamError
 from .models import (
     CacheMode,
+    CachesPublic,
+    CacheStatusPublic,
     TransferCancelOutcome,
     TransferDetail,
     TransferLogIndex,
@@ -202,3 +204,26 @@ async def list_transfer_logs(
         for (stream, path), stat in zip(paths, stats, strict=True)
     ]
     return TransferLogIndex(transfer_id=transfer_id, streams=streams)
+
+
+async def list_caches_for_experiment(
+    session: AsyncSession, experiment: str
+) -> CachesPublic:
+    """The experiment's active shared cache, if any."""
+    cache_id = await repo.find_latest_shared_transfer_cache(session, experiment)
+    if cache_id is None:
+        return CachesPublic(data=[])
+    cache = await fastcache.client().get_cache(cache_id)
+    if cache is None:
+        return CachesPublic(data=[])
+    return CachesPublic(data=[CacheStatusPublic(id=cache.id, state=cache.state)])
+
+
+async def shutdown_cache(
+    session: AsyncSession, cache_id: UUID, *, force: bool = False
+) -> None:
+    if not force:
+        count = await repo.count_active_transfers_by_cache(session, cache_id)
+        if count > 0:
+            raise CacheShutdownBlocked(count)
+    await fastcache.client().delete_cache(cache_id)

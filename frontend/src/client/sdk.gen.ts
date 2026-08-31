@@ -2,8 +2,8 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { CancelTransferTransfersTransferIdDeleteData, CancelTransferTransfersTransferIdDeleteErrors, CancelTransferTransfersTransferIdDeleteResponses, GetTransferLogsTransfersTransferIdLogsGetData, GetTransferLogsTransfersTransferIdLogsGetErrors, GetTransferLogsTransfersTransferIdLogsGetResponses, GetTransferLogTransfersTransferIdLogsStreamGetData, GetTransferLogTransfersTransferIdLogsStreamGetErrors, GetTransferLogTransfersTransferIdLogsStreamGetResponses, GetTransfersTransfersGetData, GetTransfersTransfersGetErrors, GetTransfersTransfersGetResponses, GetTransferTransfersTransferIdGetData, GetTransferTransfersTransferIdGetErrors, GetTransferTransfersTransferIdGetResponses, NewTransferTransfersPostData, NewTransferTransfersPostErrors, NewTransferTransfersPostResponses } from './types.gen';
-import { zCancelTransferTransfersTransferIdDeleteResponse, zGetTransferLogsTransfersTransferIdLogsGetResponse, zGetTransferLogTransfersTransferIdLogsStreamGetResponse, zGetTransfersTransfersGetResponse, zGetTransferTransfersTransferIdGetResponse, zNewTransferTransfersPostResponse } from './zod.gen';
+import type { CancelTransferTransfersTransferIdDeleteData, CancelTransferTransfersTransferIdDeleteErrors, CancelTransferTransfersTransferIdDeleteResponses, GetCachesCachesGetData, GetCachesCachesGetErrors, GetCachesCachesGetResponses, GetTransferLogsTransfersTransferIdLogsGetData, GetTransferLogsTransfersTransferIdLogsGetErrors, GetTransferLogsTransfersTransferIdLogsGetResponses, GetTransferLogTransfersTransferIdLogsStreamGetData, GetTransferLogTransfersTransferIdLogsStreamGetErrors, GetTransferLogTransfersTransferIdLogsStreamGetResponses, GetTransfersTransfersGetData, GetTransfersTransfersGetErrors, GetTransfersTransfersGetResponses, GetTransferTransfersTransferIdGetData, GetTransferTransfersTransferIdGetErrors, GetTransferTransfersTransferIdGetResponses, NewTransferTransfersPostData, NewTransferTransfersPostErrors, NewTransferTransfersPostResponses, ShutdownCacheCachesCacheIdDeleteData, ShutdownCacheCachesCacheIdDeleteErrors, ShutdownCacheCachesCacheIdDeleteResponses } from './types.gen';
+import { zCancelTransferTransfersTransferIdDeleteResponse, zGetCachesCachesGetResponse, zGetTransferLogsTransfersTransferIdLogsGetResponse, zGetTransferLogTransfersTransferIdLogsStreamGetResponse, zGetTransfersTransfersGetResponse, zGetTransferTransfersTransferIdGetResponse, zNewTransferTransfersPostResponse, zShutdownCacheCachesCacheIdDeleteResponse } from './zod.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -18,6 +18,34 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
      */
     meta?: Record<string, unknown>;
 };
+
+export class CachesService {
+    /**
+     * Get Caches
+     */
+    public static getCachesCachesGet<ThrowOnError extends boolean = false>(options: Options<GetCachesCachesGetData, ThrowOnError>) {
+        return (options.client ?? client).get<GetCachesCachesGetResponses, GetCachesCachesGetErrors, ThrowOnError>({
+            responseType: 'json',
+            responseValidator: async (data) => await zGetCachesCachesGetResponse.parseAsync(data),
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/caches/',
+            ...options
+        });
+    }
+    
+    /**
+     * Shutdown Cache
+     */
+    public static shutdownCacheCachesCacheIdDelete<ThrowOnError extends boolean = false>(options: Options<ShutdownCacheCachesCacheIdDeleteData, ThrowOnError>) {
+        return (options.client ?? client).delete<ShutdownCacheCachesCacheIdDeleteResponses, ShutdownCacheCachesCacheIdDeleteErrors, ThrowOnError>({
+            responseType: 'json',
+            responseValidator: async (data) => await zShutdownCacheCachesCacheIdDeleteResponse.parseAsync(data),
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/caches/{cache_id}',
+            ...options
+        });
+    }
+}
 
 export class TransfersService {
     /**

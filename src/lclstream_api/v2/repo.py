@@ -163,3 +163,30 @@ async def record_state(
         )
     )
     return True
+
+
+async def find_latest_shared_transfer_cache(
+    session: AsyncSession, experiment: str
+) -> UUID | None:
+    """Most recent shared-mode cache_id created for this experiment, if any."""
+
+    result = await session.execute(
+        select(Transfer.cache_id)
+        .where(
+            Transfer.experiment == experiment,
+            Transfer.cache_mode == tcore.CacheMode.shared,
+            Transfer.cache_id.is_not(None),
+        )
+        .order_by(Transfer.created_at.desc())
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
+
+
+async def count_active_transfers_by_cache(session: AsyncSession, cache_id: UUID) -> int:
+    result = await session.execute(
+        select(func.count())
+        .select_from(Transfer)
+        .where(Transfer.cache_id == cache_id, Transfer.state.not_in(_FINAL_STATES))
+    )
+    return result.scalar_one()

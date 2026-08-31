@@ -6,8 +6,9 @@ from uuid import UUID
 from pydantic import AwareDatetime, BaseModel, ConfigDict
 
 from ..lclstreamer_param import Parameters as LCLStreamerParameters
+from .core.enums import CacheMode, CacheState, TransferState, TransitionSource
 from .core.logs import LogStream
-from .core.producer import CacheMode, JobSpec
+from .core.producer import JobSpec
 
 if TYPE_CHECKING:
     from .tables import Transfer
@@ -15,29 +16,6 @@ if TYPE_CHECKING:
 
 class Message(BaseModel):
     message: str
-
-
-class TransferState(StrEnum):
-    provisioning = "provisioning"  # spinning up cache + producer
-    ready = "ready"  # both active, connection_info available
-    canceling = "canceling"  # cancel requested, teardown in progress
-    canceled = "canceled"
-    completed = "completed"
-    failed = "failed"
-
-    def is_final(self) -> bool:
-        return self in (
-            TransferState.canceled,
-            TransferState.completed,
-            TransferState.failed,
-        )
-
-
-class TransitionSource(StrEnum):
-    producer = "producer"
-    cache = "cache"
-    user = "user"
-    orchestrator = "orchestrator"  # from lclstream_api
 
 
 class TransferCancelOutcome(StrEnum):
@@ -138,3 +116,17 @@ class TransferLogStreamInfo(BaseModel):
 class TransferLogIndex(BaseModel):
     transfer_id: UUID
     streams: list[TransferLogStreamInfo]
+
+
+class CacheStatusPublic(BaseModel):
+    id: UUID
+    state: CacheState
+
+
+class CachesPublic(BaseModel):
+    data: list[CacheStatusPublic]
+
+
+class CacheShutdownConflict(BaseModel):
+    message: str
+    active_transfer_count: int
