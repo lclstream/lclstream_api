@@ -11,6 +11,9 @@ dist/
 .env
 .venv
 
+# staged bearer tokens (see example/scripts/dev-token.sh)
+.secrets/
+
 # mypy
 .mypy_cache/
 .dmypy.json
