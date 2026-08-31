@@ -1171,12 +1171,7 @@ export type ShutdownCacheCachesCacheIdDeleteData = {
          */
         cache_id: string;
     };
-    query?: {
-        /**
-         * Force
-         */
-        force?: boolean;
-    };
+    query?: never;
     url: '/caches/{cache_id}';
 };
 

@@ -731,9 +731,7 @@ export const zShutdownCacheCachesCacheIdDeleteData = z.object({
     path: z.object({
         cache_id: z.uuid()
     }),
-    query: z.object({
-        force: z.boolean().optional().default(false)
-    }).optional()
+    query: z.never().optional()
 });
 
 /**

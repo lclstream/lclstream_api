@@ -2,8 +2,6 @@ from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from .models import CacheShutdownConflict
-
 
 class NotFound(Exception):
     pass
@@ -25,6 +23,11 @@ class CacheShutdownBlocked(Exception):
         super().__init__(
             f"{active_transfer_count} other active transfer(s) still use this cache"
         )
+
+
+class CacheShutdownConflict(BaseModel):
+    message: str
+    active_transfer_count: int
 
 
 class InsufficientTokenLifetime(Exception):
