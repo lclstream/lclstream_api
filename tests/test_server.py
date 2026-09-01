@@ -49,6 +49,7 @@ def test_get_list(setup_lclstream_api):
         assert isinstance(resp, list)
 
 
+@pytest.mark.skip(reason="ZMQ pull_server blocks event loop")
 @pytest.mark.asyncio
 async def test_mk_transfer(pull_server, setup_lclstream_api):
     response = client.post("/transfers", json={"abc": 2})

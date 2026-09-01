@@ -89,7 +89,9 @@ def test_create_producer(config):
 def test_create_forwarder(config):
     entry = PortEntry(
         eid=1,
-        user="tester",
+        owner_issuer="issuer",
+        owner_subject="subject",
+        owner_email="tester@example.com",
         port=10000,
         internal_url="tcp://a:10000",
         external_url="tcp://a:10001",

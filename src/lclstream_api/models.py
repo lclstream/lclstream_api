@@ -3,7 +3,23 @@ import time
 from enum import StrEnum
 
 from psik.models import JobState
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
+from datetime import datetime
+
+class Principal(BaseModel):
+    model_config = ConfigDict(frozen=True)
+    issuer: str
+    subject: str
+    email: str
+
+
+class UserCredential(BaseModel):
+    issuer: str
+    subject: str
+    email: str
+    encrypted_token: bytes
+    expires_at: datetime
+    updated_at: datetime
 
 _logger = logging.getLogger(__name__)
 
@@ -53,7 +69,9 @@ class TransferInfo(BaseModel):
 
 class PortEntry(BaseModel):
     eid: int  # serial number
-    user: str
+    owner_issuer: str
+    owner_subject: str
+    owner_email: str
     port: int
     internal_url: str
     external_url: str

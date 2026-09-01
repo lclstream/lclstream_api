@@ -1,5 +1,6 @@
 import logging
 from typing import Annotated
+from datetime import datetime, timezone
 
 import psik
 from fastapi import (
@@ -7,15 +8,19 @@ from fastapi import (
     BackgroundTasks,
     Depends,
     HTTPException,
+    status,
 )
 
 from ..config import Config, load_config, to_mgr
 from ..lclstreamer_param import Parameters
+from ..auth import CurrentUser, jwks_auth, capture_token, validate_token_lifetime
 from ..models import (
     ClientName,
     TransferInfo,
     TransferStatus,
+    UserCredential,
 )
+from fastapi_jwks.models.types import JWKSAuthCredentials
 from ..ports import PortUsage
 from ..transfer_mgr import create_transfer
 from ..xfer_db import Database
@@ -69,7 +74,7 @@ async def list_transfers(
             TransferStatus(
                 id=eid,
                 url=entry.external_url,
-                user=entry.user,
+                user=entry.owner_email,
                 time=last.time,
                 jobndx=last.jobndx,
                 state=cstate,
@@ -96,23 +101,40 @@ async def new_transfer(
     bg_tasks: BackgroundTasks,
     cfg: CachedConfig,
     mgr: Manager,
-    user: str = "none",
+    user: CurrentUser,
+    auth_creds: Annotated[JWKSAuthCredentials, Depends(jwks_auth)],
 ) -> TransferStatus:
     """
     Submit a transfer to run ASAP.
 
     If successful this will return the eid created.
-
-    FIXME: lookup user following certified docs
-    or using a FastAPI User mixin using token-auth.
     """
 
-    # 0. TODO: any additional validation of request/user goes here.
-    # e.g. user can access requested dataset and has permissions to
-    # start lclstreamer on psana
+    # 0. Capture and validate delegated token
+    encrypted_token, expiry = capture_token(auth_creds.token, auth_creds.payload)
+
+    # Use a default duration of 1 hour (3600s) as the requested producer job duration.
+    # TODO: Extract actual requested duration from request or JobSpec if available.
+    requested_duration = 3600
+    if not validate_token_lifetime(expiry, requested_duration):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Token lifetime is too short for the requested transfer.",
+        )
+
+    db.upsert_credential(
+        UserCredential(
+            issuer=user.issuer,
+            subject=user.subject,
+            email=user.email,
+            encrypted_token=encrypted_token,
+            expires_at=expiry,
+            updated_at=datetime.now(timezone.utc),
+        )
+    )
 
     try:
-        entry = ports.create(user)
+        entry = ports.create(user.issuer, user.subject, user.email)
     except RuntimeError:
         _logger.error("Out of ports.")
         raise HTTPException(status_code=500, detail="Out of ports.")
@@ -167,7 +189,7 @@ async def new_transfer(
     return TransferStatus(
         id=entry.eid,
         url=entry.external_url,
-        user=entry.user,
+        user=entry.owner_email,
         time=last.time,
         jobndx=last.jobndx,
         state=last.state,
@@ -187,7 +209,7 @@ async def get_transfer(id: int, ports: PortUsage, db: Database) -> TransferInfo:
         entry = ports[id]
     except KeyError:
         raise HTTPException(status_code=404, detail="Transfer is not active.")
-    return TransferInfo(user=entry.user, log=xfer.log, metrics=xfer.cache_metrics)
+    return TransferInfo(user=entry.owner_email, log=xfer.log, metrics=xfer.cache_metrics)
 
 
 @transfers.delete("/{id}")

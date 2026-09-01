@@ -4,7 +4,7 @@ import psik
 import pytest
 import pytest_asyncio
 from aiohttp import web
-from fastapi import HTTPException
+from fastapi import BackgroundTasks, HTTPException
 from psik.models import Callback, JobState
 from psik.web import post_json
 
@@ -19,12 +19,17 @@ from lclstream_api.xfer_db import get_database
 cb_value = web.AppKey("value", None)  # type: ignore[var-annotated]
 
 
-class MockBackgroundTasks(list):
+class MockBackgroundTasks(BackgroundTasks):
+    def __init__(self):
+        super().__init__()
+        self.captured_tasks = []
+
     def add_task(self, task, *args):
-        self.append((task, args))
+        super().add_task(task, *args)
+        self.captured_tasks.append((task, args))
 
     async def run_tasks(self):
-        for task, args in self:
+        for task, args in self.captured_tasks:
             await task(*args)
 
 
@@ -45,14 +50,14 @@ async def post_cb(name: ClientName, request, config):
         if name == ClientName.producer:
             ans = await producer_callback(
                 cb, db, request, bg_tasks, x_hub_signature_256
-            )  # type: ignore[arg-type]
+            )
         else:
             ans = await forwarder_callback(
                 cb, db, request, bg_tasks, x_hub_signature_256
-            )  # type: ignore[arg-type]
+            )
     except HTTPException:
         return web.Response(text='"false"', status=200)
-    assert len(bg_tasks) == 1
+    assert len(bg_tasks.captured_tasks) == 1
     await bg_tasks.run_tasks()
 
     # return ans

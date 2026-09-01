@@ -26,6 +26,9 @@ class Transfer:
     """
 
     eid: int
+    owner_issuer: str
+    owner_subject: str
+    owner_email: str
     states: dict[ClientName, JobState]
     log: list[PortTransition]
     producer_job: Job | None
@@ -33,8 +36,11 @@ class Transfer:
 
     cache_metrics: CacheMetrics
 
-    def __init__(self, eid: int, on_complete: Callable | None = None):
+    def __init__(self, eid: int, owner_issuer: str, owner_subject: str, owner_email: str, on_complete: Callable | None = None):
         self.eid = eid
+        self.owner_issuer = owner_issuer
+        self.owner_subject = owner_subject
+        self.owner_email = owner_email
         self.on_complete = on_complete
         self.states = {}
 
@@ -184,7 +190,13 @@ async def create_transfer(
 
     # 3. Create the formal PortEntry structure
     try:
-        xfer = Transfer(entry.eid, on_complete)
+        xfer = Transfer(
+            entry.eid,
+            entry.owner_issuer,
+            entry.owner_subject,
+            entry.owner_email,
+            on_complete,
+        )
     except Exception as e:
         return producer_job, forwarder_job, e
 
