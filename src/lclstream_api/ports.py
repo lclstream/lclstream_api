@@ -55,9 +55,10 @@ class PortDatabase:  # singleton
         # External ports are internal+1
         return f"tcp://{self.host}:{port + 1}"
 
-    def create(self, user: str) -> PortEntry:
+    def create(self, owner_issuer: str, owner_subject: str, owner_email: str) -> PortEntry:
         eid = self.sequence
         self.sequence += 1
+
 
         # if eid in self.entries:
         #    entry = self.entries[eid]
@@ -71,7 +72,9 @@ class PortDatabase:  # singleton
 
         entry = PortEntry(
             eid=eid,
-            user=user,
+            owner_issuer=owner_issuer,
+            owner_subject=owner_subject,
+            owner_email=owner_email,
             port=port,
             internal_url=self.internal_url(port),
             external_url=self.external_url(port),

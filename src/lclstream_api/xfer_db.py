@@ -8,12 +8,13 @@ the format:
 
 import logging
 from typing import Annotated
+from datetime import datetime
 
 from fastapi import Depends
 from psik import Job
 from psik.models import JobID
 
-from .models import ClientName
+from .models import ClientName, UserCredential, Principal
 from .transfer_mgr import Transfer
 
 _logger = logging.getLogger(__name__)
@@ -22,6 +23,7 @@ _logger = logging.getLogger(__name__)
 class XferDatabase:  # singleton
     def __init__(self) -> None:
         self.jobs: dict[int, Transfer] = {}
+        self.credentials: dict[Principal, UserCredential] = {}
 
         # second table for fast indexing (on callbacks)
         self.jobids: dict[tuple[ClientName, str], int] = {}
@@ -53,6 +55,21 @@ class XferDatabase:  # singleton
 
     def __getitem__(self, eid: int) -> Transfer:
         return self.jobs[eid]
+
+    def get_credential(self, principal: Principal) -> UserCredential | None:
+        return self.credentials.get(principal)
+
+    def upsert_credential(self, cred: UserCredential) -> None:
+        principal = Principal(issuer=cred.issuer, subject=cred.subject, email=cred.email)
+        existing = self.credentials.get(principal)
+        if existing is None or cred.expires_at > existing.expires_at:
+            self.credentials[principal] = cred
+
+    def purge_expired_credentials(self, now: datetime) -> int:
+        expired = [p for p, c in self.credentials.items() if c.expires_at <= now]
+        for p in expired:
+            del self.credentials[p]
+        return len(expired)
 
     async def delete(self, eid: int) -> Transfer:
         xfer = self.jobs.pop(eid)
