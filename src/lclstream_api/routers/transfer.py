@@ -20,7 +20,7 @@ from ..models import (
     TransferStatus,
     UserCredential,
 )
-from fastapi_jwks.models.types import JWKSAuthCredentials
+from fastapi_jwks.models.types import JWKSAuthCredentials  # type: ignore
 from ..ports import PortUsage
 from ..transfer_mgr import create_transfer
 from ..xfer_db import Database

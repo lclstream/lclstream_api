@@ -2,13 +2,13 @@ from typing import Annotated
 from datetime import datetime, timezone, timedelta
 
 from fastapi import Depends, HTTPException, status
-from fastapi_jwks.dependencies.jwk_auth import JWKSAuth
-from fastapi_jwks.models.types import (
+from fastapi_jwks.dependencies.jwk_auth import JWKSAuth  # type: ignore
+from fastapi_jwks.models.types import (  # type: ignore
     JWKSAuthCredentials,
     JWKSConfig,
     JWTDecodeConfig,
 )
-from fastapi_jwks.validators import JWKSValidator
+from fastapi_jwks.validators import JWKSValidator  # type: ignore
 from cryptography.fernet import Fernet
 from pydantic import BaseModel, ConfigDict
 

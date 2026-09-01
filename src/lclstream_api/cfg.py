@@ -46,37 +46,6 @@ class FastcacheClientSettings(BaseSettings):
         raise NotImplementedError("Bearer tokens are deprecated for FastCache; use mTLS.")
 
 
-class IriClientSettings(BaseSettings):
-    """Connection + placement settings for IRI submission at S3DF.
-
-    Reads ``LCLSTREAM_IRI_*`` environment variables.
-    Requires ``s3df_token_file`` pointing to a file containing the S3DF Dex bearer token.
-    """
-
-    model_config = SettingsConfigDict(
-        env_prefix="LCLSTREAM_IRI_", frozen=True, validate_default=True
-    )
-
-    # Prod IRI API; override to https://iri-dev.slac.stanford.edu for dev.
-    base_url: AnyHttpUrl = AnyHttpUrl("https://iri.slac.stanford.edu")
-    s3df_token_file: Path = Field(
-        default=Path("/tmp/s3df_token"),
-        description="Path to a file containing the S3DF Dex bearer token",
-    )
-    facility: str = "s3df"
-    # IRI resource id (URL path key), not the display name
-    resource: str = "s3df-slurm"
-    # Filesystem resource hosting the producer config upload. A distinct IRI
-    # role from `resource` (compute), though they share an id at S3DF today.
-    # TODO: ask whether the compute and filesystem resources can ever differ.
-    fs_resource: str = "s3df-slurm"
-
-    @property
-    def s3df_token(self) -> SecretStr:
-        """Read the S3DF bearer token from file."""
-        return SecretStr(self.s3df_token_file.read_text().strip())
-
-
 class LCLStreamerProducerSettings(BaseSettings):
     """Static, deployment-level knobs for the producer (lclstreamer) IRI job."""
 
@@ -135,7 +104,6 @@ class AppSettings(BaseSettings):
 database = DatabaseSettings()
 dbos = DbosSettings()
 fastcache = FastcacheClientSettings()  # type: ignore
-iri = IriClientSettings()  # type: ignore
 producer = LCLStreamerProducerSettings()
 oidc = OidcSettings()
 credentials = CredentialsSettings()  # type: ignore
