@@ -1,0 +1,18 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.3/schema.json",
+  "extends": ["@slaclab/ui/biome"],
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "includes": [
+      "**",
+      "!src/client",
+      "!public/assets",
+      "!!**/dist",
+      "!!**/node_modules"
+    ]
+  }
+}
