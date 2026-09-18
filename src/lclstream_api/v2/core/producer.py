@@ -1,9 +1,4 @@
-"""Pure builders for the producer (lclstreamer) IRI job (functional core).
-
-No IO: these functions transform immutable inputs into immutable values
-(an updated ``Parameters``, a rendered YAML string, an iri-models ``JobSpec``).
-The shell (clients/iri.py + workflows.py) performs the upload and submission.
-"""
+"""Pure builders for the producer (lclstreamer) IRI job. No IO."""
 
 import re
 from enum import StrEnum
@@ -34,10 +29,9 @@ def cache_idle_timeout_ms(mode: CacheMode) -> int | None:
     return -1 if mode is CacheMode.shared else None
 
 
-# TODO: use container field after we get that feature added to iri
-# NOTE: JobSpec.environment replaces the S3DF IRI compute
-# adapter's own baseline Slurm environment whenever it's non-empty
-# So this dict must be self-sufficient (later we remove PATH and use module load)
+# TODO: use container field once IRI supports it
+# A non-empty JobSpec.environment replaces IRI's baseline
+# Slurm env, so this dict must be self-sufficient.
 DEFAULT_JOB_SPEC: JobSpec = JobSpec(
     launcher="srun --mpi=pmix",
     inherit_environment=True,
@@ -113,12 +107,12 @@ def inject_cache_handlers(params: Parameters, pull_uri: str) -> Parameters:
     return params.model_copy(update={"data_handlers": [sink]})
 
 
-# TODO: psana-env extraction is broken -- _PSANA_ENV never resolves to
-# psana2extmpi even though the container is always psana2extmpi.
+# TODO: _PSANA_ENV never resolves psana2extmpi, though the
+# container always is.
 class PsanaEnv(StrEnum):
     psana1 = "psana1"
     psana2 = "psana2"
-    psana2extmpi = "psana2extmpi"  # external mpi, like in the container version
+    psana2extmpi = "psana2extmpi"  # external mpi, as in the container
 
 
 _PSANA_ENV: dict[str, PsanaEnv] = {
@@ -135,7 +129,7 @@ def render_config_yaml(params: Parameters) -> str:
 def parse_exp_run(source_identifier: str) -> tuple[str | None, str | None]:
     exp: str | None = None
     run: str | None = None
-    _SOURCE_ID_SEP = re.compile(r"[,:]")  # split on commas or colons
+    _SOURCE_ID_SEP = re.compile(r"[,:]")
     for raw in _SOURCE_ID_SEP.split(source_identifier):
         token = raw.strip()
         if token.startswith("exp="):
@@ -157,10 +151,10 @@ def short_id(transfer_id: UUID) -> str:
 
 
 def user_scratch_root(settings: LCLStreamerProducerSettings, username: str) -> Path:
-    """Home-directory root for a transfer's config and logs.
+    """Root for a transfer's config and logs.
 
-    The shared scratch tree needs group access S3DF can't grant;
-    a user's own home needs only their uid.
+    The shared scratch tree needs group access S3DF can't grant; home
+    needs only the user's uid.
     """
     return Path(settings.home_base_dir) / username[0] / username
 
@@ -207,8 +201,7 @@ def shared_cache_dir(settings: LCLStreamerProducerSettings, exp: str) -> Path:
 
 
 class ProducerPlan(BaseModel):
-    """This is the plan to provision the producer: the jobspec plus
-    the config file to upload to the IRI filesystem before submission."""
+    """The jobspec plus the config file to upload before submission."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -228,10 +221,8 @@ def build_job_spec(
     username: str,
     job_spec_override: JobSpec | None = None,
 ) -> JobSpec:
-    """Resolve the full producer JobSpec for a transfer. Deterministic given
-    its inputs (not dependent on the allocated cache), so it's computed once
-    at transfer-creation time and the result is what gets persisted/submitted
-    -- not recomputed later during provisioning.
+    """Resolve the producer JobSpec. Deterministic, so it is computed once
+    at transfer creation and persisted, not recomputed during provisioning.
     """
     psana_env = _PSANA_ENV[params.event_source.type]
     psana_environment = settings.environments.get(psana_env) or {}
@@ -270,8 +261,7 @@ def build_producer_plan(
     transfer_id: UUID,
     username: str,
 ) -> ProducerPlan:
-    """Pair an already-resolved JobSpec (see ``build_job_spec``) with the
-    config file to upload for this transfer."""
+    """Pair a resolved JobSpec with the config file to upload."""
     return ProducerPlan(
         jobspec=jobspec,
         config_path=producer_config_path(settings, exp, run, transfer_id, username),
@@ -292,7 +282,6 @@ def plan_producer(
     transfer_id: UUID,
     username: str,
 ) -> ProducerPlan:
-    """Compose the full producer plan for a transfer."""
     params = inject_cache_handlers(inputs.parameters, inputs.endpoint.pull_uri)
     return build_producer_plan(
         inputs.job_spec,

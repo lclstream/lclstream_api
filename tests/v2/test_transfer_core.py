@@ -24,8 +24,7 @@ from lclstream_api.v2.core.transfer import (
 from lclstream_api.v2.models import TransferState, TransitionSource
 
 NOW = datetime(2025, 1, 1, 12, 0, 0, tzinfo=UTC)
-# Large enough that the provisioning-age fail-safe never fires unless a test
-# deliberately shrinks it.
+# Large enough that the age fail-safes never fire.
 NEVER_TIMEOUT = 10_000.0
 
 
@@ -55,11 +54,8 @@ def check_decision(
     expected_state: TransferState,
     expected_source: TransitionSource,
 ) -> None:
-    """Route a single observation through the decider and assert the outcome.
-
-    Created-at is pinned to ``NOW`` and the age limit is huge, so this isolates
-    the pure decision matrix from the timeout fail-safe (tested separately).
-    """
+    """Route one observation through the decider. The huge age limit isolates
+    the decision matrix from the fail-safes."""
 
     decision = decide_state_with_timeout(
         TransferObservation(cache_state=cache, producer_state=producer),
@@ -74,7 +70,6 @@ def check_decision(
 
 # (id, cache_state, producer_state, current) -> (state, source)
 _DECISION_CASES = [
-    # 1. User cancel in flight, both sides confirmed torn down -> settle.
     (
         "canceling-both-down-settles",
         None,
@@ -91,7 +86,6 @@ _DECISION_CASES = [
         TransferState.canceled,
         TransitionSource.orchestrator,
     ),
-    # 1b. Cancel in flight but a side is still running -> hold in canceling.
     (
         "canceling-producer-still-active-holds",
         CacheState.active,
@@ -108,7 +102,6 @@ _DECISION_CASES = [
         TransferState.canceling,
         TransitionSource.orchestrator,
     ),
-    # 2. Cache crash is attributed to the cache.
     (
         "cache-failed-blames-cache",
         CacheState.failed,
@@ -125,7 +118,6 @@ _DECISION_CASES = [
         TransferState.failed,
         TransitionSource.cache,
     ),
-    # 3. Producer failure (incl. external IRI cancel) is attributed to producer.
     (
         "producer-failed-blames-producer",
         CacheState.active,
@@ -142,7 +134,6 @@ _DECISION_CASES = [
         TransferState.failed,
         TransitionSource.producer,
     ),
-    # 4. Clean success: producer finished AND cache drained.
     (
         "producer-done-cache-drained-completes",
         CacheState.completed,
@@ -151,7 +142,6 @@ _DECISION_CASES = [
         TransferState.completed,
         TransitionSource.orchestrator,
     ),
-    # 5. Producer done but cache still draining -> stay ready.
     (
         "producer-done-cache-draining-stays-ready",
         CacheState.active,
@@ -160,7 +150,6 @@ _DECISION_CASES = [
         TransferState.ready,
         TransitionSource.orchestrator,
     ),
-    # 6. Steady state: both active -> ready.
     (
         "both-active-is-ready",
         CacheState.active,
@@ -169,7 +158,6 @@ _DECISION_CASES = [
         TransferState.ready,
         TransitionSource.orchestrator,
     ),
-    # 7. Readiness is sticky: a lagging poll can't regress ready -> provisioning.
     (
         "ready-is-sticky-on-stale-poll",
         CacheState.new,
@@ -178,7 +166,6 @@ _DECISION_CASES = [
         TransferState.ready,
         TransitionSource.orchestrator,
     ),
-    # 8. Still spinning up.
     (
         "spinning-up-stays-provisioning",
         CacheState.queued,
@@ -220,8 +207,7 @@ def test_decision_matrix(
 
 
 def test_cancel_takes_priority_over_a_cache_crash() -> None:
-    """A user cancel in flight outranks a cache failure: we settle to
-    ``canceled`` (user intent), not ``failed``."""
+    """User intent wins: settle to ``canceled``, not ``failed``."""
 
     check_decision(
         CacheState.failed,
@@ -267,9 +253,6 @@ def test_provisioning_within_age_is_not_failed() -> None:
 
 
 def test_timeout_does_not_fire_once_ready() -> None:
-    """The watchdog only fires while *still* provisioning; a transfer that has
-    advanced is immune even past the age limit."""
-
     decision = decide_state_with_timeout(
         TransferObservation(
             cache_state=CacheState.active, producer_state=JobState.ACTIVE
@@ -283,8 +266,7 @@ def test_timeout_does_not_fire_once_ready() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Ready-staleness fail-safe (catches a transfer whose status can no longer be
-# observed at all, e.g. a persistently erroring upstream job-status query)
+# Ready-staleness fail-safe: nothing can observe status anymore.
 # ---------------------------------------------------------------------------
 
 
@@ -321,10 +303,8 @@ def test_ready_within_stale_window_is_not_failed() -> None:
 
 
 def test_ready_staleness_does_not_fire_without_a_prior_observation() -> None:
-    """``last_polled_at`` is ``None`` until the first observation is applied;
-    the staleness fail-safe must not misfire on that (it shouldn't be
-    reachable in practice, since a transfer can't reach ``ready`` without at
-    least one recorded observation, but stay defensive)."""
+    """``last_polled_at`` is ``None`` before the first observation. Unreachable
+    in practice, since ``ready`` needs one, but stay defensive."""
 
     decision = decide_state_with_timeout(
         TransferObservation(
@@ -339,8 +319,8 @@ def test_ready_staleness_does_not_fire_without_a_prior_observation() -> None:
 
 
 def test_ready_staleness_yields_to_a_real_signal() -> None:
-    """A stale ``ready`` transfer that the producer reports as failed is
-    attributed to the producer, not genericly blamed on staleness."""
+    """A real producer failure outranks staleness and is blamed on the
+    producer."""
 
     decision = decide_state_with_timeout(
         TransferObservation(
@@ -360,8 +340,7 @@ def test_ready_staleness_yields_to_a_real_signal() -> None:
 # Legal transition graph
 # ---------------------------------------------------------------------------
 
-# Every (current, target) pair the graph permits. Anything not listed must be
-# rejected, which keeps this table honest against silent graph widening.
+# Unlisted pairs must be rejected; catches graph widening.
 _LEGAL_PAIRS = {
     (TransferState.provisioning, TransferState.ready),
     (TransferState.provisioning, TransferState.completed),
