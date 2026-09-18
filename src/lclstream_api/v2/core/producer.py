@@ -28,6 +28,18 @@ CONFIG_FILENAME = "lclstreamer.yaml"
 PRODUCER_STDOUT_FILENAME = "output.txt"
 PRODUCER_STDERR_FILENAME = "error.txt"
 
+
+class CacheMode(StrEnum):
+    # One cache per transfer (default).
+    per_transfer = "per_transfer"
+    # One cache shared by many producers for the same experiment.
+    shared = "shared"
+
+
+def cache_idle_timeout_ms(mode: CacheMode) -> int | None:
+    return -1 if mode is CacheMode.shared else None
+
+
 # TODO: use container field after we get that feature added to iri
 # NOTE: JobSpec.environment replaces the S3DF IRI compute
 # adapter's own baseline Slurm environment whenever it's non-empty
@@ -138,6 +150,19 @@ def producer_config_path(
 ) -> Path:
     """Remote producer config filepath."""
     return transfer_work_dir(settings, exp, run, transfer_id) / CONFIG_FILENAME
+
+
+def shared_cache_dir(settings: LCLStreamerProducerSettings, exp: str) -> Path:
+    """Directory for a shared (per-experiment) cache."""
+    instrument = exp[:3]
+    return (
+        Path(settings.data_base_dir)
+        / instrument
+        / exp
+        / "scratch"
+        / "lclstreamer"
+        / "shared_cache"
+    )
 
 
 class ProducerPlan(BaseModel):

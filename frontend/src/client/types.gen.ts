@@ -131,6 +131,11 @@ export type BinaryFileWritingDataHandlerParameters = {
 };
 
 /**
+ * CacheMode
+ */
+export type CacheMode = 'per_transfer' | 'shared';
+
+/**
  * ConstValueParameters
  *
  * Parameters for ConstValue class
@@ -640,6 +645,7 @@ export type SourceIdentifierParameters = {
  * TransferCreate
  */
 export type TransferCreate = {
+    cache_mode?: CacheMode;
     parameters: Parameters;
 };
 
@@ -647,11 +653,16 @@ export type TransferCreate = {
  * TransferDetail
  */
 export type TransferDetail = {
+    cache_mode: CacheMode;
     connection_info?: ConsumerConnectionInfo | null;
     /**
      * Created At
      */
     created_at: string;
+    /**
+     * Experiment
+     */
+    experiment: string;
     /**
      * Id
      */
@@ -660,6 +671,10 @@ export type TransferDetail = {
      * Requested By
      */
     requested_by: string;
+    /**
+     * Run
+     */
+    run: string;
     state: TransferState;
     /**
      * Transitions
@@ -710,11 +725,16 @@ export type TransferLogStreamInfo = {
  * TransferPublic
  */
 export type TransferPublic = {
+    cache_mode: CacheMode;
     connection_info?: ConsumerConnectionInfo | null;
     /**
      * Created At
      */
     created_at: string;
+    /**
+     * Experiment
+     */
+    experiment: string;
     /**
      * Id
      */
@@ -723,6 +743,10 @@ export type TransferPublic = {
      * Requested By
      */
     requested_by: string;
+    /**
+     * Run
+     */
+    run: string;
     state: TransferState;
 };
 

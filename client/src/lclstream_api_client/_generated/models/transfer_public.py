@@ -21,6 +21,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
 from uuid import UUID
+from lclstream_api_client._generated.models.cache_mode import CacheMode
 from lclstream_api_client._generated.models.consumer_connection_info import ConsumerConnectionInfo
 from lclstream_api_client._generated.models.transfer_state import TransferState
 from typing import Optional, Set
@@ -31,13 +32,16 @@ class TransferPublic(BaseModel):
     """
     TransferPublic
     """ # noqa: E501
+    cache_mode: CacheMode
     connection_info: Optional[ConsumerConnectionInfo] = None
     created_at: datetime
+    experiment: StrictStr
     id: UUID
     requested_by: StrictStr
+    run: StrictStr
     state: TransferState
     additional_properties: Dict[str, Any] = {}
-    __properties: ClassVar[List[str]] = ["connection_info", "created_at", "id", "requested_by", "state"]
+    __properties: ClassVar[List[str]] = ["cache_mode", "connection_info", "created_at", "experiment", "id", "requested_by", "run", "state"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -105,10 +109,13 @@ class TransferPublic(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
+            "cache_mode": obj.get("cache_mode"),
             "connection_info": ConsumerConnectionInfo.from_dict(obj["connection_info"]) if obj.get("connection_info") is not None else None,
             "created_at": obj.get("created_at"),
+            "experiment": obj.get("experiment"),
             "id": obj.get("id"),
             "requested_by": obj.get("requested_by"),
+            "run": obj.get("run"),
             "state": obj.get("state")
         })
         # store additional fields in additional_properties

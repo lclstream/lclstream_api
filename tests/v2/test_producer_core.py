@@ -9,7 +9,9 @@ from lclstream_api.lclstreamer_param import Parameters
 from lclstream_api.v2.config import LCLStreamerProducerSettings
 from lclstream_api.v2.core.producer import (
     CONFIG_FILENAME,
+    CacheMode,
     build_producer_plan,
+    cache_idle_timeout_ms,
     inject_cache_handlers,
     parse_exp_run,
     producer_config_path,
@@ -251,3 +253,14 @@ def test_build_producer_plan_does_not_mutate_default_spec(
     assert first.jobspec.attributes.account == "lcls:mfxl1001"
     assert second.jobspec.attributes.account == "lcls:cxic00118"
     assert first.config_path != second.config_path
+
+
+@pytest.mark.parametrize(
+    ("mode", "expected"),
+    [
+        (CacheMode.shared, -1),
+        (CacheMode.per_transfer, None),
+    ],
+)
+def test_cache_idle_timeout_ms(mode: CacheMode, expected: int | None) -> None:
+    assert cache_idle_timeout_ms(mode) == expected

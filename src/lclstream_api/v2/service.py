@@ -19,9 +19,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..lclstreamer_param import Parameters
 from . import config, repo, workflows
 from .clients import iri
-from .core import logs as lcore, producer as pcore
+from .core import logs as lcore
 from .exceptions import NotFound, UpstreamError
 from .models import (
+    CacheMode,
     TransferCancelOutcome,
     TransferDetail,
     TransferLogIndex,
@@ -34,7 +35,13 @@ from .models import (
 
 
 async def create_transfer(
-    session: AsyncSession, user: str, parameters: Parameters
+    session: AsyncSession,
+    user: str,
+    parameters: Parameters,
+    cache_mode: CacheMode = CacheMode.per_transfer,
+    *,
+    experiment: str,
+    run: str,
 ) -> TransferPublic:
     transfer_id = uuid4()
     async with session.begin():
@@ -43,6 +50,9 @@ async def create_transfer(
             transfer_id=transfer_id,
             user=user,
             parameters=parameters.model_dump(mode="json"),
+            experiment=experiment,
+            run=run,
+            cache_mode=cache_mode,
         )
         public = TransferPublic.from_transfer(transfer)
     # here we just start the workflow
@@ -104,16 +114,13 @@ async def cancel_transfer(
 # ---------------------------------------------------------------------------
 
 
-async def _resolve_exp_run(session: AsyncSession, transfer_id: UUID) -> tuple[str, str]:
+async def _resolve_transfer_context(
+    session: AsyncSession, transfer_id: UUID
+) -> tuple[str, str, CacheMode]:
     transfer = await repo.get_transfer(session, transfer_id)
     if transfer is None:
         raise NotFound(f"transfer {transfer_id} not found")
-    try:
-        return pcore.resolve_exp_run(Parameters.model_validate(transfer.parameters))
-    except ValueError as exc:
-        raise NotFound(
-            f"transfer {transfer_id} has no resolvable exp/run for logs"
-        ) from exc
+    return transfer.experiment, transfer.run, CacheMode(transfer.cache_mode)
 
 
 async def read_transfer_log(
@@ -126,8 +133,10 @@ async def read_transfer_log(
     bytes_: int | None = None,
 ) -> str:
     """Return the head/tail of a single log stream as decoded text."""
-    exp, run = await _resolve_exp_run(session, transfer_id)
-    path = lcore.log_stream_path(stream, config.get_producer(), exp, run, transfer_id)
+    exp, run, cache_mode = await _resolve_transfer_context(session, transfer_id)
+    path = lcore.log_stream_path(
+        stream, config.get_producer(), exp, run, transfer_id, cache_mode=cache_mode
+    )
     client = iri.client()
     try:
         if mode is lcore.LogReadMode.head:
@@ -153,12 +162,19 @@ async def list_transfer_logs(
 ) -> TransferLogIndex:
     """Index every log stream for a transfer with its resolved path and, when
     the file exists, its size and last-modified time."""
-    exp, run = await _resolve_exp_run(session, transfer_id)
+    exp, run, cache_mode = await _resolve_transfer_context(session, transfer_id)
     client = iri.client()
     paths = [
         (
             stream,
-            lcore.log_stream_path(stream, config.get_producer(), exp, run, transfer_id),
+            lcore.log_stream_path(
+                stream,
+                config.get_producer(),
+                exp,
+                run,
+                transfer_id,
+                cache_mode=cache_mode,
+            ),
         )
         for stream in lcore.LogStream
     ]
