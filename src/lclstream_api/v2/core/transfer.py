@@ -106,7 +106,7 @@ _LEGAL_TRANSITIONS: dict[TransferState, frozenset[TransferState]] = {
             TransferState.canceling,
         }
     ),
-    TransferState.canceling: frozenset({TransferState.canceled}),
+    TransferState.canceling: frozenset({TransferState.canceled, TransferState.failed}),
     # Final states (canceled/completed/failed) are omitted: they have no
     # out-edges, so can_transition's .get default returns False for them.
     # TransferState.is_final() is the single source of truth for finality.
@@ -284,12 +284,22 @@ class TransferSnapshot(BaseModel):
     last_polled_at: AwareDatetime | None
 
 
+class Principal(BaseModel):
+    """OIDC identity (issuer, subject) that owns a delegated credential."""
+
+    model_config = ConfigDict(frozen=True)
+
+    issuer: str
+    subject: str
+
+
 class TransferResourceRefs(BaseModel):
     """External resource ids for a transfer, for teardown and
     live-state fetches."""
 
     model_config = ConfigDict(frozen=True)
 
+    owner: Principal
     cache_id: UUID | None
     cache_mode: CacheMode
     producer_job_id: str | None
@@ -300,6 +310,7 @@ class TransferSetup(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
+    owner: Principal
     requested_by: str
     exp: str
     run: str

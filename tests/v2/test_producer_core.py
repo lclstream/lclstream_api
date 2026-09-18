@@ -19,6 +19,7 @@ from lclstream_api.v2.core.producer import (
     parse_exp_run,
     producer_config_path,
     render_config_yaml,
+    required_token_lifetime_seconds,
     short_id,
     transfer_work_dir,
 )
@@ -27,6 +28,25 @@ ParamsFactory = Callable[..., Parameters]
 SettingsFactory = Callable[..., LCLStreamerProducerSettings]
 
 TRANSFER_ID = UUID("12345678-1234-5678-1234-567812345678")
+
+
+@pytest.mark.parametrize(
+    ("duration", "grace", "expected"),
+    [(3600, 900, 4500), (1, 0, 1)],
+)
+def test_required_token_lifetime_seconds(
+    duration: int, grace: int, expected: int
+) -> None:
+    job_spec = JobSpec(
+        attributes=JobAttributes(account="lcls:mfxl1001", duration=duration)
+    )
+    assert required_token_lifetime_seconds(job_spec, grace) == expected
+
+
+def test_required_token_lifetime_rejects_negative_grace() -> None:
+    job_spec = JobSpec(attributes=JobAttributes(account="lcls:mfxl1001", duration=3600))
+    with pytest.raises(ValueError, match="non-negative"):
+        required_token_lifetime_seconds(job_spec, -1)
 
 
 # ---------------------------------------------------------------------------
