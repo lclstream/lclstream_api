@@ -1,0 +1,13 @@
+generatorName: python
+additionalProperties:
+  packageName: lclstream_api_client._generated
+  library: httpx
+  supportHttpxSync: true
+  generateSourceCodeOnly: true
+  disallowAdditionalPropertiesIfNotPresent: false
+  hideGenerationTimestamp: false
+globalProperties:
+  apiDocs: false
+  modelDocs: false
+  apiTests: false
+  modelTests: false
