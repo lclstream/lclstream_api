@@ -24,7 +24,6 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from .config import database
-from .tables import Base
 
 engine = create_async_engine(str(database.url))
 async_session = async_sessionmaker(engine, expire_on_commit=False)
@@ -35,9 +34,6 @@ _datasource: AsyncSQLAlchemyDatasource | None = None
 async def init_datasource() -> AsyncSQLAlchemyDatasource:
     global _datasource
     ds = await AsyncSQLAlchemyDatasource.create(str(database.url), engine=engine)
-    # create tables
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
     _datasource = ds
     return ds
 
