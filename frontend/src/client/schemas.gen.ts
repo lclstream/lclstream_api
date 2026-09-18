@@ -236,7 +236,7 @@ export const ConstValueParametersSchema = {
 } as const;
 
 export const ConsumerConnectionInfoSchema = {
-    description: 'The cache push socket the consumer connects to.',
+    description: 'The cache socket the consumer connects to, and how to dial it.',
     properties: {
         host: {
             title: 'Host',
@@ -246,6 +246,9 @@ export const ConsumerConnectionInfoSchema = {
             title: 'Port',
             type: 'integer'
         },
+        socket: {
+            $ref: '#/components/schemas/ConsumerSocket'
+        },
         uri: {
             title: 'Uri',
             type: 'string'
@@ -254,10 +257,22 @@ export const ConsumerConnectionInfoSchema = {
     required: [
         'host',
         'port',
-        'uri'
+        'uri',
+        'socket'
     ],
     title: 'ConsumerConnectionInfo',
     type: 'object'
+} as const;
+
+export const ConsumerSocketSchema = {
+    description: 'ZMQ socket the consumer connects with.\n\n``dealer`` and ``req`` are request-driven: the consumer asks for each\nmessage. fastcache only reports metrics under ``pull``.',
+    enum: [
+        'pull',
+        'dealer',
+        'req'
+    ],
+    title: 'ConsumerSocket',
+    type: 'string'
 } as const;
 
 export const ContainerSchema = {
@@ -1355,6 +1370,10 @@ export const TransferCreateSchema = {
         cache_mode: {
             $ref: '#/components/schemas/CacheMode',
             default: 'per_transfer'
+        },
+        consumer_socket: {
+            $ref: '#/components/schemas/ConsumerSocket',
+            default: 'pull'
         },
         job_spec_override: {
             anyOf: [

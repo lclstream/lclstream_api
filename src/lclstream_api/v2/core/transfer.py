@@ -7,7 +7,13 @@ from amsc_iri.models import JobSpec, JobState
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
 from ...lclstreamer_param import Parameters
-from .enums import CacheMode, CacheState, TransferState, TransitionSource
+from .enums import (
+    CacheMode,
+    CacheState,
+    ConsumerSocket,
+    TransferState,
+    TransitionSource,
+)
 
 # Cache states that mean the cache is no longer running.
 _CACHE_TERMINAL = frozenset(
@@ -316,6 +322,7 @@ class TransferSetup(BaseModel):
     exp: str
     run: str
     cache_mode: CacheMode
+    consumer_socket: ConsumerSocket
 
 
 class TransferObservation(BaseModel):

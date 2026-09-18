@@ -40,6 +40,7 @@ __all__ = [
     "CachesPublic",
     "ConstValueParameters",
     "ConsumerConnectionInfo",
+    "ConsumerSocket",
     "Container",
     "CrystfelPreprocessingPipelineParameters",
     "DataHandlersInner",
@@ -114,6 +115,7 @@ from lclstream_api_client._generated.models.cache_status_public import CacheStat
 from lclstream_api_client._generated.models.caches_public import CachesPublic as CachesPublic
 from lclstream_api_client._generated.models.const_value_parameters import ConstValueParameters as ConstValueParameters
 from lclstream_api_client._generated.models.consumer_connection_info import ConsumerConnectionInfo as ConsumerConnectionInfo
+from lclstream_api_client._generated.models.consumer_socket import ConsumerSocket as ConsumerSocket
 from lclstream_api_client._generated.models.container import Container as Container
 from lclstream_api_client._generated.models.crystfel_preprocessing_pipeline_parameters import CrystfelPreprocessingPipelineParameters as CrystfelPreprocessingPipelineParameters
 from lclstream_api_client._generated.models.data_handlers_inner import DataHandlersInner as DataHandlersInner
