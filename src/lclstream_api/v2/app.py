@@ -5,7 +5,7 @@ from dbos import DBOS, DBOSConfig
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from . import config, db, workflows
+from . import auth, config, db, workflows
 from .clients import shutdown as clients_shutdown, startup as clients_startup
 from .exceptions import register_exception_handlers
 from .routers.v1.cache import router as cache_router
@@ -24,6 +24,7 @@ def build_dbos_config() -> DBOSConfig:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
+    auth.validate_configuration()
     DBOS(config=build_dbos_config())
     await db.init_datasource()
     clients_startup()
