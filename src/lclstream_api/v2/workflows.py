@@ -258,10 +258,10 @@ async def provision_transfer(transfer_id: UUID) -> None:
     try:
         requested_by, exp, run = await _load_setup_inputs(transfer_id)
         cache_log_path = logs.log_stream_path(
-            logs.LogStream.cache, config.producer, exp, run, transfer_id
+            logs.LogStream.cache, config.get_producer(), exp, run, transfer_id
         )
         endpoint = await _create_cache(transfer_id, requested_by, cache_log_path)
-        work_dir = pcore.transfer_work_dir(config.producer, exp, run, transfer_id)
+        work_dir = pcore.transfer_work_dir(config.get_producer(), exp, run, transfer_id)
         # if _create_cache succeeds, then we know the working directory exists
         progress = progress.with_work_dir(work_dir).with_cache(endpoint.cache_id)
         await _save_cache(transfer_id, endpoint)
@@ -269,7 +269,7 @@ async def provision_transfer(transfer_id: UUID) -> None:
         inputs = await _load_producer_inputs(transfer_id, endpoint)
         if inputs is None:
             raise LookupError(f"transfer {transfer_id} disappeared during setup")
-        plan = pcore.plan_producer(inputs, config.producer, transfer_id)
+        plan = pcore.plan_producer(inputs, config.get_producer(), transfer_id)
 
         await _upload_config(plan.config_path, plan.config_yaml)
         progress = progress.with_config(plan.config_path)

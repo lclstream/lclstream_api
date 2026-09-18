@@ -1,15 +1,7 @@
-"""Async application-database access.
+"""Async database access.
 
-The application OWNS the async engine (created eagerly at import from
-``config.database.url``); the DBOS datasource borrows that same engine in
-``init_datasource`` so both access paths share one connection pool:
-
-* Durable workflows annotate their transaction bodies with ``@transaction`` so
-  each runs exactly once on replay (recorded inside a workflow, a plain
-  transaction otherwise). ``sql_session()`` is the session inside such a
-  transaction.
-* HTTP requests (routers -> service -> repo) use request-scoped sessions from
-  ``get_session``; the service layer owns the ``session.begin()`` boundaries.
+The app owns the engine; the DBOS datasource borrows it, so both share
+one connection pool.
 """
 
 from collections.abc import AsyncIterator, Callable, Coroutine
@@ -23,9 +15,9 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-from .config import database
+from .config import get_database
 
-engine = create_async_engine(str(database.url))
+engine = create_async_engine(str(get_database().url))
 async_session = async_sessionmaker(engine, expire_on_commit=False)
 
 _datasource: AsyncSQLAlchemyDatasource | None = None
@@ -33,7 +25,7 @@ _datasource: AsyncSQLAlchemyDatasource | None = None
 
 async def init_datasource() -> AsyncSQLAlchemyDatasource:
     global _datasource
-    ds = await AsyncSQLAlchemyDatasource.create(str(database.url), engine=engine)
+    ds = await AsyncSQLAlchemyDatasource.create(str(get_database().url), engine=engine)
     _datasource = ds
     return ds
 
