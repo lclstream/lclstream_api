@@ -1,8 +1,9 @@
 # lclstream-api-client
 
-A thin sync/async client for the LCLStream API's `/transfers` endpoints, built
-on top of an [OpenAPI Generator](https://openapi-generator.tech)-generated
-core (`lclstream_api_client._generated`, regenerated via `regenerate.sh`).
+A thin sync/async client for the LCLStream API's `/transfers` and `/caches`
+endpoints, built on top of an
+[OpenAPI Generator](https://openapi-generator.tech)-generated core
+(`lclstream_api_client._generated`, regenerated via `regenerate.sh`).
 
 ## Usage
 
