@@ -312,6 +312,7 @@ class TransferSetup(BaseModel):
 
     owner: Principal
     requested_by: str
+    username: str
     exp: str
     run: str
     cache_mode: CacheMode

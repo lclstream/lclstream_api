@@ -67,6 +67,9 @@ class Transfer(DTMixin, Base):
     owner_email: Mapped[str] = mapped_column(
         doc="Verified owner email retained for display and audit only"
     )
+    owner_username: Mapped[str] = mapped_column(
+        doc="Owner's SDF unix username; roots the transfer's work dir"
+    )
 
     # Denormalized; the transitions table is authoritative.
     state: Mapped[str] = mapped_column(
