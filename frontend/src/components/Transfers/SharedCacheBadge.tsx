@@ -36,12 +36,11 @@ export function SharedCacheBadge({ experiment }: { experiment: string }) {
   const cache = data?.data[0]
   if (!cache) return null
 
-  async function handleShutdown(force = false) {
+  async function handleShutdown() {
     if (!cache) return
     try {
       await shutdown.mutateAsync({
         path: { cache_id: cache.id },
-        query: force ? { force: true } : {},
       })
       toast.success("Cache shutdown requested")
       queryClient.invalidateQueries({ queryKey: query.queryKey })
@@ -54,7 +53,7 @@ export function SharedCacheBadge({ experiment }: { experiment: string }) {
             `${count} other active transfer(s) still use this cache. Shut it down anyway?`,
           )
         ) {
-          await handleShutdown(true)
+          await handleShutdown()
         }
         return
       }

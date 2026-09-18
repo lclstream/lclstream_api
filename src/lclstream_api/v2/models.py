@@ -126,7 +126,3 @@ class CacheStatusPublic(BaseModel):
 class CachesPublic(BaseModel):
     data: list[CacheStatusPublic]
 
-
-class CacheShutdownConflict(BaseModel):
-    message: str
-    active_transfer_count: int
