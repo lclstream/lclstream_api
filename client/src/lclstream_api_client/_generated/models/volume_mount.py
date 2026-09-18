@@ -17,24 +17,23 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, StrictBool
 from typing import Any, ClassVar, Dict, List, Optional
-from lclstream_api_client._generated.models.cache_mode import CacheMode
-from lclstream_api_client._generated.models.job_spec import JobSpec
-from lclstream_api_client._generated.models.parameters import Parameters
+from typing_extensions import Annotated
 from typing import Optional, Set
 from typing_extensions import Self
 from pydantic_core import to_jsonable_python
 
-class TransferCreate(BaseModel):
+class VolumeMount(BaseModel):
     """
-    TransferCreate
+    Represents a volume mount for a container.
     """ # noqa: E501
-    cache_mode: Optional[CacheMode] = None
-    job_spec_override: Optional[JobSpec] = None
-    parameters: Parameters
+    additional_properties: Optional[Dict[str, Any]] = None
+    read_only: Optional[StrictBool] = Field(default=None, description="Whether the mount should be read-only")
+    source: Annotated[str, Field(min_length=1, strict=True)] = Field(description="The source path on the host system to mount")
+    target: Annotated[str, Field(min_length=1, strict=True)] = Field(description="The target path inside the container where the volume will be mounted")
     additional_properties: Dict[str, Any] = {}
-    __properties: ClassVar[List[str]] = ["cache_mode", "job_spec_override", "parameters"]
+    __properties: ClassVar[List[str]] = ["additional_properties", "read_only", "source", "target"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -54,7 +53,7 @@ class TransferCreate(BaseModel):
 
     @classmethod
     def from_json(cls, json_str: str) -> Optional[Self]:
-        """Create an instance of TransferCreate from a JSON string"""
+        """Create an instance of VolumeMount from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
     def to_dict(self) -> Dict[str, Any]:
@@ -77,27 +76,21 @@ class TransferCreate(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
-        # override the default output from pydantic by calling `to_dict()` of job_spec_override
-        if self.job_spec_override:
-            _dict['job_spec_override'] = self.job_spec_override.to_dict()
-        # override the default output from pydantic by calling `to_dict()` of parameters
-        if self.parameters:
-            _dict['parameters'] = self.parameters.to_dict()
         # puts key-value pairs in additional_properties in the top level
         if self.additional_properties is not None:
             for _key, _value in self.additional_properties.items():
                 _dict[_key] = _value
 
-        # set to None if job_spec_override (nullable) is None
+        # set to None if read_only (nullable) is None
         # and model_fields_set contains the field
-        if self.job_spec_override is None and "job_spec_override" in self.model_fields_set:
-            _dict['job_spec_override'] = None
+        if self.read_only is None and "read_only" in self.model_fields_set:
+            _dict['read_only'] = None
 
         return _dict
 
     @classmethod
     def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
-        """Create an instance of TransferCreate from a dict"""
+        """Create an instance of VolumeMount from a dict"""
         if obj is None:
             return None
 
@@ -105,9 +98,10 @@ class TransferCreate(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "cache_mode": obj.get("cache_mode"),
-            "job_spec_override": JobSpec.from_dict(obj["job_spec_override"]) if obj.get("job_spec_override") is not None else None,
-            "parameters": Parameters.from_dict(obj["parameters"]) if obj.get("parameters") is not None else None
+            "additional_properties": obj.get("additional_properties"),
+            "read_only": obj.get("read_only"),
+            "source": obj.get("source"),
+            "target": obj.get("target")
         })
         # store additional fields in additional_properties
         for _key in obj.keys():

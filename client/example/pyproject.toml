@@ -7,5 +7,5 @@ requires-python = ">=3.11"
 dependencies = [
     "pydantic-settings>=2.6.0",
     "pyzmq>=27.1.0",
-    "lclstream-api-client @ git+https://github.com/lclstream/lclstream_api.git@add-client-example#subdirectory=client/"
+    "lclstream-api-client @ git+https://github.com/lclstream/lclstream_api.git@add-jobspec-override#subdirectory=client/"
 ]

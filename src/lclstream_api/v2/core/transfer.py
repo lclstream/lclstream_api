@@ -4,7 +4,7 @@ from typing import Annotated, Literal
 from urllib.parse import urlparse
 from uuid import UUID
 
-from amsc_iri.models import JobState
+from amsc_iri.models import JobSpec, JobState
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
 from ...lclstreamer_param import Parameters
@@ -342,3 +342,4 @@ class ProducerInputs(BaseModel):
     # used to place the per-transfer job directory and the account.
     exp: str
     run: str
+    job_spec: JobSpec
