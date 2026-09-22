@@ -1050,7 +1050,7 @@ export type TransferLogStreamInfo = {
     /**
      * Path
      */
-    path: string;
+    path?: string | null;
     /**
      * Size
      */

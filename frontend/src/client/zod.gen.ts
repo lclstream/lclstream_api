@@ -611,7 +611,7 @@ export const zParameters = z.object({
 export const zTransferLogStreamInfo = z.object({
     available: z.boolean(),
     modified_at: z.iso.datetime().nullish(),
-    path: z.string(),
+    path: z.string().nullish(),
     size: z.int().nullish(),
     stream: zLogStream
 });

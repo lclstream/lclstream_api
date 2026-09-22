@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 from typing import Any
 from uuid import UUID
 
@@ -126,6 +127,7 @@ async def set_cache_endpoints(
     hostname: str,
     pull_port: int,
     push_port: int,
+    log_path: Path,
 ) -> None:
     transfer = await session.get(Transfer, transfer_id)
     if transfer is None:
@@ -150,6 +152,7 @@ async def set_cache_endpoints(
     transfer.cache_hostname = hostname
     transfer.pull_port = pull_port
     transfer.push_port = push_port
+    transfer.cache_log_path = str(log_path)
 
 
 async def set_producer_job(

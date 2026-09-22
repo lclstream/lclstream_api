@@ -1463,9 +1463,16 @@
             "title": "Modified At"
           },
           "path": {
-            "format": "path",
-            "title": "Path",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "path",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path"
           },
           "size": {
             "anyOf": [
@@ -1484,7 +1491,6 @@
         },
         "required": [
           "stream",
-          "path",
           "available"
         ],
         "title": "TransferLogStreamInfo",

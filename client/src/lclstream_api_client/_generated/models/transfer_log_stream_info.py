@@ -31,7 +31,7 @@ class TransferLogStreamInfo(BaseModel):
     """ # noqa: E501
     available: StrictBool
     modified_at: Optional[datetime] = None
-    path: StrictStr
+    path: Optional[StrictStr] = None
     size: Optional[StrictInt] = None
     stream: LogStream
     additional_properties: Dict[str, Any] = {}
@@ -87,6 +87,11 @@ class TransferLogStreamInfo(BaseModel):
         # and model_fields_set contains the field
         if self.modified_at is None and "modified_at" in self.model_fields_set:
             _dict['modified_at'] = None
+
+        # set to None if path (nullable) is None
+        # and model_fields_set contains the field
+        if self.path is None and "path" in self.model_fields_set:
+            _dict['path'] = None
 
         # set to None if size (nullable) is None
         # and model_fields_set contains the field

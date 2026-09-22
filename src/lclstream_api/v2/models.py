@@ -126,7 +126,8 @@ class TransferLogStreamInfo(BaseModel):
     """One log stream's resolved location and (best-effort) availability."""
 
     stream: LogStream
-    path: Path
+    # None when the stream has no location yet (cache before provisioning).
+    path: Path | None = None
     available: bool
     size: int | None = None
     modified_at: AwareDatetime | None = None
