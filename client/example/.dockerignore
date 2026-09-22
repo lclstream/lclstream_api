@@ -1,3 +1,5 @@
 # Keep .env and .secrets out of the build context.
 *
 !transfer_client.py
+!no-data-timeout.patch
+!data-socket-timeout.patch
