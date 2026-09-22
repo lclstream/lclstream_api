@@ -8,6 +8,7 @@ import asyncio
 import logging
 import socket
 from datetime import UTC, datetime
+from pathlib import Path
 from uuid import UUID, uuid4
 
 import httpx
@@ -199,12 +200,23 @@ async def cancel_transfer(
 
 async def _resolve_transfer_context(
     session: AsyncSession, transfer_id: UUID
-) -> tuple[str, str, CacheMode, str]:
+) -> tuple[str, str, CacheMode, str, Path | None]:
     transfer = await repo.get_transfer(session, transfer_id)
     if transfer is None:
         raise NotFound(f"transfer {transfer_id} not found")
     username = transfer.owner_username
-    return transfer.experiment, transfer.run, CacheMode(transfer.cache_mode), username
+    # fastcache_api owns the cache log's location, so we read back what it
+    # reported. None until the cache has been provisioned.
+    cache_log = (
+        Path(transfer.cache_log_path) if transfer.cache_log_path is not None else None
+    )
+    return (
+        transfer.experiment,
+        transfer.run,
+        CacheMode(transfer.cache_mode),
+        username,
+        cache_log,
+    )
 
 
 async def read_transfer_log(
@@ -218,7 +230,7 @@ async def read_transfer_log(
     bytes_: int | None = None,
 ) -> str:
     """Return the head/tail of a single log stream as decoded text."""
-    exp, run, cache_mode, username = await _resolve_transfer_context(
+    exp, run, cache_mode, username, cache_log = await _resolve_transfer_context(
         session, transfer_id
     )
     path = lcore.log_stream_path(
@@ -229,7 +241,10 @@ async def read_transfer_log(
         transfer_id,
         username,
         cache_mode=cache_mode,
+        cache_log_path=cache_log,
     )
+    if path is None:
+        raise NotFound(f"log {stream.value} not found for transfer {transfer_id}")
     client = iri.client()
     try:
         if mode is lcore.LogReadMode.head:
@@ -257,7 +272,7 @@ async def list_transfer_logs(
     session: AsyncSession, transfer_id: UUID, user: AuthenticatedUser
 ) -> TransferLogIndex:
     """Index every log stream with its path and, when present, size and mtime."""
-    exp, run, cache_mode, username = await _resolve_transfer_context(
+    exp, run, cache_mode, username, cache_log = await _resolve_transfer_context(
         session, transfer_id
     )
     client = iri.client()
@@ -272,26 +287,41 @@ async def list_transfer_logs(
                 transfer_id,
                 username,
                 cache_mode=cache_mode,
+                cache_log_path=cache_log,
             ),
         )
         for stream in lcore.LogStream
     ]
+    # The cache log has no path until fastcache_api has allocated a cache.
+    located = [(stream, path) for stream, path in paths if path is not None]
+
     try:
         stats = await asyncio.gather(
-            *(client.stat(path, user.token.get_secret_value()) for _, path in paths)
+            *(client.stat(path, user.token.get_secret_value()) for _, path in located)
         )
     except iri.IriAuthenticationError as exc:
         raise DelegatedCredentialRejected(str(exc)) from exc
-    streams = [
-        TransferLogStreamInfo(
-            stream=stream,
-            path=path,
-            available=stat.exists,
-            size=stat.size,
-            modified_at=stat.modified_at,
+
+    stat_by_stream = {
+        stream: (path, stat)
+        for (stream, path), stat in zip(located, stats, strict=True)
+    }
+    streams = []
+    for stream, _ in paths:
+        found = stat_by_stream.get(stream)
+        if found is None:
+            streams.append(TransferLogStreamInfo(stream=stream, available=False))
+            continue
+        path, stat = found
+        streams.append(
+            TransferLogStreamInfo(
+                stream=stream,
+                path=path,
+                available=stat.exists,
+                size=stat.size,
+                modified_at=stat.modified_at,
+            )
         )
-        for (stream, path), stat in zip(paths, stats, strict=True)
-    ]
     return TransferLogIndex(transfer_id=transfer_id, streams=streams)
 
 

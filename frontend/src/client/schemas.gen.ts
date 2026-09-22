@@ -1501,9 +1501,16 @@ export const TransferLogStreamInfoSchema = {
             title: 'Modified At'
         },
         path: {
-            format: 'path',
-            title: 'Path',
-            type: 'string'
+            anyOf: [
+                {
+                    format: 'path',
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Path'
         },
         size: {
             anyOf: [
@@ -1522,7 +1529,6 @@ export const TransferLogStreamInfoSchema = {
     },
     required: [
         'stream',
-        'path',
         'available'
     ],
     title: 'TransferLogStreamInfo',

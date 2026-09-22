@@ -8,11 +8,8 @@ from .producer import (
     PRODUCER_STDERR_FILENAME,
     PRODUCER_STDOUT_FILENAME,
     CacheMode,
-    shared_cache_dir,
     transfer_work_dir,
 )
-
-CACHE_LOG_FILENAME = "cache.log"
 
 
 class LogStream(StrEnum):
@@ -27,27 +24,9 @@ class LogReadMode(StrEnum):
 
 
 _STREAM_FILENAMES: dict[LogStream, str] = {
-    LogStream.cache: CACHE_LOG_FILENAME,
     LogStream.producer_stdout: PRODUCER_STDOUT_FILENAME,
     LogStream.producer_stderr: PRODUCER_STDERR_FILENAME,
 }
-
-
-def cache_log_path(
-    settings: LCLStreamerProducerSettings,
-    exp: str,
-    run: str,
-    transfer_id: UUID,
-    username: str,
-    cache_mode: CacheMode = CacheMode.per_transfer,
-) -> Path:
-    if cache_mode is CacheMode.shared:
-        # Shared cache is experiment-wide, not per-user.
-        return shared_cache_dir(settings, exp) / CACHE_LOG_FILENAME
-    return (
-        transfer_work_dir(settings, exp, run, transfer_id, username)
-        / CACHE_LOG_FILENAME
-    )
 
 
 def producer_log_path(
@@ -72,8 +51,14 @@ def log_stream_path(
     transfer_id: UUID,
     username: str,
     cache_mode: CacheMode = CacheMode.per_transfer,
-) -> Path:
-    """Dispatch for callers that handle an arbitrary log stream."""
+    cache_log_path: Path | None = None,
+) -> Path | None:
+    """Dispatch for callers that handle an arbitrary log stream.
+
+    The cache log is not ours to place: fastcache_api writes it as its own
+    service user, under a tree only it owns, and reports the path back. We
+    store that and hand it out. None until the cache has been provisioned.
+    """
     if stream is LogStream.cache:
-        return cache_log_path(settings, exp, run, transfer_id, username, cache_mode)
+        return cache_log_path
     return producer_log_path(stream, settings, exp, run, transfer_id, username)
