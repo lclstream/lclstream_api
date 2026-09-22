@@ -66,4 +66,5 @@ def test_producer_logs_still_live_in_the_work_dir() -> None:
         path = log_stream_path(
             stream, settings, "mfx101592326", "12", TRANSFER_ID, "valmar"
         )
+        assert path is not None
         assert path.parent == work_dir

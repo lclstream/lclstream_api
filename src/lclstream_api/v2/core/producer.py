@@ -187,19 +187,6 @@ def producer_config_path(
     )
 
 
-def shared_cache_dir(settings: LCLStreamerProducerSettings, exp: str) -> Path:
-    """Directory for a shared (per-experiment) cache."""
-    instrument = exp[:3]
-    return (
-        Path(settings.data_base_dir)
-        / instrument
-        / exp
-        / "scratch"
-        / "lclstreamer"
-        / "shared_cache"
-    )
-
-
 class ProducerPlan(BaseModel):
     """The jobspec plus the config file to upload before submission."""
 
