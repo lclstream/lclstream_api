@@ -13,7 +13,7 @@ from uuid import UUID
 
 import httpx
 from amsc_iri.models import JobSpec, JobState
-from dbos import DBOS
+from dbos import DBOS, error as dbos_error
 from pydantic import AwareDatetime
 
 from ..lclstreamer_param import Parameters
@@ -47,6 +47,13 @@ async def _token_for(owner: tcore.Principal) -> str:
     if token is None:
         raise CredentialUnavailableError(owner)
     return token
+
+
+def _root_cause(exc: BaseException) -> BaseException:
+    """Dig the real error out of DBOS's retry wrapper."""
+    if isinstance(exc, dbos_error.DBOSMaxStepRetriesExceeded) and exc.errors:
+        return exc.errors[-1]
+    return exc
 
 
 def _is_authentication_failure(exc: BaseException) -> bool:
@@ -336,13 +343,7 @@ async def provision_transfer(transfer_id: UUID) -> None:
             pcore.cache_idle_timeout_ms(setup.cache_mode),
             setup.consumer_socket.cache_output,
         )
-        work_dir = pcore.transfer_work_dir(
-            config.get_producer(), setup.exp, setup.run, transfer_id, username
-        )
-        # Recorded for compensation; _upload_config creates it, as the user.
-        progress = progress.with_work_dir(work_dir).with_cache(
-            endpoint.cache_id, mode=setup.cache_mode
-        )
+        progress = progress.with_cache(endpoint.cache_id, mode=setup.cache_mode)
         await _save_cache(transfer_id, endpoint)
 
         inputs = await _load_producer_inputs(transfer_id, endpoint)
@@ -351,7 +352,10 @@ async def provision_transfer(transfer_id: UUID) -> None:
         plan = pcore.plan_producer(inputs, config.get_producer(), transfer_id, username)
 
         await _upload_config(plan.config_path, plan.config_yaml, setup.owner)
-        progress = progress.with_config(plan.config_path)
+        work_dir = pcore.transfer_work_dir(
+            config.get_producer(), setup.exp, setup.run, transfer_id, username
+        )
+        progress = progress.with_work_dir(work_dir).with_config(plan.config_path)
 
         job_id = await _submit_producer(plan.jobspec, setup.owner)
         progress = progress.with_producer(job_id)
@@ -369,14 +373,15 @@ async def provision_transfer(transfer_id: UUID) -> None:
                 logger.exception(
                     "provisioning compensation failed for transfer %s", transfer_id
                 )
-        auth_failed = _is_authentication_failure(exc) or (
+        cause = _root_cause(exc)
+        auth_failed = _is_authentication_failure(cause) or (
             compensation_failure is not None
-            and _is_authentication_failure(compensation_failure)
+            and _is_authentication_failure(_root_cause(compensation_failure))
         )
         reason = (
             "provisioning failed: delegated IRI credential unavailable or rejected"
             if auth_failed
-            else f"provisioning failed: {exc}"
+            else f"provisioning failed: {cause}"
         )
         await _record_state(
             transfer_id,

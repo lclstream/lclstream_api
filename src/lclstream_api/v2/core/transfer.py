@@ -250,6 +250,10 @@ class CacheEndpoint(BaseModel):
         push_port = urlparse(push_uri).port
         if pull_port is None or push_port is None:
             raise ValueError(f"cache {cache_id} returned config without ports")
+        # IRI resolves this on another host, so a relative path would land
+        # somewhere meaningless instead of failing.
+        if not log_path.is_absolute():
+            raise ValueError(f"cache {cache_id} returned a non-absolute log path")
         return cls(
             cache_id=cache_id,
             hostname=hostname,
