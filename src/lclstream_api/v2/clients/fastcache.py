@@ -12,6 +12,9 @@ from ..core import transfer as tcore
 
 logger = logging.getLogger(__name__)
 
+# The message is persisted by DBOS, so keep a proxy's HTML page out of it.
+DETAIL_LIMIT = 500
+
 
 class CacheConfig(BaseModel):
     """Cache config from fastcache_api (TODO: hand-mirrored, drifts silently)."""
@@ -53,7 +56,7 @@ def _raise_for_status(response: httpx.Response) -> None:
     Keeping it turns an opaque 503 into an actionable transfer transition."""
     if not response.is_error:
         return
-    detail = response.text.strip()
+    detail = response.text.strip()[:DETAIL_LIMIT]
     logger.error(
         "fastcache %s %s -> %s %s",
         response.request.method,
