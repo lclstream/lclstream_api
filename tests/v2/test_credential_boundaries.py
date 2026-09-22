@@ -235,6 +235,7 @@ async def test_log_read_uses_current_caller_token_not_owner_credential(
         owner_subject="different-owner",
         owner_email="owner@example.org",
         owner_username="owner",
+        cache_log_path=None,
     )
     io.tail.return_value = "log output"
 
@@ -359,6 +360,7 @@ async def test_shared_cache_attachment_rejects_retired_registry_row() -> None:
             hostname="dtn.example",
             pull_port=5000,
             push_port=5001,
+            log_path=Path("/srv/fastcache/aa/cache.log"),
         )
 
     assert transfer.cache_id is None

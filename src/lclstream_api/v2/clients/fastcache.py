@@ -1,3 +1,4 @@
+import logging
 import ssl
 from pathlib import Path
 from uuid import UUID
@@ -8,6 +9,8 @@ from pydantic import AnyUrl, BaseModel
 from .. import config
 from ..config import FastcacheClientSettings
 from ..core import transfer as tcore
+
+logger = logging.getLogger(__name__)
 
 
 class CacheConfig(BaseModel):
@@ -29,7 +32,6 @@ class CacheCreate(BaseModel):
 
     key: str
     requested_by: str
-    log_path: Path
     idle_timeout_ms: int | None = None
     output: str = "push"
 
@@ -43,6 +45,28 @@ class CachePublic(BaseModel):
     state: tcore.CacheState
     log_path: Path
     config: CacheConfig
+
+
+def _raise_for_status(response: httpx.Response) -> None:
+    """httpx's raise_for_status drops the body, which is the only place
+    fastcache_api puts the reason ('no free cache ports', the EACCES, ...).
+    Keeping it turns an opaque 503 into an actionable transfer transition."""
+    if not response.is_error:
+        return
+    detail = response.text.strip()
+    logger.error(
+        "fastcache %s %s -> %s %s",
+        response.request.method,
+        response.request.url,
+        response.status_code,
+        detail,
+    )
+    raise httpx.HTTPStatusError(
+        f"fastcache_api {response.status_code} for "
+        f"{response.request.method} {response.request.url}: {detail}",
+        request=response.request,
+        response=response,
+    )
 
 
 def _ssl_context(settings: FastcacheClientSettings) -> ssl.SSLContext:
@@ -76,14 +100,12 @@ class FastcacheClient:
         *,
         key: str,
         requested_by: str,
-        log_path: Path,
         idle_timeout_ms: int | None = None,
         output: str = "push",
     ) -> CachePublic:
         body = CacheCreate(
             key=key,
             requested_by=requested_by,
-            log_path=log_path,
             idle_timeout_ms=idle_timeout_ms,
             output=output,
         )
@@ -91,21 +113,21 @@ class FastcacheClient:
             "/caches/",
             json=body.model_dump(mode="json", exclude_none=True),
         )
-        response.raise_for_status()
+        _raise_for_status(response)
         return CachePublic.model_validate(response.json())
 
     async def get_cache(self, cache_id: UUID) -> CachePublic | None:
         response = await self._http.get(f"/caches/{cache_id}")
         if response.status_code == httpx.codes.NOT_FOUND:
             return None
-        response.raise_for_status()
+        _raise_for_status(response)
         return CachePublic.model_validate(response.json())
 
     async def delete_cache(self, cache_id: UUID) -> None:
         response = await self._http.delete(f"/caches/{cache_id}")
         if response.status_code == httpx.codes.NOT_FOUND:
             return
-        response.raise_for_status()
+        _raise_for_status(response)
 
 
 _client: FastcacheClient | None = None
