@@ -87,10 +87,10 @@ Build ours once on a login node, as psdatmgr:
 
 ```sh
 cd ~/repos/github/lclstream/lclstream_api/client/example
-podman-hpc build -t lclstream-client:latest .
+podman-hpc build -t lclstream-client:latest -f Dockerfile
 podman-hpc migrate lclstream-client:latest     # again after every rebuild
-podman-hpc pull gitlab.desy.de:5555/thomas.white/crystfel/crystfel:latest
-podman-hpc migrate gitlab.desy.de:5555/thomas.white/crystfel/crystfel:latest
+podman-hpc build -t crystfel:latest -f Dockerfile.crystfel
+podman-hpc migrate crystfel:latest
 ```
 
 `migrate` is what makes an image visible to compute nodes, and the image
