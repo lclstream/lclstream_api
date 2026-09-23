@@ -13,13 +13,13 @@ from uuid import UUID
 
 import httpx
 from amsc_iri.models import JobSpec, JobState
-from dbos import DBOS
+from dbos import DBOS, error as dbos_error
 from pydantic import AwareDatetime
 
 from ..lclstreamer_param import Parameters
 from . import auth, config, db, repo
 from .clients import fastcache, iri
-from .core import logs, producer as pcore, transfer as tcore
+from .core import producer as pcore, transfer as tcore
 from .models import TransferState, TransitionSource
 
 logger = logging.getLogger(__name__)
@@ -47,6 +47,13 @@ async def _token_for(owner: tcore.Principal) -> str:
     if token is None:
         raise CredentialUnavailableError(owner)
     return token
+
+
+def _root_cause(exc: BaseException) -> BaseException:
+    """Dig the real error out of DBOS's retry wrapper."""
+    if isinstance(exc, dbos_error.DBOSMaxStepRetriesExceeded) and exc.errors:
+        return exc.errors[-1]
+    return exc
 
 
 def _is_authentication_failure(exc: BaseException) -> bool:
@@ -93,7 +100,6 @@ DEFAULT_RETRY_SETTINGS: dict[str, Any] = {
 @DBOS.step(**DEFAULT_RETRY_SETTINGS)
 async def _create_cache(
     requested_by: str,
-    cache_log_path: Path,
     key: str,
     idle_timeout_ms: int | None,
     output: str,
@@ -101,7 +107,6 @@ async def _create_cache(
     cache = await fastcache.client().create_cache(
         key=key,
         requested_by=requested_by,
-        log_path=cache_log_path,
         idle_timeout_ms=idle_timeout_ms,
         output=output,
     )
@@ -110,6 +115,7 @@ async def _create_cache(
         cache.config.hostname,
         str(cache.config.pull_uri),
         str(cache.config.push_uri),
+        cache.log_path,
     )
 
 
@@ -176,6 +182,7 @@ async def _save_cache(transfer_id: UUID, endpoint: tcore.CacheEndpoint) -> None:
         hostname=endpoint.hostname,
         pull_port=endpoint.pull_port,
         push_port=endpoint.push_port,
+        log_path=endpoint.log_path,
     )
 
 
@@ -325,14 +332,6 @@ async def provision_transfer(transfer_id: UUID) -> None:
     try:
         setup = await _load_setup_inputs(transfer_id)
         username = setup.username
-        cache_log_path = logs.cache_log_path(
-            config.get_producer(),
-            setup.exp,
-            setup.run,
-            transfer_id,
-            username,
-            cache_mode=setup.cache_mode,
-        )
         key = (
             setup.exp
             if setup.cache_mode is tcore.CacheMode.shared
@@ -340,18 +339,11 @@ async def provision_transfer(transfer_id: UUID) -> None:
         )
         endpoint = await _create_cache(
             setup.requested_by,
-            cache_log_path,
             key,
             pcore.cache_idle_timeout_ms(setup.cache_mode),
             setup.consumer_socket.cache_output,
         )
-        work_dir = pcore.transfer_work_dir(
-            config.get_producer(), setup.exp, setup.run, transfer_id, username
-        )
-        # _create_cache succeeding means the work dir exists
-        progress = progress.with_work_dir(work_dir).with_cache(
-            endpoint.cache_id, mode=setup.cache_mode
-        )
+        progress = progress.with_cache(endpoint.cache_id, mode=setup.cache_mode)
         await _save_cache(transfer_id, endpoint)
 
         inputs = await _load_producer_inputs(transfer_id, endpoint)
@@ -360,7 +352,10 @@ async def provision_transfer(transfer_id: UUID) -> None:
         plan = pcore.plan_producer(inputs, config.get_producer(), transfer_id, username)
 
         await _upload_config(plan.config_path, plan.config_yaml, setup.owner)
-        progress = progress.with_config(plan.config_path)
+        work_dir = pcore.transfer_work_dir(
+            config.get_producer(), setup.exp, setup.run, transfer_id, username
+        )
+        progress = progress.with_work_dir(work_dir).with_config(plan.config_path)
 
         job_id = await _submit_producer(plan.jobspec, setup.owner)
         progress = progress.with_producer(job_id)
@@ -378,14 +373,15 @@ async def provision_transfer(transfer_id: UUID) -> None:
                 logger.exception(
                     "provisioning compensation failed for transfer %s", transfer_id
                 )
-        auth_failed = _is_authentication_failure(exc) or (
+        cause = _root_cause(exc)
+        auth_failed = _is_authentication_failure(cause) or (
             compensation_failure is not None
-            and _is_authentication_failure(compensation_failure)
+            and _is_authentication_failure(_root_cause(compensation_failure))
         )
         reason = (
             "provisioning failed: delegated IRI credential unavailable or rejected"
             if auth_failed
-            else f"provisioning failed: {exc}"
+            else f"provisioning failed: {cause}"
         )
         await _record_state(
             transfer_id,

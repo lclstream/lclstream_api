@@ -230,6 +230,7 @@ class CacheEndpoint(BaseModel):
     hostname: str
     pull_port: int
     push_port: int
+    log_path: Path
 
     @property
     def pull_uri(self) -> str:
@@ -238,17 +239,27 @@ class CacheEndpoint(BaseModel):
 
     @classmethod
     def from_uris(
-        cls, cache_id: UUID, hostname: str, pull_uri: str, push_uri: str
+        cls,
+        cache_id: UUID,
+        hostname: str,
+        pull_uri: str,
+        push_uri: str,
+        log_path: Path,
     ) -> CacheEndpoint:
         pull_port = urlparse(pull_uri).port
         push_port = urlparse(push_uri).port
         if pull_port is None or push_port is None:
             raise ValueError(f"cache {cache_id} returned config without ports")
+        # IRI resolves this on another host, so a relative path would land
+        # somewhere meaningless instead of failing.
+        if not log_path.is_absolute():
+            raise ValueError(f"cache {cache_id} returned a non-absolute log path")
         return cls(
             cache_id=cache_id,
             hostname=hostname,
             pull_port=pull_port,
             push_port=push_port,
+            log_path=log_path,
         )
 
 

@@ -395,6 +395,7 @@ def test_missing_timestamps_are_never_stale() -> None:
 # ---------------------------------------------------------------------------
 
 _CACHE_ID = UUID("00000000-0000-0000-0000-0000000000aa")
+_CACHE_LOG = Path("/srv/fastcache/aa/cache.log")
 
 
 def test_cache_endpoint_parses_ports_from_uris() -> None:
@@ -403,12 +404,14 @@ def test_cache_endpoint_parses_ports_from_uris() -> None:
         "drp-host",
         pull_uri="tcp://drp-host:5001",
         push_uri="tcp://drp-host:5002",
+        log_path=_CACHE_LOG,
     )
     assert endpoint == CacheEndpoint(
         cache_id=_CACHE_ID,
         hostname="drp-host",
         pull_port=5001,
         push_port=5002,
+        log_path=_CACHE_LOG,
     )
 
 
@@ -422,7 +425,7 @@ def test_cache_endpoint_parses_ports_from_uris() -> None:
 )
 def test_cache_endpoint_rejects_uri_without_port(pull_uri: str, push_uri: str) -> None:
     with pytest.raises(ValueError, match="without ports"):
-        CacheEndpoint.from_uris(_CACHE_ID, "drp-host", pull_uri, push_uri)
+        CacheEndpoint.from_uris(_CACHE_ID, "drp-host", pull_uri, push_uri, _CACHE_LOG)
 
 
 # ---------------------------------------------------------------------------

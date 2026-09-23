@@ -106,6 +106,10 @@ class Transfer(DTMixin, Base):
     cache_hostname: Mapped[str | None] = mapped_column(
         default=None, doc="DTN hostname running the cache; routes follow-up calls"
     )
+    cache_log_path: Mapped[str | None] = mapped_column(
+        default=None,
+        doc="Cache log as reported by fastcache_api; it owns the location",
+    )
 
     # Allocated by fastcache_api.
     pull_port: Mapped[int | None] = mapped_column(
