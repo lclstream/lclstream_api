@@ -1,0 +1,4 @@
+# Keep .env and .secrets out of the build context.
+*
+!transfer_client.py
+!zmq_timeout.patch
