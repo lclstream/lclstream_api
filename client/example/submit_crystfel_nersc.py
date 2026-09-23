@@ -7,6 +7,8 @@ Perlmutter node against the S3DF cache, then xrdcp's the stream back.
     uv run submit_crystfel_nersc.py --exp mfx101592326 --run 12
     uv run submit_crystfel_nersc.py --exp ... --run ... \
         --crystfel-args "--peaks=msgpack --indexing=mosflm -j 8"
+    uv run submit_crystfel_nersc.py --exp ... --run ... \
+        --xrd-dest /streams/mfx101592326
     uv run submit_crystfel_nersc.py --exp ... --run ... --status <job_id>
     uv run submit_crystfel_nersc.py --resources         # list resource names
 """
@@ -57,6 +59,8 @@ class Settings(BaseSettings):
     duration: int = 1800
     # Job cwd on NERSC: .env, geometry, .secrets, logs.
     directory: Path = Path("/global/cfs/cdirs/lcls/crystfel-demo")
+    # Where the job xrdcp's the stream; empty keeps it on scratch.
+    xrd_dest: str = ""
 
 
 def source_id(exp: str, run: str) -> str:
@@ -143,6 +147,7 @@ def submit(
     exp: str,
     run: str,
     crystfel_args: list[str],
+    xrd_dest: str,
 ) -> None:
     submission_id = uuid4().hex[:8]
     token = stage_token(cfg, facility, exp, run, submission_id)
@@ -158,6 +163,8 @@ def submit(
         account=cfg.account,
         duration=cfg.duration,
         nodes=1,
+        # Unset leaves the job's .env value in charge.
+        environment={"XRD_DEST": xrd_dest} if xrd_dest else None,
         # One merged log; --status tails it.
         stdout_path=str(log),
         stderr_path=str(log),
@@ -202,6 +209,10 @@ def main() -> int:
         default="",
         help="indexamajig argument string; replaces the script defaults",
     )
+    parser.add_argument(
+        "--xrd-dest",
+        help="xrootd path for the stream",
+    )
     parser.add_argument("rest", nargs="*", help="extra indexamajig arguments, after --")
     args = parser.parse_args()
 
@@ -222,6 +233,7 @@ def main() -> int:
             args.exp,
             args.run,
             [*shlex.split(args.crystfel_args), *args.rest],
+            args.xrd_dest or cfg.xrd_dest,
         )
     return 0
 
