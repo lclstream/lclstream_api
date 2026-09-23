@@ -38,8 +38,10 @@ RUN mv imosflm/bin/mosflm /usr/local/bin/mosflm
 
 # CrystFEL
 RUN git clone https://gitlab.desy.de/thomas.white/crystfel.git
-COPY zmq_timeout.patch /home/crystfel-build/crystfel
-RUN cd crystfel && git apply zmq_timeout.patch
+COPY no-data-timeout.patch /home/crystfel-build/crystfel
+COPY data-socket-timeout.patch  /home/crystfel-build/crystfel
+RUN cd crystfel && git apply no-data-timeout.patch
+RUN cd crystfel && git apply data-socket-timeout.patch
 RUN cd crystfel && meson setup build -Dprefix=/usr/local
 RUN cd crystfel && meson compile -C build
 RUN cd crystfel && meson test -C build
