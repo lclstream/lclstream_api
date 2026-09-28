@@ -1,31 +1,24 @@
 # Stage 1: Builder
 FROM docker.io/python:3.13-trixie AS builder
 
-# Install build dependencies for packages like biscuit-python (requires cc/gcc)
+# build-essential for any C-extension deps; git for git-sourced Python deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential libhdf5-dev \
-    git \
+    build-essential git \
     && rm -rf /var/lib/apt/lists/*
 
-# Create a virtual environment in /usr/local as requested
-RUN python -m venv /usr/local
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 WORKDIR /app
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev --no-install-project
+
 COPY . .
+RUN uv sync --frozen --no-dev
 
-# Use uv for efficient installation into the /usr/local venv
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
-RUN uv pip install --no-cache --system .
-
-# Stage 2: Install
+# Stage 2: Runtime
 FROM docker.io/python:3.13-trixie
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libhdf5-310 \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy the entire venv from the builder
-COPY --from=builder /usr/local /usr/local
+COPY --from=builder /app/.venv /app/.venv
 
 WORKDIR /app
 COPY . /app
@@ -34,5 +27,4 @@ COPY . /app
 COPY config/lclstream_api.json /etc/lclstream_api.json
 COPY config/psik.json /etc/psik.json
 
-# Run the application
-CMD ["uvicorn", "lclstream_api.server:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["/app/.venv/bin/uvicorn", "lclstream_api.server:app", "--host", "0.0.0.0", "--port", "8000"]
