@@ -1,10 +1,13 @@
 import os
+import shutil
 from pathlib import Path
 
 import pytest
 import yaml
 
 from lclstream_api.config import Config
+
+_zmqbuf = os.environ.get("ZMQBUF_PATH") or shutil.which("zmqbuf") or "zmqbuf"
 
 # this config only works if lclstreamer is setup...
 cfg_yaml = """
@@ -19,7 +22,7 @@ forwarder:
   jobspec:
     name: "zmqbuf"
     backend: "default"
-    script: "/home/99r/src/microservices/nng_stream/zmqbuf"
+    script: "%(zmqbuf)s"
 
 replay:
   cache_fmt: "%(base)s/lclstream_cache/%%s"
@@ -48,7 +51,7 @@ lclstreamer:
 
 @pytest.fixture
 def config(tmpdir) -> Config:
-    x = yaml.safe_load(cfg_yaml % {"base": str(tmpdir)})
+    x = yaml.safe_load(cfg_yaml % {"base": str(tmpdir), "zmqbuf": _zmqbuf})
     return Config.model_validate(x)
 
 
