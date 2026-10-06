@@ -22,7 +22,8 @@ COPY . /app
 
 # Sync the project
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked --no-editable --no-dev
+    uv sync --locked --no-editable --no-dev \
+    && uv pip install hdf5plugin
 
 FROM python:3.13-slim
 
@@ -32,8 +33,10 @@ COPY --from=builder /app/.venv /app/.venv
 COPY --from=builder /app/pyproject.toml /app/pyproject.toml
 
 # Copy the configuration files
-COPY config/lclstream_api.json  /etc/lclstream_api.json
+COPY config/lclstream_api.yaml  /etc/lclstream_api.yaml
 COPY config/psik.json  /etc/psik.json
 
+ENV PATH="/app/.venv/bin:$PATH"
+
 # Run the application
-CMD ["/app/.venv/bin/uvicorn", "lclstream_api.server:app", "--reload"]
+CMD ["uvicorn", "lclstream_api.server:app"]

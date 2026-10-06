@@ -1,0 +1,60 @@
+psik:
+  prefix: "/tmp/psik"
+  backends:
+    # use local if lclstream_api can directly run lclstream-fastcache and lclstreamer
+    #default:
+    #  type: "local"
+    #
+    # This targets the containerized producer from
+    # https://github.com/lclstream/developerdocs
+    default:
+      type: psik
+      attributes:
+        remote_url: "https://localhost:4433"
+        remote_backend: "default"
+        next: "{}"
+
+callback_url: "https://localhost:8000/v1/callback"
+
+forwarder:
+  ip: "127.0.0.1"
+  start_port: 42001
+  end_port:   42100
+
+  jobspec:
+    name: "fastcache"
+    backend: "default"
+    resources:
+      duration: 80
+      node_count: 1
+      processes_per_node: 1
+      cpu_cores_per_process: 1
+    environment:
+      CERTIFIED_CONFIG: "/etc/certified"
+    script: |
+      cat >config.json <<__CONFIG__
+          {{ "inurl": "{internal_url}",
+             "outurl": "{external_url}",
+             "type": 4,
+             "helper_threads": 0,
+             "num_workers": 1,
+             "io_threads": 16,
+             "hwm": 10,
+             "verbose": true
+          }}
+      __CONFIG__
+      lclstream-fastcache config.json
+
+lclstreamer:
+  jobspec:
+    name: "lclstreamer"
+    backend: "default"
+    resources:
+      duration: 60
+      node_count: 1
+      processes_per_node: 2
+      cpu_cores_per_process: 1
+    environment:
+      CERTIFIED_CONFIG: "/etc/certified"
+    script: |
+      lclstreamer --config lclstreamer.json
