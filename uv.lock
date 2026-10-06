@@ -830,7 +830,7 @@ requires-dist = [
     { name = "certified", specifier = "==1.3.0" },
     { name = "fastapi", specifier = ">=0.136.3" },
     { name = "lclstream", git = "https://github.com/lclstream/lclstream.git" },
-    { name = "psik", specifier = ">=3.1.0" },
+    { name = "psik", specifier = ">=3.1.1" },
     { name = "pydantic", specifier = ">=2.13.4" },
     { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "uvicorn", specifier = ">=0.48.0" },
@@ -1431,7 +1431,7 @@ wheels = [
 
 [[package]]
 name = "psik"
-version = "3.1.0"
+version = "3.1.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -1441,9 +1441,9 @@ dependencies = [
     { name = "pyyaml" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/da/e9/c425418c07b95f96341d41b048f1afd84ba160890f0baec2752f847cb847/psik-3.1.0.tar.gz", hash = "sha256:0c3c09a08a43c689014d89858528e5a1add67e0ca50c5f2b4befdc1b490b68c3", size = 44664, upload-time = "2026-06-26T16:38:26.544Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/32/18/8ec692e9ef5dfc589753d3c2c82258c92b9939476aa5805f021cdff1d22e/psik-3.1.1.tar.gz", hash = "sha256:f715ab943db8ff11f3749eed95caa92fba9b3229d4b07ee9775bb8297c0a453a", size = 44834, upload-time = "2026-10-06T20:03:38.558Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/08/53/08f70575cc8aea22b4a46ec7b9c688848d6b8d0b43b7a7455ac9f42d2c44/psik-3.1.0-py3-none-any.whl", hash = "sha256:6a3d40e18bc0a3388463f7f592c96dd90a6000f7786c395f3397bc31e5a2d567", size = 44105, upload-time = "2026-06-26T16:38:25.483Z" },
+    { url = "https://files.pythonhosted.org/packages/74/95/dfddc06a4f7d1b9f5f68d7e98423548ae5b3ed5ab15d12a940c874ed8510/psik-3.1.1-py3-none-any.whl", hash = "sha256:a02db194e0a05544b9bd7b956a5954dfc9d4026f5b9dc3c2235e154d88bc6a76", size = 44123, upload-time = "2026-10-06T20:03:37.411Z" },
 ]
 
 [[package]]

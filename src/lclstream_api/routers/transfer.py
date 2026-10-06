@@ -17,10 +17,26 @@ from ..models import (
     TransferStatus,
 )
 from ..ports import PortUsage
-from ..transfer_mgr import create_transfer
+from ..transfer_mgr import Transfer, create_transfer
 from ..xfer_db import Database
 
 _logger = logging.getLogger(__name__)
+
+
+async def _submit_job(job: psik.Job, xfer: Transfer, client: ClientName) -> None:
+    try:
+        await job.submit()
+    except psik.SubmitException as e:
+        _logger.error("Transfer(%d) %s submit failed: %s", xfer.eid, client.value, e)
+        action = xfer.transition(client, psik.JobState.failed, info=str(e))
+        if action:
+            await action()
+    except Exception as e:
+        _logger.error("Transfer(%d) %s unexpected submit error: %s", xfer.eid, client.value, e)
+        action = xfer.transition(client, psik.JobState.failed, info=str(e))
+        if action:
+            await action()
+
 
 CachedConfig = Annotated[Config, Depends(load_config)]
 
@@ -160,8 +176,8 @@ async def new_transfer(
 
     db.add(entry.eid, xfer)
     # Submit jobs to the queue
-    bg_tasks.add_task(forwarder_job.submit)
-    bg_tasks.add_task(producer_job.submit)
+    bg_tasks.add_task(_submit_job, forwarder_job, xfer, ClientName.cache)
+    bg_tasks.add_task(_submit_job, producer_job, xfer, ClientName.producer)
 
     last = xfer.log[-1]
     return TransferStatus(
