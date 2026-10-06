@@ -1,5 +1,5 @@
 # Install uv
-FROM python:3.14-slim AS builder
+FROM python:3.13-slim AS builder
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 # Install git (required for git-sourced dependencies)
@@ -24,10 +24,12 @@ COPY . /app
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-editable --no-dev
 
-FROM python:3.14-slim
+FROM python:3.13-slim
 
+WORKDIR /app
 # Copy the environment, but not the source code
 COPY --from=builder /app/.venv /app/.venv
+COPY --from=builder /app/pyproject.toml /app/pyproject.toml
 
 # Copy the configuration files
 COPY config/lclstream_api.json  /etc/lclstream_api.json
