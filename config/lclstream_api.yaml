@@ -16,6 +16,9 @@ psik:
 
 callback_url: "https://localhost:8000/v1/callback"
 
+# Trust X-Auth-Request-User from oauth2-proxy on the same host.
+trusted_proxy: "127.0.0.1"
+
 forwarder:
   ip: "127.0.0.1"
   start_port: 42001

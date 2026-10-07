@@ -9,6 +9,7 @@ from fastapi import (
     HTTPException,
 )
 
+from ..auth_proxy import CurrentUser, CallbackUser
 from ..config import Config, load_config, to_mgr
 from ..lclstreamer_param import Parameters
 from ..models import (
@@ -56,12 +57,13 @@ transfers = APIRouter(responses={401: {"description": "Unauthorized"}})
 async def list_transfers(
     db: Database,
     ports: PortUsage,
+    user: CurrentUser,
     index: int = 0,
     limit: int | None = None,
     state: psik.JobState | None = None,
 ) -> list[TransferStatus]:
     """
-    Get information about transfers.
+    Get information about transfers owned by the authenticated user.
 
       - index: the index of the last transfer info to retrieve
                Items are sorted by time, so index 0 is the most recent.
@@ -71,11 +73,12 @@ async def list_transfers(
 
     out = []
     for eid, entry in ports.items():
+        if entry.user != user:
+            continue
         try:
             xfer = db[eid]
         except KeyError:
             continue
-        # TODO: filter by entry.user here (or list all for admin)
 
         cstate = xfer.states[ClientName.cache]
         if state is not None and state != cstate:
@@ -112,15 +115,12 @@ async def new_transfer(
     bg_tasks: BackgroundTasks,
     cfg: CachedConfig,
     mgr: Manager,
-    user: str = "none",
+    user: CurrentUser,
 ) -> TransferStatus:
     """
     Submit a transfer to run ASAP.
 
     If successful this will return the eid created.
-
-    FIXME: lookup user following certified docs
-    or using a FastAPI User mixin using token-auth.
     """
 
     # 0. TODO: any additional validation of request/user goes here.
@@ -192,7 +192,7 @@ async def new_transfer(
 
 
 @transfers.get("/{id}")
-async def get_transfer(id: int, ports: PortUsage, db: Database) -> TransferInfo:
+async def get_transfer(id: int, ports: PortUsage, db: Database, user: CurrentUser) -> TransferInfo:
     """Read job
     - id: The transfer ID
 
@@ -203,14 +203,19 @@ async def get_transfer(id: int, ports: PortUsage, db: Database) -> TransferInfo:
         entry = ports[id]
     except KeyError:
         raise HTTPException(status_code=404, detail="Transfer is not active.")
+    if entry.user != user:
+        raise HTTPException(status_code=403, detail="Access denied.")
     return TransferInfo(user=entry.user, log=xfer.log, metrics=xfer.cache_metrics)
 
 
 @transfers.delete("/{id}")
-async def cancel_transfer(id: int, bg_tasks: BackgroundTasks, db: Database) -> None:
+async def cancel_transfer(id: int, bg_tasks: BackgroundTasks, db: Database, ports: PortUsage, user: CurrentUser) -> None:
     # Cancel job
     try:
         xfer = db[id]
+        entry = ports[id]
     except KeyError:
         raise HTTPException(status_code=404, detail="Transfer is not active.")
+    if entry.user != user:
+        raise HTTPException(status_code=403, detail="Access denied.")
     bg_tasks.add_task(xfer.cancel_job)
