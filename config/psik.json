@@ -1,11 +1,15 @@
-{ "prefix": "/sdf/home/r/rogersdd/psik",
+{ "prefix": "/tmp/psik",
   "backends": {
     "default": {
-        "type": "local"
+      "type": "local"
     },
-    "slurm": {
-        "type": "slurm",
-        "project_name": "lcls:tmox42619",
-        "queue_name": "milano"
+    "psik_local": {
+      "type": "psik",
+      "attributes": {
+        "remote_url": "https://localhost:4433",
+        "remote_backend": "default",
+        "next": "{}"
+      }
     }
+  }
 }

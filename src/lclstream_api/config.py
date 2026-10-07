@@ -32,6 +32,10 @@ class Config(BaseModel):
     replay: ReplayConfig = ReplayConfig()
     lclstreamer: LCLStreamerConfig
 
+    # When set, requests arriving from this IP with X-Auth-Request-User are trusted.
+    # Intended for use behind oauth2-proxy running on the same host.
+    trusted_proxy: str | None = None
+
 
 # Other config options we could add...
 #
