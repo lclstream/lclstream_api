@@ -4,17 +4,24 @@
 becomes a 422. These pin what upstream has today.
 """
 
+from collections.abc import Callable
+
 import pytest
 from pydantic import TypeAdapter, ValidationError
 
 from lclstream_api.lclstreamer_param import (
     BinaryDataStreamingDataHandlerParameters,
     DataSerializerParameters,
+    Parameters,
     ProcessingPipelineParameters,
+    Psana1DetectorInterfaceParameters,
+    Psana2DetectorInterfaceParameters,
 )
 
 _PIPELINES = TypeAdapter(ProcessingPipelineParameters)
 _SERIALIZERS = TypeAdapter(DataSerializerParameters)
+
+ParamsFactory = Callable[..., Parameters]
 
 
 @pytest.mark.parametrize(
@@ -56,3 +63,28 @@ def test_rejects_unmerged_upstream_fields() -> None:
                 urls=["tcp://cache:5000"],
                 **{field: value},
             )
+
+
+def test_psana1_detector_accepts_dtype() -> None:
+    detector = Psana1DetectorInterfaceParameters(
+        type="Psana1DetectorInterface",
+        psana_name="jungfrau",
+        psana_fields="calib",
+        dtype="float32",
+    )
+    assert detector.dtype == "float32"
+
+
+def test_multiple_psana_fields_need_alias() -> None:
+    with pytest.raises(ValidationError, match="alias"):
+        Psana2DetectorInterfaceParameters(
+            type="Psana2DetectorInterface",
+            psana_name="jungfrau",
+            psana_fields=["raw.calib", "raw.image"],
+        )
+
+
+def test_crystfel_requires_sources(make_params: ParamsFactory) -> None:
+    """The producer refuses these at startup; reject them as a 422 instead."""
+    with pytest.raises(ValidationError, match="photon_wavelength"):
+        make_params(processing_pipeline={"type": "CrystfelPreprocessingPipeline"})
