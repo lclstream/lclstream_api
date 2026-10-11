@@ -18,7 +18,7 @@ import re  # noqa: F401
 import json
 
 from pydantic import BaseModel, ConfigDict, StrictBool, StrictStr
-from typing import Any, ClassVar, Dict, List
+from typing import Any, ClassVar, Dict, List, Optional
 from lclstream_api_client._generated.models.data_handlers_inner import DataHandlersInner
 from lclstream_api_client._generated.models.data_serializer import DataSerializer
 from lclstream_api_client._generated.models.data_sources_value import DataSourcesValue
@@ -37,9 +37,10 @@ class Parameters(BaseModel):
     data_sources: Dict[str, DataSourcesValue]
     event_source: EventSource
     processing_pipeline: ProcessingPipeline
+    requirements: Optional[Dict[str, List[StrictStr]]] = None
     skip_incomplete_events: StrictBool
     source_identifier: StrictStr
-    __properties: ClassVar[List[str]] = ["data_handlers", "data_serializer", "data_sources", "event_source", "processing_pipeline", "skip_incomplete_events", "source_identifier"]
+    __properties: ClassVar[List[str]] = ["data_handlers", "data_serializer", "data_sources", "event_source", "processing_pipeline", "requirements", "skip_incomplete_events", "source_identifier"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -125,6 +126,7 @@ class Parameters(BaseModel):
             else None,
             "event_source": EventSource.from_dict(obj["event_source"]) if obj.get("event_source") is not None else None,
             "processing_pipeline": ProcessingPipeline.from_dict(obj["processing_pipeline"]) if obj.get("processing_pipeline") is not None else None,
+            "requirements": obj.get("requirements"),
             "skip_incomplete_events": obj.get("skip_incomplete_events"),
             "source_identifier": obj.get("source_identifier")
         })

@@ -948,6 +948,31 @@ export const ParametersSchema = {
             ],
             title: 'Processing Pipeline'
         },
+        requirements: {
+            additionalProperties: {
+                items: {
+                    type: 'string'
+                },
+                type: 'array'
+            },
+            default: {
+                CrystfelPreprocessingPipeline: [
+                    'detector_data',
+                    'photon_wavelength',
+                    'detector_distance',
+                    'timestamp',
+                    'run_info'
+                ],
+                SimplonBinarySerializer: [
+                    'timestamp',
+                    'detector_data',
+                    'detector_geometry',
+                    'run_info'
+                ]
+            },
+            title: 'Requirements',
+            type: 'object'
+        },
         skip_incomplete_events: {
             title: 'Skip Incomplete Events',
             type: 'boolean'
@@ -1024,6 +1049,17 @@ export const PeaknetPreprocessingPipelineParametersSchema = {
 export const Psana1DetectorInterfaceParametersSchema = {
     additionalProperties: false,
     properties: {
+        dtype: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Dtype'
+        },
         psana_fields: {
             anyOf: [
                 {

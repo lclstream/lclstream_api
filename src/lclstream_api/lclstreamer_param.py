@@ -127,11 +127,19 @@ class _PsanaDetectorInterfaceParameters(_CustomBaseModel):
             raise ValueError(
                 "psana_fields must be specified when psana_name is not a PV."
             )
+        if isinstance(self.psana_fields, list):
+            if len(self.psana_fields) > 1:
+                for field in self.psana_fields:
+                    if "->" not in field:
+                        raise ValueError(
+                            "When multiple psana_fields are provided, alias must be provided, example: raw.calib -> alias."
+                        )
         return self
 
 
 class Psana1DetectorInterfaceParameters(_PsanaDetectorInterfaceParameters):
     type: Literal["Psana1DetectorInterface"]
+    dtype: str | None = None
 
 
 class Psana2DetectorInterfaceParameters(_PsanaDetectorInterfaceParameters):
@@ -481,25 +489,35 @@ class Parameters(_CustomBaseModel):
     data_serializer: DataSerializerParameters
     data_handlers: list[DataHandlerParameters]
 
+    requirements: dict[str, list[str]] = {
+        "SimplonBinarySerializer": [
+            "timestamp",
+            "detector_data",
+            # "photon_wavelength",
+            "detector_geometry",
+            "run_info",
+        ],
+        # Note: crystfel will break if alias is put in for these.
+        "CrystfelPreprocessingPipeline": [
+            "detector_data",
+            "photon_wavelength",
+            "detector_distance",
+            "timestamp",
+            "run_info",
+        ],
+    }
+
     @model_validator(mode="after")
     def _check_model(self) -> Self:
-        # Validates cross-field constraints after model initialization
-
-        if self.data_serializer.type == "SimplonBinarySerializer":
-            required_sources = [
-                "timestamp",
-                "detector_data",
-                # "photon_wavelength",
-                "detector_geometry",
-                "run_info",
-            ]
-            source_missing = [
-                k for k in required_sources if k not in self.data_sources.keys()
-            ]
-            if source_missing:
-                raise ValueError(
-                    f"Required fields: {source_missing} is missing from data_sources "
-                    "for SimplonBinarySerializer."
-                )
-
+        # Check if required sources are missing
+        for pipeline in [self.processing_pipeline.type, self.data_serializer.type]:
+            if pipeline in self.requirements:
+                source_missing = [
+                    k for k in self.requirements[pipeline] if k not in self.data_sources
+                ]
+                if source_missing:
+                    raise ValueError(
+                        f"Required fields: {source_missing} is missing from data_sources "
+                        f"for {pipeline}."
+                    )
         return self

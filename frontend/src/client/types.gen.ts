@@ -667,6 +667,12 @@ export type Parameters = {
         type: 'CrystfelPreprocessingPipeline';
     } & CrystfelPreprocessingPipelineParameters);
     /**
+     * Requirements
+     */
+    requirements?: {
+        [key: string]: Array<string>;
+    };
+    /**
      * Skip Incomplete Events
      */
     skip_incomplete_events: boolean;
@@ -741,6 +747,10 @@ export type PeaknetPreprocessingPipelineParameters = {
  * Psana1DetectorInterfaceParameters
  */
 export type Psana1DetectorInterfaceParameters = {
+    /**
+     * Dtype
+     */
+    dtype?: string | null;
     /**
      * Psana Fields
      */
