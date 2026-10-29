@@ -74,7 +74,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("file", type=Path, help="local file to copy")
     parser.add_argument(
-        "--dest", type=Path, help="remote directory; overrides LCLSTREAM_NERSC_UPLOAD_DIR"
+        "--dest",
+        type=Path,
+        help="remote directory; overrides LCLSTREAM_NERSC_UPLOAD_DIR",
     )
     parser.add_argument(
         "--force", action="store_true", help="replace the remote file if it exists"
