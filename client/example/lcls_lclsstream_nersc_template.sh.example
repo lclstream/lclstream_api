@@ -1,0 +1,47 @@
+#!/bin/bash
+
+set -xeu
+
+geometry_filename=$(basename {{geometry_file}})
+
+if [ -z "{{mask_file}}" ]; then
+	mask_filename=""
+else
+	mask_filename=$(basename {{mask_file}})
+	# Change mask_file in {{geometry_file}} to mask_filename
+	sed -i "s|mask_file.*|mask_file = /cfg/$mask_filename|" {{geometry_file}}
+fi
+
+if [ -z "{{cell_file}}" ]; then
+	cell_arg=""
+else
+	cell_arg="-p /cfg/$(basename {{cell_file}})"
+fi
+
+export XrdSecSSSKT=${HOME}/.xrd/sss_lstream2.keytab
+env -u PYTHONPATH -u PYTHONHOME uv run --script /sdf/data/lcls/ds/mfx/mfx101210926/scratch/valmar/lclstream_api/client/example/upload_nersc.py --force --dest /global/cfs/cdirs/lcls/crystfel-demo {{geometry_file}}
+xrdcp  --force {{mask_file}}  root://dtn04.nersc.gov:3096//crystfel-demo/
+env -u PYTHONPATH -u PYTHONHOME uv run --script /sdf/data/lcls/ds/mfx/mfx101210926/scratch/valmar/lclstream_api/client/example/upload_nersc.py --force --dest /global/cfs/cdirs/lcls/crystfel-demo {{cell_file}}
+
+# uv run /sdf/data/lcls/ds/mfx/mfx101210926/scratch/valmar/lclstream_api/client/examplesubmit_crystfel_nersc.py --exp {{experiment_id}} --run {{run_id}} \
+# --xrd-dest --xrd-dest {{(output_dir | string).replace("/sdf/data/lcls/ds/", "", 1)}} \
+# --crystfel-args "--peaks peakfinder8 --threshold {{threshold}} \
+# --min-snr {{min_snr}} --min-res {{min_res}} --max-res {{max_res}} \
+# --min-pix-count {{min_pix_count}} --max-pix-count {{max_pix_count}} \
+# -g /cfg/$geometry_filename --indexing={{indexing}} --zmq-request=next \ 
+# --copy-header=event_id --data-format=msgpack --no-data-timeout=360 -j 100 \
+# ${cell_arg} {{extra_args}}"
+
+dest_dir={{output_dir}}
+env -u PYTHONPATH -u PYTHONHOME uv run --script /sdf/data/lcls/ds/mfx/mfx101210926/scratch/valmar/lclstream_api/client/example/submit_crystfel_nersc.py --exp {{experiment_id}} --run {{run_id}} \
+--xrd-dest ${dest_dir#*ds} \
+--crystfel-args "--peaks peakfinder8 --peakfinder8-fast --threshold 20 \
+--min-snr 7 --min-res 80 --max-res 3000 \
+--min-pix-count 3 --max-pix-count 100 \
+-g /cfg/$geometry_filename --indexing={{indexing_arg}} --zmq-request=next \ 
+--copy-header=event_id --data-format=msgpack --no-data-timeout=180 -j 100 \
+${cell_arg} {{extra_args}}"
+
+
+echo "Job {{job_name}} sent to nersc"
+echo ""
