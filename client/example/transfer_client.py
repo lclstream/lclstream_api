@@ -9,9 +9,11 @@ body calls it twice: once to get a ZMQ URI, once to hand the transfer back.
 """
 
 import argparse
+import re
 import time
 from pathlib import Path
 
+import yaml
 from pydantic import AnyHttpUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -29,6 +31,10 @@ FINAL_STATES = {"canceled", "completed", "failed"}
 CONNECT_TIMEOUT_S = 300.0
 POLL_INTERVAL_S = 5.0
 
+# Matches run_lclsstream_nersc_template.py's placeholder style, so one
+# escaping convention covers every templated file in this directory.
+PLACEHOLDER_RE = re.compile(r"\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}")
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -44,6 +50,12 @@ class Settings(BaseSettings):
     source_identifier: str = "exp=mfx100852324,run=355"
     # Charged to a project we belong to, not the data's experiment.
     job_spec_account: str = "LCLS:mfx101592326"
+
+    # lclstreamer config, in the same YAML shape as lclstreamer's own
+    # examples/*.yaml. Mounted at /cfg alongside the geometry file.
+    # {{ source_identifier }} is filled in at runtime, since the per-job
+    # exp/run is not known until submission.
+    parameters_file: Path = Path("/cfg/lclstreamer-crystfel.yaml")
 
     @property
     def token(self) -> str:
@@ -61,46 +73,33 @@ class Settings(BaseSettings):
         return token
 
 
-def crystfel_parameters(source_identifier: str) -> params.Parameters:
-    """Mirrors lclstreamer's examples/lclstreamer-psana2-mfx-crystfel.yaml."""
-    return params.Parameters(
-        source_identifier=source_identifier,
-        skip_incomplete_events=True,
-        event_source=params.Psana2EventSourceParameters(type="Psana2EventSource"),
-        data_sources={
-            "timestamp": params.Psana2TimestampParameters(type="Psana2Timestamp"),
-            "detector_data": params.Psana2DetectorInterfaceParameters(
-                type="Psana2DetectorInterface",
-                psana_name="jungfrau",
-                psana_fields="raw.calib",
-            ),
-            "photon_wavelength": params.Psana2DetectorInterfaceParameters(
-                type="Psana2DetectorInterface",
-                psana_name="SIOC:SYS0:ML00:AO192",
-            ),
-            "detector_distance": params.Psana2DetectorInterfaceParameters(
-                type="Psana2DetectorInterface",
-                psana_name="MFX:DET:MMS:04.RBV",
-            ),
-            "run_info": params.Psana2RunInfoParameters(type="Psana2RunInfo"),
-        },
-        processing_pipeline=params.CrystfelPreprocessingPipelineParameters(
-            type="CrystfelPreprocessingPipeline"
-        ),
-        data_serializer=params.MsgpackBinarySerializerParameters(
-            type="MsgpackBinarySerializer"
-        ),
-        data_handlers=[
-            params.BinaryDataStreamingDataHandlerParameters(
-                type="BinaryDataStreamingDataHandler",
-                # lclstream_api overwrites this with the fastcache inurl.
-                urls=["tcp://127.0.0.1:1"],
-                distribute=False,
-                buffer=0,
-                role="client",
-            )
-        ],
-    )
+def load_parameters(parameters_file: Path, source_identifier: str) -> params.Parameters:
+    """Load lclstreamer parameters from a YAML file, in the format used by
+    lclstreamer's own examples/*.yaml.
+
+    The ``urls`` entry of any ``BinaryDataStreamingDataHandler`` is
+    overwritten by lclstream_api with the fastcache inurl, so its value in
+    the file is a placeholder.
+    """
+    try:
+        text = parameters_file.read_text()
+    except FileNotFoundError:
+        raise SystemExit(
+            f"Parameters file not found: {parameters_file}\n"
+            "Mount it at /cfg alongside the geometry file."
+        ) from None
+
+    def substitute(match: re.Match) -> str:
+        name = match.group(1)
+        if name == "source_identifier":
+            return source_identifier
+        raise SystemExit(f"Unknown placeholder {{{{ {name} }}}} in {parameters_file}")
+
+    rendered = PLACEHOLDER_RE.sub(substitute, text)
+    raw = yaml.safe_load(rendered)
+    if not isinstance(raw, dict):
+        raise SystemExit(f"{parameters_file} must contain a mapping of parameters")
+    return params.Parameters.model_validate(raw)
 
 
 def open_client(cfg: Settings) -> LclstreamApiClient:
@@ -141,7 +140,7 @@ def create(cfg: Settings) -> int:
     client = open_client(cfg)
     try:
         created = client.create_transfer(
-            crystfel_parameters(cfg.source_identifier),
+            load_parameters(cfg.parameters_file, cfg.source_identifier),
             cache_mode=CacheMode.PER_TRANSFER,
             consumer_socket=ConsumerSocket.REQ,
             job_spec_override=JobSpec(
