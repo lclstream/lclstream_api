@@ -1,4 +1,16 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "amscrot-py",
+#     "httpx>=0.28.1",
+#     "pydantic>=2.13.5",
+#     "pydantic-settings>=2.6.0",
+# ]
+#
+# [tool.uv.sources]
+# amscrot-py = { git = "https://github.com/doe-iri/iri-facility-api-toolkit", rev = "577a6e6d668ce743fb4f09486f21f2b8260193f2" }
+# ///
 """Why did a transfer fail? Pulls every log the SLAC side will give you.
 
     uv run transfer_logs.py <transfer_id>

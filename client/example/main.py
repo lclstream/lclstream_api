@@ -1,4 +1,16 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "lclstream-api-client",
+#     "pydantic>=2.13.5",
+#     "pydantic-settings>=2.6.0",
+#     "pyzmq>=27.1.0",
+# ]
+#
+# [tool.uv.sources]
+# lclstream-api-client = { git = "https://github.com/lclstream/lclstream_api.git", subdirectory = "client/", rev = "crystfel-nersc" }
+# ///
 """Submit a live lclstreamer transfer via lclstream_api_client and pull the
 resulting ZMQ stream directly in this process.
 

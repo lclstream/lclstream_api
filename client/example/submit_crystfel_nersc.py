@@ -1,4 +1,17 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "amscrot-py",
+#     "httpx2>=2.13.1",
+#     "pydantic>=2.13.5",
+#     "pydantic-settings>=2.6.0",
+#     "sfapi-client>=0.4.1",
+# ]
+#
+# [tool.uv.sources]
+# amscrot-py = { git = "https://github.com/doe-iri/iri-facility-api-toolkit", rev = "577a6e6d668ce743fb4f09486f21f2b8260193f2" }
+# ///
 """Submit crystfel_nersc.sh to NERSC through IRI as psdatmgr.
 
 Runs at SLAC; this is what the GUI launches. The job runs CrystFEL on a

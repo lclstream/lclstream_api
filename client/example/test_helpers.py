@@ -1,4 +1,17 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "amscrot-py",
+#     "httpx2>=2.13.1",
+#     "pydantic>=2.13.5",
+#     "pydantic-settings>=2.6.0",
+#     "sfapi-client>=0.4.1",
+# ]
+#
+# [tool.uv.sources]
+# amscrot-py = { git = "https://github.com/doe-iri/iri-facility-api-toolkit", rev = "577a6e6d668ce743fb4f09486f21f2b8260193f2" }
+# ///
 """Check the parsers and the per-job path naming in submit_crystfel_nersc."""
 
 import base64
@@ -20,6 +33,8 @@ NERSC = (
 )
 
 assert last_log_line(NERSC) == "491623670\t./adse13_160"
+
+
 def fake_jwt(exp: int) -> str:
     payload = base64.urlsafe_b64encode(json.dumps({"exp": exp}).encode()).decode()
     return f"header.{payload.rstrip('=')}.signature"
