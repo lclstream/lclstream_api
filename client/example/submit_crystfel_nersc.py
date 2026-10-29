@@ -31,7 +31,9 @@ import ast
 import base64
 import contextlib
 import json
+import re
 import shlex
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
@@ -68,7 +70,7 @@ class Settings(BaseSettings):
         "/lclstream_api/client/example/crystfel_nersc.sh"
     )
     account: str = "lcls"
-    queue: str = "regular"
+    queue: str = "realtime"
     duration: int = 1800
     # Job cwd on NERSC: .env, geometry, .secrets, logs.
     directory: Path = Path("/global/cfs/cdirs/lcls/crystfel-demo")
@@ -189,6 +191,8 @@ def submit(
         f"--exp {exp} --run {run} --status {job.id}"
     )
 
+    watch_job(cfg, facility, job.id, exp, run)
+
 
 def last_log_line(raw: str) -> str:
     """NERSC hands back the tail payload as a stringified dict."""
@@ -207,6 +211,128 @@ def show_status(
     except Exception:
         # Queued jobs have written nothing yet.
         print(f"log: not readable yet ({log})")
+
+
+# indexamajig prints progress like:
+#   "1000 images processed, 345 hits (34.5%), 112.3 images/sec, ..."
+PROGRESS_PATTERN = re.compile(
+    r"(?P<frames>\d+)\s+images processed,\s*(?P<hits>\d+)\s+hits"
+)
+
+POLL_INTERVAL_S = 10
+OUTPUT_LOG = Path("crystfel.out")
+STATUS_FILE = Path("status.txt")
+
+# amscrot/iri_service_client.py reports COMPLETED whenever the IRI API 404s
+# a job lookup, on the assumption PBS dropped it from the queue because it
+# finished. That assumption can be wrong (e.g. an expiring/invalid token
+# causing the 404), so this state is unconfirmed and must not be trusted.
+UNCONFIRMED_COMPLETED_MARKER = "assumed completed"
+
+
+def poll_job_status(
+    cfg: Settings, facility: FacilityClient, job_id: str, exp: str, run: str
+) -> tuple[str, str | None, str]:
+    """One status check: (state, status message, log tail line)."""
+    job = facility.resource(cfg.compute_resource).job(job_id)
+    state = job.refresh(historical=True)
+    message = job.message
+    log = str(log_file(cfg, exp, run, job_id))
+    try:
+        tail = facility.resource(cfg.fs_resource).fs.tail(log, lines=1)
+        line = last_log_line(tail.result)
+    except Exception:
+        line = f"not readable yet ({log})"
+    return state, message, line
+
+
+def format_elapsed(seconds: float) -> str:
+    total = int(seconds)
+    hrs, rem = divmod(total, 3600)
+    mins, secs = divmod(rem, 60)
+    return f"{hrs}hr {mins:02d}min {secs:02d}sec"
+
+
+def write_status_file(
+    state: str, log_line: str, start: float, now: float, frames: str, hits: str
+) -> None:
+    """Mirror the Cheetah status.txt format."""
+    content = (
+        "# CrystFEL status\n"
+        f"Update time: {datetime.fromtimestamp(now).strftime('%a %b %d %H:%M:%S %Y')}\n"
+        f"Elapsed time: {format_elapsed(now - start)}\n"
+        f"Status: {state}\n"
+        f"Frames processed: {frames}\n"
+        f"Number of hits: {hits}\n"
+    )
+    STATUS_FILE.write_text(content)
+
+
+def is_unconfirmed_completed(state: str, message: str | None) -> bool:
+    """True when amscrot reported COMPLETED purely from a 404, not a real
+    terminal state from the scheduler (see UNCONFIRMED_COMPLETED_MARKER)."""
+    return state == "COMPLETED" and bool(
+        message and UNCONFIRMED_COMPLETED_MARKER in message.lower()
+    )
+
+
+def watch_job(
+    cfg: Settings, facility: FacilityClient, job_id: str, exp: str, run: str
+) -> None:
+    """Poll the job every 10s, logging to crystfel.out and refreshing
+    status.txt, until the job reaches COMPLETED, FAILED, or CANCELED."""
+    start_wall = time.time()
+    last_frames: str | None = None
+    last_hits: str | None = None
+
+    # Seed status.txt immediately so a reader never finds it missing.
+    write_status_file("SUBMITTED", "", start_wall, start_wall, "0", "0")
+
+    with OUTPUT_LOG.open("a") as out:
+        while True:
+            now_wall = time.time()
+            try:
+                state, message, log_line = poll_job_status(
+                    cfg, facility, job_id, exp, run
+                )
+            except Exception as exc:  # keep polling through transient API errors
+                state, message, log_line = (
+                    "UNKNOWN",
+                    None,
+                    f"status check failed: {exc}",
+                )
+
+            unconfirmed = is_unconfirmed_completed(state, message)
+
+            timestamp = datetime.now(UTC).isoformat(timespec="seconds")
+            suffix = " (unconfirmed: assumed-from-404)" if unconfirmed else ""
+            out_line = f"{timestamp} state={state}{suffix} log={log_line}"
+            print(out_line)
+            out.write(out_line + "\n")
+            out.flush()
+
+            match = PROGRESS_PATTERN.search(log_line)
+            if match:
+                last_frames, last_hits = match.group("frames"), match.group("hits")
+
+            finished = not unconfirmed and state in ("COMPLETED", "FAILED", "CANCELED")
+
+            # Don't trust a COMPLETED that amscrot only inferred from a 404 --
+            # it may really mean the token expired or the job vanished for
+            # another reason. Skip the status.txt write and keep polling.
+            # Otherwise skip mid-run writes until frames/hits are known, but
+            # always write the final state so status.txt reflects the exit.
+            if not unconfirmed and (
+                finished or (last_frames is not None and last_hits is not None)
+            ):
+                frames = last_frames if last_frames is not None else "0"
+                hits = last_hits if last_hits is not None else "0"
+                write_status_file(state, log_line, start_wall, now_wall, frames, hits)
+
+            if finished:
+                break
+
+            time.sleep(POLL_INTERVAL_S)
 
 
 def main() -> int:
