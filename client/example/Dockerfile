@@ -19,6 +19,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv venv /app/.venv \
     && VIRTUAL_ENV=/app/.venv uv pip install \
         pydantic-settings \
+        pyyaml \
         "lclstream-api-client @ git+https://github.com/lclstream/lclstream_api.git@crystfel-nersc#subdirectory=client/"
 
 FROM python:3.13-slim
