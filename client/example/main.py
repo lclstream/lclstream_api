@@ -48,7 +48,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="LCLSTREAM_EXAMPLE_", env_file=".env")
 
     api_url: AnyHttpUrl = AnyHttpUrl(
-        "https://lcls-data-portal.slac.stanford.edu/lclstream-dev"
+        "https://lclstream-dev.slac.stanford.edu"
     )
     token_file: Path = Path("~/.s3df-access-token").expanduser()
     source_identifier: str = (

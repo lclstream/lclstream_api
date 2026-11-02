@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     )
 
     api_url: AnyHttpUrl = AnyHttpUrl(
-        "https://lcls-data-portal.slac.stanford.edu/lclstream-dev"
+        "https://lclstream-dev.slac.stanford.edu"
     )
     # The job body mounts the staged token here.
     token_file: Path = Path("/run/s3df_token")

@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     )
 
     api_url: AnyHttpUrl = AnyHttpUrl(
-        "https://lcls-data-portal.slac.stanford.edu/lclstream-dev"
+        "https://lclstream-dev.slac.stanford.edu"
     )
     token_file: Path = Path("~/.s3df-access-token").expanduser()
 
