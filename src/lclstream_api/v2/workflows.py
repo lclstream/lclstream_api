@@ -191,6 +191,15 @@ async def _load_setup_inputs(transfer_id: UUID) -> tcore.TransferSetup:
 
 
 @db.transaction()
+async def _load_saved_cache(transfer_id: UUID) -> tcore.CacheEndpoint:
+    transfer = await repo.get_transfer(db.sql_session(), transfer_id)
+    if transfer is None:
+        raise LookupError(f"transfer {transfer_id} disappeared during setup")
+    # Missing columns fail validation, never a second cache.
+    return tcore.CacheEndpoint.model_validate(transfer)
+
+
+@db.transaction()
 async def _save_producer(transfer_id: UUID, job_id: str) -> None:
     await repo.set_producer_job(db.sql_session(), transfer_id, job_id)
 
@@ -323,14 +332,21 @@ async def provision_transfer(transfer_id: UUID) -> None:
             if setup.cache_mode is tcore.CacheMode.shared
             else str(transfer_id)
         )
-        endpoint = await _create_cache(
-            setup.requested_by,
-            key,
-            pcore.cache_idle_timeout_ms(setup.cache_mode),
-            setup.consumer_socket.cache_output,
+        # The request already started EJFAT caches.
+        ejfat = setup.consumer_socket is tcore.ConsumerSocket.ejfat
+        endpoint = (
+            await _load_saved_cache(transfer_id)
+            if ejfat
+            else await _create_cache(
+                setup.requested_by,
+                key,
+                pcore.cache_idle_timeout_ms(setup.cache_mode),
+                setup.consumer_socket.cache_output,
+            )
         )
         progress = progress.with_cache(endpoint.cache_id, mode=setup.cache_mode)
-        await _save_cache(transfer_id, endpoint)
+        if not ejfat:
+            await _save_cache(transfer_id, endpoint)
 
         inputs = await _load_producer_inputs(transfer_id, endpoint)
         if inputs is None:
