@@ -356,11 +356,13 @@ async def test_shared_cache_attachment_rejects_retired_registry_row() -> None:
         await service.repo.set_cache_endpoints(
             session,
             TRANSFER_ID,
-            cache_id=TRANSFER_ID,
-            hostname="dtn.example",
-            pull_port=5000,
-            push_port=5001,
-            log_path=Path("/srv/fastcache/aa/cache.log"),
+            tcore.CacheEndpoint(
+                cache_id=TRANSFER_ID,
+                hostname="dtn.example",
+                pull_port=5000,
+                push_port=5001,
+                log_path=Path("/srv/fastcache/aa/cache.log"),
+            ),
         )
 
     assert transfer.cache_id is None

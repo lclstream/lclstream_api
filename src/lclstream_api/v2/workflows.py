@@ -110,13 +110,7 @@ async def _create_cache(
         idle_timeout_ms=idle_timeout_ms,
         output=output,
     )
-    return tcore.CacheEndpoint.from_uris(
-        cache.id,
-        cache.config.hostname,
-        str(cache.config.pull_uri),
-        str(cache.config.push_uri),
-        cache.log_path,
-    )
+    return cache.endpoint()
 
 
 # TODO: this is not idempotent so we cannot retry
@@ -175,15 +169,7 @@ async def _cancel_producer(job_id: str, owner: tcore.Principal) -> None:
 
 @db.transaction()
 async def _save_cache(transfer_id: UUID, endpoint: tcore.CacheEndpoint) -> None:
-    await repo.set_cache_endpoints(
-        db.sql_session(),
-        transfer_id,
-        cache_id=endpoint.cache_id,
-        hostname=endpoint.hostname,
-        pull_port=endpoint.pull_port,
-        push_port=endpoint.push_port,
-        log_path=endpoint.log_path,
-    )
+    await repo.set_cache_endpoints(db.sql_session(), transfer_id, endpoint)
 
 
 @db.transaction()

@@ -1,5 +1,4 @@
 import logging
-from pathlib import Path
 from typing import Any
 from uuid import UUID
 
@@ -122,13 +121,9 @@ async def list_unsettled_transfers(session: AsyncSession) -> list[Transfer]:
 async def set_cache_endpoints(
     session: AsyncSession,
     transfer_id: UUID,
-    *,
-    cache_id: UUID,
-    hostname: str,
-    pull_port: int,
-    push_port: int,
-    log_path: Path,
+    endpoint: tcore.CacheEndpoint,
 ) -> None:
+    cache_id = endpoint.cache_id
     transfer = await session.get(Transfer, transfer_id)
     if transfer is None:
         raise LookupError(f"transfer {transfer_id} not found")
@@ -149,10 +144,10 @@ async def set_cache_endpoints(
         if cache.retired_at is not None:
             raise LookupError(f"cache {cache_id} has been shut down")
     transfer.cache_id = cache_id
-    transfer.cache_hostname = hostname
-    transfer.pull_port = pull_port
-    transfer.push_port = push_port
-    transfer.cache_log_path = str(log_path)
+    transfer.cache_hostname = endpoint.hostname
+    transfer.pull_port = endpoint.pull_port
+    transfer.push_port = endpoint.push_port
+    transfer.cache_log_path = str(endpoint.log_path)
 
 
 async def set_producer_job(
