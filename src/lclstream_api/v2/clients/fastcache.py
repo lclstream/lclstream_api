@@ -49,6 +49,15 @@ class CachePublic(BaseModel):
     log_path: Path
     config: CacheConfig
 
+    def endpoint(self) -> tcore.CacheEndpoint:
+        return tcore.CacheEndpoint.from_uris(
+            self.id,
+            self.config.hostname,
+            str(self.config.pull_uri),
+            str(self.config.push_uri),
+            self.log_path,
+        )
+
 
 def _raise_for_status(response: httpx.Response) -> None:
     """httpx's raise_for_status drops the body, which is the only place
