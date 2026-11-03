@@ -144,6 +144,7 @@ async def test_transfer_creation_starts_workflow_without_request_credential(
             experiment=values["experiment"],
             run=values["run"],
             cache_mode=values["cache_mode"],
+            consumer_socket=values["consumer_socket"],
             cache_hostname=None,
             push_port=None,
         )

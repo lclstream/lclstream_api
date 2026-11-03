@@ -29,6 +29,7 @@ class ConsumerSocket(str, Enum):
     PULL = 'pull'
     DEALER = 'dealer'
     REQ = 'req'
+    EJFAT = 'ejfat'
 
     @classmethod
     def from_json(cls, json_str: str) -> Self:

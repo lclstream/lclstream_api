@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 from uuid import UUID
 
 from amsc_iri.models import JobSpec, JobState
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, AwareDatetime, BaseModel, ConfigDict, Field
 
 from ...lclstreamer_param import Parameters
 from .enums import (
@@ -224,13 +224,14 @@ class ProvisionProgress(BaseModel):
 class CacheEndpoint(BaseModel):
     """Transfer-domain view of an allocated cache."""
 
-    model_config = ConfigDict(frozen=True)
+    # Also reads a Transfer row's cache columns.
+    model_config = ConfigDict(frozen=True, from_attributes=True)
 
     cache_id: UUID
-    hostname: str
+    hostname: str = Field(validation_alias=AliasChoices("hostname", "cache_hostname"))
     pull_port: int
     push_port: int
-    log_path: Path
+    log_path: Path = Field(validation_alias=AliasChoices("log_path", "cache_log_path"))
 
     @property
     def pull_uri(self) -> str:

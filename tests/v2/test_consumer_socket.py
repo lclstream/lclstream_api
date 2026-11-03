@@ -22,6 +22,7 @@ NOW = datetime(2026, 1, 1, tzinfo=UTC)
         (ConsumerSocket.pull, "push"),
         (ConsumerSocket.dealer, "router"),
         (ConsumerSocket.req, "rep"),
+        (ConsumerSocket.ejfat, "ejfat"),
     ],
 )
 def test_cache_output_mapping(socket: ConsumerSocket, output: str) -> None:
@@ -43,13 +44,24 @@ def _transfer(state: TransferState, socket: ConsumerSocket) -> SimpleNamespace:
     )
 
 
-@pytest.mark.parametrize("socket", list(ConsumerSocket))
+@pytest.mark.parametrize(
+    "socket", [s for s in ConsumerSocket if s is not ConsumerSocket.ejfat]
+)
 def test_ready_transfer_publishes_socket(socket: ConsumerSocket) -> None:
     public = TransferPublic.from_transfer(_transfer(TransferState.ready, socket))
 
     assert public.connection_info is not None
     assert public.connection_info.socket is socket
     assert public.connection_info.uri == "tcp://dtn-01:5555"
+
+
+def test_ejfat_transfer_has_no_connection_info() -> None:
+    """The consumer receives from its own LB, not the cache."""
+    public = TransferPublic.from_transfer(
+        _transfer(TransferState.ready, ConsumerSocket.ejfat)
+    )
+
+    assert public.connection_info is None
 
 
 def test_unready_transfer_has_no_connection_info() -> None:

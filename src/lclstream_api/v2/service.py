@@ -13,6 +13,7 @@ from uuid import UUID, uuid4
 
 import httpx
 from dbos import DBOS, SetWorkflowID
+from pydantic import SecretStr
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..lclstreamer_param import Parameters
@@ -73,6 +74,7 @@ async def create_transfer(
     run: str,
     consumer_socket: ConsumerSocket = ConsumerSocket.pull,
     job_spec_override: JobSpec | None = None,
+    ejfat_uri: SecretStr | None = None,
 ) -> TransferPublic:
     transfer_id = uuid4()
     job_spec = pcore.build_job_spec(
@@ -96,6 +98,13 @@ async def create_transfer(
             required_seconds=required_seconds,
             remaining_seconds=remaining_seconds,
         )
+    # Start here so the URI isn't stored.
+    cache = (
+        await _create_ejfat_cache(transfer_id, user, ejfat_uri)
+        if ejfat_uri is not None
+        else None
+    )
+    # On failure, fastcache's idle timeout reaps it.
     async with session.begin():
         transfer = await repo.insert_transfer(
             session,
@@ -111,11 +120,32 @@ async def create_transfer(
             consumer_socket=consumer_socket,
             job_spec=job_spec.model_dump(mode="json"),
         )
+        if cache is not None:
+            await repo.set_cache_endpoints(session, transfer_id, cache.endpoint())
         # Still provisioning, so it carries no connection info.
         public = TransferPublic.from_transfer(transfer)
     with SetWorkflowID(str(transfer_id)):
         await DBOS.start_workflow_async(workflows.provision_transfer, transfer_id)
     return public
+
+
+async def _create_ejfat_cache(
+    transfer_id: UUID, user: AuthenticatedUser, ejfat_uri: SecretStr
+) -> fastcache.CachePublic:
+    try:
+        return await fastcache.client().create_cache(
+            key=str(transfer_id),
+            requested_by=user.email,
+            idle_timeout_ms=pcore.cache_idle_timeout_ms(CacheMode.per_transfer),
+            output=ConsumerSocket.ejfat.cache_output,
+            ejfat_uri=ejfat_uri,
+        )
+    except httpx.HTTPStatusError as exc:
+        detail = exc.response.text.strip()[: fastcache.DETAIL_LIMIT]
+        raise UpstreamError(f"failed to start EJFAT cache: {detail}") from exc
+    except httpx.HTTPError as exc:
+        logger.exception("fastcache_api unreachable")
+        raise UpstreamError("failed to start EJFAT cache") from exc
 
 
 async def list_transfers(

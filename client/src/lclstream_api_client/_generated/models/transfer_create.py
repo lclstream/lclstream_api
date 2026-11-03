@@ -17,7 +17,7 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, SecretStr
 from typing import Any, ClassVar, Dict, List, Optional
 from lclstream_api_client._generated.models.cache_mode import CacheMode
 from lclstream_api_client._generated.models.consumer_socket import ConsumerSocket
@@ -33,10 +33,11 @@ class TransferCreate(BaseModel):
     """ # noqa: E501
     cache_mode: Optional[CacheMode] = None
     consumer_socket: Optional[ConsumerSocket] = None
+    ejfat_uri: Optional[SecretStr] = None
     job_spec_override: Optional[JobSpec] = None
     parameters: Parameters
     additional_properties: Dict[str, Any] = {}
-    __properties: ClassVar[List[str]] = ["cache_mode", "consumer_socket", "job_spec_override", "parameters"]
+    __properties: ClassVar[List[str]] = ["cache_mode", "consumer_socket", "ejfat_uri", "job_spec_override", "parameters"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -90,6 +91,11 @@ class TransferCreate(BaseModel):
             for _key, _value in self.additional_properties.items():
                 _dict[_key] = _value
 
+        # set to None if ejfat_uri (nullable) is None
+        # and model_fields_set contains the field
+        if self.ejfat_uri is None and "ejfat_uri" in self.model_fields_set:
+            _dict['ejfat_uri'] = None
+
         # set to None if job_spec_override (nullable) is None
         # and model_fields_set contains the field
         if self.job_spec_override is None and "job_spec_override" in self.model_fields_set:
@@ -109,6 +115,7 @@ class TransferCreate(BaseModel):
         _obj = cls.model_validate({
             "cache_mode": obj.get("cache_mode"),
             "consumer_socket": obj.get("consumer_socket"),
+            "ejfat_uri": obj.get("ejfat_uri"),
             "job_spec_override": JobSpec.from_dict(obj["job_spec_override"]) if obj.get("job_spec_override") is not None else None,
             "parameters": Parameters.from_dict(obj["parameters"]) if obj.get("parameters") is not None else None
         })

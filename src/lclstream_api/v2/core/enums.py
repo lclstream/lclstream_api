@@ -41,6 +41,8 @@ class ConsumerSocket(StrEnum):
     pull = "pull"  # fastcache pushes; the default
     dealer = "dealer"  # fastcache binds ROUTER
     req = "req"  # fastcache binds REP
+    # Not ZMQ: fastcache sends to an LB.
+    ejfat = "ejfat"
 
     @property
     def cache_output(self) -> str:
@@ -52,6 +54,7 @@ _CACHE_OUTPUT = {
     ConsumerSocket.pull: "push",
     ConsumerSocket.dealer: "router",
     ConsumerSocket.req: "rep",
+    ConsumerSocket.ejfat: "ejfat",
 }
 
 

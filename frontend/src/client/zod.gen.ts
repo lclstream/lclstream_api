@@ -157,7 +157,8 @@ export const zConstValueParameters = z.object({
 export const zConsumerSocket = z.enum([
     'pull',
     'dealer',
-    'req'
+    'req',
+    'ejfat'
 ]);
 
 /**
@@ -763,6 +764,18 @@ export const zJobSpec = z.object({
 export const zTransferCreate = z.object({
     cache_mode: zCacheMode.optional().default('per_transfer'),
     consumer_socket: zConsumerSocket.optional().default('pull'),
+    ejfat_uri: z.null().optional(),
+    job_spec_override: zJobSpec.nullish(),
+    parameters: zParameters
+});
+
+/**
+ * TransferCreate
+ */
+export const zTransferCreateWritable = z.object({
+    cache_mode: zCacheMode.optional().default('per_transfer'),
+    consumer_socket: zConsumerSocket.optional().default('pull'),
+    ejfat_uri: z.string().nullish(),
     job_spec_override: zJobSpec.nullish(),
     parameters: zParameters
 });
@@ -809,7 +822,7 @@ export const zGetTransfersTransfersGetData = z.object({
 export const zGetTransfersTransfersGetResponse = zTransfersPublic;
 
 export const zNewTransferTransfersPostData = z.object({
-    body: zTransferCreate,
+    body: zTransferCreateWritable,
     path: z.never().optional(),
     query: z.never().optional()
 });

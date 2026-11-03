@@ -269,7 +269,8 @@ export const ConsumerSocketSchema = {
     enum: [
         'pull',
         'dealer',
-        'req'
+        'req',
+        'ejfat'
     ],
     title: 'ConsumerSocket',
     type: 'string'
@@ -1375,6 +1376,14 @@ export const TransferCreateSchema = {
             $ref: '#/components/schemas/ConsumerSocket',
             default: 'pull'
         },
+        ejfat_uri: {
+            anyOf: [
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Ejfat Uri'
+        },
         job_spec_override: {
             anyOf: [
                 {
@@ -1756,5 +1765,49 @@ export const VolumeMountSchema = {
         'target'
     ],
     title: 'VolumeMount',
+    type: 'object'
+} as const;
+
+export const TransferCreateWritableSchema = {
+    properties: {
+        cache_mode: {
+            $ref: '#/components/schemas/CacheMode',
+            default: 'per_transfer'
+        },
+        consumer_socket: {
+            $ref: '#/components/schemas/ConsumerSocket',
+            default: 'pull'
+        },
+        ejfat_uri: {
+            anyOf: [
+                {
+                    format: 'password',
+                    type: 'string',
+                    writeOnly: true
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Ejfat Uri'
+        },
+        job_spec_override: {
+            anyOf: [
+                {
+                    $ref: '#/components/schemas/JobSpec'
+                },
+                {
+                    type: 'null'
+                }
+            ]
+        },
+        parameters: {
+            $ref: '#/components/schemas/Parameters'
+        }
+    },
+    required: [
+        'parameters'
+    ],
+    title: 'TransferCreate',
     type: 'object'
 } as const;

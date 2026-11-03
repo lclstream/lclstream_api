@@ -226,7 +226,7 @@ export type ConsumerConnectionInfo = {
  * ``dealer`` and ``req`` are request-driven: the consumer asks for each
  * message. fastcache only reports metrics under ``pull``.
  */
-export type ConsumerSocket = 'pull' | 'dealer' | 'req';
+export type ConsumerSocket = 'pull' | 'dealer' | 'req' | 'ejfat';
 
 /**
  * Container
@@ -982,6 +982,10 @@ export type SourceIdentifierParameters = {
 export type TransferCreate = {
     cache_mode?: CacheMode;
     consumer_socket?: ConsumerSocket;
+    /**
+     * Ejfat Uri
+     */
+    ejfat_uri?: null;
     job_spec_override?: JobSpec | null;
     parameters: Parameters;
 };
@@ -1187,6 +1191,20 @@ export type VolumeMount = {
     target: string;
 };
 
+/**
+ * TransferCreate
+ */
+export type TransferCreateWritable = {
+    cache_mode?: CacheMode;
+    consumer_socket?: ConsumerSocket;
+    /**
+     * Ejfat Uri
+     */
+    ejfat_uri?: string | null;
+    job_spec_override?: JobSpec | null;
+    parameters: Parameters;
+};
+
 export type GetCachesCachesGetData = {
     body?: never;
     path?: never;
@@ -1290,7 +1308,7 @@ export type GetTransfersTransfersGetResponses = {
 export type GetTransfersTransfersGetResponse = GetTransfersTransfersGetResponses[keyof GetTransfersTransfersGetResponses];
 
 export type NewTransferTransfersPostData = {
-    body: TransferCreate;
+    body: TransferCreateWritable;
     path?: never;
     query?: never;
     url: '/transfers/';

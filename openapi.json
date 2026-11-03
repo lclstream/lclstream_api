@@ -260,7 +260,8 @@
         "enum": [
           "pull",
           "dealer",
-          "req"
+          "req",
+          "ejfat"
         ],
         "title": "ConsumerSocket",
         "type": "string"
@@ -1339,6 +1340,19 @@
           "consumer_socket": {
             "$ref": "#/components/schemas/ConsumerSocket",
             "default": "pull"
+          },
+          "ejfat_uri": {
+            "anyOf": [
+              {
+                "format": "password",
+                "type": "string",
+                "writeOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ejfat Uri"
           },
           "job_spec_override": {
             "anyOf": [

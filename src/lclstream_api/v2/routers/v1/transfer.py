@@ -72,6 +72,7 @@ async def new_transfer(
         run=run,
         consumer_socket=body.consumer_socket,
         job_spec_override=body.job_spec_override,
+        ejfat_uri=body.ejfat_uri,
     )
 
 
