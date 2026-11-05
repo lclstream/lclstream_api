@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict
+from pydantic import AwareDatetime, BaseModel, ConfigDict, SecretStr, model_validator
 
 from ..lclstreamer_param import Parameters as LCLStreamerParameters
 from .core.enums import (
@@ -50,6 +50,24 @@ class TransferCreate(BaseModel):
     cache_mode: CacheMode = CacheMode.per_transfer
     consumer_socket: ConsumerSocket = ConsumerSocket.pull
     job_spec_override: JobSpec | None = None
+    # The client's EJFAT LB instance URI.
+    ejfat_uri: SecretStr | None = None
+
+    @model_validator(mode="after")
+    def _check_ejfat(self) -> TransferCreate:
+        # Messages must never include the URI.
+        if (self.consumer_socket is ConsumerSocket.ejfat) != (
+            self.ejfat_uri is not None
+        ):
+            raise ValueError("ejfat_uri goes with consumer_socket=ejfat")
+        if self.ejfat_uri is None:
+            return self
+        if not self.ejfat_uri.get_secret_value().startswith(("ejfat://", "ejfats://")):
+            raise ValueError("ejfat_uri must start with ejfat:// or ejfats://")
+        # One LB per consumer, not shared.
+        if self.cache_mode is not CacheMode.per_transfer:
+            raise ValueError("consumer_socket=ejfat requires cache_mode=per_transfer")
+        return self
 
 
 class TransitionPublic(BaseModel):
@@ -76,8 +94,11 @@ class TransferPublic(BaseModel):
         cls, transfer: Transfer, consumer_hosts: Mapping[str, str] | None = None
     ) -> TransferPublic:
         connection_info: ConsumerConnectionInfo | None = None
+        socket = ConsumerSocket(transfer.consumer_socket)
+        # EJFAT consumers receive from their LB.
         if (
-            transfer.state == TransferState.ready
+            socket is not ConsumerSocket.ejfat
+            and transfer.state == TransferState.ready
             and transfer.cache_hostname is not None
             and transfer.push_port is not None
         ):
@@ -87,7 +108,7 @@ class TransferPublic(BaseModel):
             connection_info = ConsumerConnectionInfo.from_endpoint(
                 hostname,
                 transfer.push_port,
-                ConsumerSocket(transfer.consumer_socket),
+                socket,
             )
         return cls(
             id=transfer.id,

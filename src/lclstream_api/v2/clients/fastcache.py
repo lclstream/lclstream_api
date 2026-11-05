@@ -4,7 +4,7 @@ from pathlib import Path
 from uuid import UUID
 
 import httpx
-from pydantic import AnyUrl, BaseModel
+from pydantic import AnyUrl, BaseModel, SecretStr
 
 from .. import config
 from ..config import FastcacheClientSettings
@@ -48,6 +48,15 @@ class CachePublic(BaseModel):
     state: tcore.CacheState
     log_path: Path
     config: CacheConfig
+
+    def endpoint(self) -> tcore.CacheEndpoint:
+        return tcore.CacheEndpoint.from_uris(
+            self.id,
+            self.config.hostname,
+            str(self.config.pull_uri),
+            str(self.config.push_uri),
+            self.log_path,
+        )
 
 
 def _raise_for_status(response: httpx.Response) -> None:
@@ -105,6 +114,7 @@ class FastcacheClient:
         requested_by: str,
         idle_timeout_ms: int | None = None,
         output: str = "push",
+        ejfat_uri: SecretStr | None = None,
     ) -> CachePublic:
         body = CacheCreate(
             key=key,
@@ -112,10 +122,11 @@ class FastcacheClient:
             idle_timeout_ms=idle_timeout_ms,
             output=output,
         )
-        response = await self._http.post(
-            "/caches/",
-            json=body.model_dump(mode="json", exclude_none=True),
-        )
+        payload = body.model_dump(mode="json", exclude_none=True)
+        # model_dump masks SecretStr values.
+        if ejfat_uri is not None:
+            payload["ejfat_uri"] = ejfat_uri.get_secret_value()
+        response = await self._http.post("/caches/", json=payload)
         _raise_for_status(response)
         return CachePublic.model_validate(response.json())
 

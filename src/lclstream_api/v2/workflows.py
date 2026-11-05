@@ -110,13 +110,7 @@ async def _create_cache(
         idle_timeout_ms=idle_timeout_ms,
         output=output,
     )
-    return tcore.CacheEndpoint.from_uris(
-        cache.id,
-        cache.config.hostname,
-        str(cache.config.pull_uri),
-        str(cache.config.push_uri),
-        cache.log_path,
-    )
+    return cache.endpoint()
 
 
 # TODO: this is not idempotent so we cannot retry
@@ -175,15 +169,7 @@ async def _cancel_producer(job_id: str, owner: tcore.Principal) -> None:
 
 @db.transaction()
 async def _save_cache(transfer_id: UUID, endpoint: tcore.CacheEndpoint) -> None:
-    await repo.set_cache_endpoints(
-        db.sql_session(),
-        transfer_id,
-        cache_id=endpoint.cache_id,
-        hostname=endpoint.hostname,
-        pull_port=endpoint.pull_port,
-        push_port=endpoint.push_port,
-        log_path=endpoint.log_path,
-    )
+    await repo.set_cache_endpoints(db.sql_session(), transfer_id, endpoint)
 
 
 @db.transaction()
@@ -202,6 +188,15 @@ async def _load_setup_inputs(transfer_id: UUID) -> tcore.TransferSetup:
         cache_mode=tcore.CacheMode(transfer.cache_mode),
         consumer_socket=tcore.ConsumerSocket(transfer.consumer_socket),
     )
+
+
+@db.transaction()
+async def _load_saved_cache(transfer_id: UUID) -> tcore.CacheEndpoint:
+    transfer = await repo.get_transfer(db.sql_session(), transfer_id)
+    if transfer is None:
+        raise LookupError(f"transfer {transfer_id} disappeared during setup")
+    # Missing columns fail validation, never a second cache.
+    return tcore.CacheEndpoint.model_validate(transfer)
 
 
 @db.transaction()
@@ -337,14 +332,21 @@ async def provision_transfer(transfer_id: UUID) -> None:
             if setup.cache_mode is tcore.CacheMode.shared
             else str(transfer_id)
         )
-        endpoint = await _create_cache(
-            setup.requested_by,
-            key,
-            pcore.cache_idle_timeout_ms(setup.cache_mode),
-            setup.consumer_socket.cache_output,
+        # The request already started EJFAT caches.
+        ejfat = setup.consumer_socket is tcore.ConsumerSocket.ejfat
+        endpoint = (
+            await _load_saved_cache(transfer_id)
+            if ejfat
+            else await _create_cache(
+                setup.requested_by,
+                key,
+                pcore.cache_idle_timeout_ms(setup.cache_mode),
+                setup.consumer_socket.cache_output,
+            )
         )
         progress = progress.with_cache(endpoint.cache_id, mode=setup.cache_mode)
-        await _save_cache(transfer_id, endpoint)
+        if not ejfat:
+            await _save_cache(transfer_id, endpoint)
 
         inputs = await _load_producer_inputs(transfer_id, endpoint)
         if inputs is None:
