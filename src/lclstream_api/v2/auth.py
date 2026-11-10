@@ -111,7 +111,7 @@ async def get_valid_token(
         return None
     try:
         return _cipher().decrypt(row.encrypted_token).decode()
-    except InvalidToken, UnicodeDecodeError:
+    except (InvalidToken, UnicodeDecodeError):
         return None
 
 

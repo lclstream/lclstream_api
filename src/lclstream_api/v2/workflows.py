@@ -414,7 +414,7 @@ async def _observe(
             producer_state = await _get_producer_state(
                 resources.producer_job_id, resources.owner
             )
-        except CredentialUnavailableError, iri.IriAuthenticationError:
+        except (CredentialUnavailableError, iri.IriAuthenticationError):
             raise
         except Exception:
             logger.exception(
@@ -439,7 +439,7 @@ async def _reconcile_one(transfer_id: UUID, now: AwareDatetime) -> None:
 
     try:
         observation = await _observe(transfer_id, resources)
-    except CredentialUnavailableError, iri.IriAuthenticationError:
+    except (CredentialUnavailableError, iri.IriAuthenticationError):
         # FastCache auth is separate; clean it up first.
         # An mTLS outage then retries on the next pass.
         if resources.cache_id and resources.cache_mode is tcore.CacheMode.per_transfer:

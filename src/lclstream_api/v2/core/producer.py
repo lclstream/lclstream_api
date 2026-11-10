@@ -1,5 +1,7 @@
 """Pure builders for the producer (lclstreamer) IRI job. No IO."""
 
+from __future__ import annotations
+
 import re
 from enum import StrEnum
 from pathlib import Path
