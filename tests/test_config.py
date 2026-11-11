@@ -1,9 +1,3 @@
-import os
-from pathlib import Path
-
-import pytest
-import yaml
-
 from lclstream_api.config import Config
 
 # this config only works if lclstreamer is setup...

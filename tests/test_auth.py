@@ -217,6 +217,7 @@ def test_chain_falls_through() -> None:
 # backend for each user, without touching certificates.
 # ---------------------------------------------------------------------------
 
+
 class _MockPortDB:
     def __init__(self, entries: dict[int, PortEntry]) -> None:
         self._entries = entries
@@ -239,7 +240,9 @@ class _MockXferDB:
 def _port_entry(eid: int, user: str) -> PortEntry:
     port = 11400 + eid * 2
     return PortEntry(
-        eid=eid, user=user, port=port,
+        eid=eid,
+        user=user,
+        port=port,
         internal_url=f"tcp://127.0.0.1:{port}",
         external_url=f"tcp://127.0.0.1:{port + 1}",
     )
@@ -247,8 +250,11 @@ def _port_entry(eid: int, user: str) -> PortEntry:
 
 def _mock_transfer() -> SimpleNamespace:
     log_entry = PortTransition(
-        time=time.time(), client=ClientName.cache,
-        state=psik.JobState.active, info="", jobndx=0,
+        time=time.time(),
+        client=ClientName.cache,
+        state=psik.JobState.active,
+        info="",
+        jobndx=0,
     )
     return SimpleNamespace(
         states={ClientName.cache: psik.JobState.active},

@@ -61,4 +61,3 @@ class XferDatabase:  # singleton
             self.jobids.pop((ClientName.cache, xfer.forwarder_job.stamp))
         await xfer.cancel_job()
         return xfer
-

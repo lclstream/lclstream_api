@@ -82,4 +82,3 @@ class PortDatabase:  # singleton
         entry = self.entries.pop(eid)
         self.free(entry.port)
         return entry
-

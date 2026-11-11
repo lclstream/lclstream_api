@@ -31,10 +31,10 @@ async def handle_callback(
     try:
         xfer, job = db.lookup_job(client, cb.jobid)
     except KeyError:
-        raise HTTPException(404, "Job not found.")
+        raise HTTPException(404, "Job not found.") from None
     if job is None:
         # xfer found, but job is terminated already
-        raise HTTPException(404, "Job not found.")
+        raise HTTPException(404, "Job not found.") from None
 
     if job.spec.cb_secret:
         if x_hub_signature_256 is None:
@@ -63,6 +63,7 @@ async def handle_callback(
     )
 
     return True
+
 
 @callback.post("/producer")
 async def producer_callback(
