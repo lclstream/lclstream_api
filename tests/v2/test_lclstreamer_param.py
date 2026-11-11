@@ -5,13 +5,12 @@ becomes a 422. These pin what upstream has today.
 """
 
 import pytest
-from pydantic import TypeAdapter, ValidationError
-
-from lclstream_api.lclstreamer_param import (
+from lclstreamer.models.parameters import (
     BinaryDataStreamingDataHandlerParameters,
     DataSerializerParameters,
     ProcessingPipelineParameters,
 )
+from pydantic import TypeAdapter, ValidationError
 
 _PIPELINES = TypeAdapter(ProcessingPipelineParameters)
 _SERIALIZERS = TypeAdapter(DataSerializerParameters)

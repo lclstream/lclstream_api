@@ -32,7 +32,7 @@ export const BinaryDataStreamingDataHandlerParametersSchema = {
             type: 'integer'
         },
         distribute: {
-            default: true,
+            default: false,
             title: 'Distribute',
             type: 'boolean'
         },
@@ -316,7 +316,7 @@ export const ContainerSchema = {
 
 export const CrystfelPreprocessingPipelineParametersSchema = {
     additionalProperties: false,
-    description: 'Configuration parameters for the CrystFEL Preprocessing Pipeline\n\nThis pipeline lays out the data in a format that is understood by the\nCrystFEL Serial Crystalography Processing software.\n\nAttributes:\n\n    type: Discriminator field, must be ``"CrystfelPreprocessingPipeline"``',
+    description: 'Configuration parameters for the CrystFEL  Preprocessing Pipeline\n\nThis pipeline lays out the data in a format that is understood by the\nCrystFEL Serial Crystalography Processing software.\n\nAttributes:\n\n    type: Discriminator field, must be ``"CrystfelPreprocessingPipeline"``',
     properties: {
         type: {
             const: 'CrystfelPreprocessingPipeline',
@@ -798,7 +798,7 @@ export const MessageSchema = {
 
 export const MsgpackBinarySerializerParametersSchema = {
     additionalProperties: false,
-    description: 'Configuration parameters for the MsgPack binary serializer\n\nThis serializer encodes a batch of event data arrays into a MsgPack binary\nobject.\n\nAttributes:\n\n    type: Discriminator field, must be ``"MsgpackBinarySerializer"``',
+    description: 'Configuration parameters for the MsgPack binary serializer\n\nThis serializer encodes a batch of event data arrays into a MsgPack binary\nobject.\n\nAttributes:\n\n    type: Discriminator field, must be ``"MsgpackBinarySerializerParametersBinarySerializer"``',
     properties: {
         type: {
             const: 'MsgpackBinarySerializer',
@@ -949,6 +949,31 @@ export const ParametersSchema = {
             ],
             title: 'Processing Pipeline'
         },
+        requirements: {
+            additionalProperties: {
+                items: {
+                    type: 'string'
+                },
+                type: 'array'
+            },
+            default: {
+                CrystfelPreprocessingPipeline: [
+                    'detector_data',
+                    'photon_wavelength',
+                    'detector_distance',
+                    'timestamp',
+                    'run_info'
+                ],
+                SimplonBinarySerializer: [
+                    'timestamp',
+                    'detector_data',
+                    'detector_geometry',
+                    'run_info'
+                ]
+            },
+            title: 'Requirements',
+            type: 'object'
+        },
         skip_incomplete_events: {
             title: 'Skip Incomplete Events',
             type: 'boolean'
@@ -1025,6 +1050,17 @@ export const PeaknetPreprocessingPipelineParametersSchema = {
 export const Psana1DetectorInterfaceParametersSchema = {
     additionalProperties: false,
     properties: {
+        dtype: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Dtype'
+        },
         psana_fields: {
             anyOf: [
                 {

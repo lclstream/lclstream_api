@@ -10,12 +10,12 @@ from uuid import UUID
 
 import yaml
 from amsc_iri.models import JobAttributes, JobSpec, ResourceSpec
-from pydantic import BaseModel, ConfigDict
-
-from ...lclstreamer_param import (
+from lclstreamer.models.parameters import (
     BinaryDataStreamingDataHandlerParameters,
     Parameters,
 )
+from pydantic import BaseModel, ConfigDict
+
 from .enums import CacheMode
 
 if TYPE_CHECKING:

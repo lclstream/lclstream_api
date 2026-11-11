@@ -6,9 +6,9 @@ from urllib.parse import urlparse
 from uuid import UUID
 
 from amsc_iri.models import JobSpec, JobState
+from lclstreamer.models.parameters import Parameters
 from pydantic import AliasChoices, AwareDatetime, BaseModel, ConfigDict, Field
 
-from ...lclstreamer_param import Parameters
 from .enums import (
     CacheMode,
     CacheState,

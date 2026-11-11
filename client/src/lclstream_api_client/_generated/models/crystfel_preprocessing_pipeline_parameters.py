@@ -25,7 +25,7 @@ from pydantic_core import to_jsonable_python
 
 class CrystfelPreprocessingPipelineParameters(BaseModel):
     """
-    Configuration parameters for the CrystFEL Preprocessing Pipeline  This pipeline lays out the data in a format that is understood by the CrystFEL Serial Crystalography Processing software.  Attributes:      type: Discriminator field, must be ``\"CrystfelPreprocessingPipeline\"``
+    Configuration parameters for the CrystFEL  Preprocessing Pipeline  This pipeline lays out the data in a format that is understood by the CrystFEL Serial Crystalography Processing software.  Attributes:      type: Discriminator field, must be ``\"CrystfelPreprocessingPipeline\"``
     """ # noqa: E501
     type: StrictStr
     __properties: ClassVar[List[str]] = ["type"]

@@ -25,7 +25,7 @@ from pydantic_core import to_jsonable_python
 
 class MsgpackBinarySerializerParameters(BaseModel):
     """
-    Configuration parameters for the MsgPack binary serializer  This serializer encodes a batch of event data arrays into a MsgPack binary object.  Attributes:      type: Discriminator field, must be ``\"MsgpackBinarySerializer\"``
+    Configuration parameters for the MsgPack binary serializer  This serializer encodes a batch of event data arrays into a MsgPack binary object.  Attributes:      type: Discriminator field, must be ``\"MsgpackBinarySerializerParametersBinarySerializer\"``
     """ # noqa: E501
     type: StrictStr
     __properties: ClassVar[List[str]] = ["type"]

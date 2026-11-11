@@ -6,9 +6,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from uuid import UUID
 
+from lclstreamer.models.parameters import Parameters as LCLStreamerParameters
 from pydantic import AwareDatetime, BaseModel, ConfigDict, SecretStr, model_validator
 
-from ..lclstreamer_param import Parameters as LCLStreamerParameters
 from .core.enums import (
     CacheMode,
     CacheState,

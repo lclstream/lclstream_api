@@ -5,8 +5,8 @@ from uuid import UUID
 import pytest
 import yaml
 from amsc_iri.models import JobAttributes, JobSpec
+from lclstreamer.models.parameters import Parameters
 
-from lclstream_api.lclstreamer_param import Parameters
 from lclstream_api.v2.config import LCLStreamerProducerSettings
 from lclstream_api.v2.core.producer import (
     CONFIG_FILENAME,

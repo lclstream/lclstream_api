@@ -257,7 +257,7 @@ export type Container = {
 /**
  * CrystfelPreprocessingPipelineParameters
  *
- * Configuration parameters for the CrystFEL Preprocessing Pipeline
+ * Configuration parameters for the CrystFEL  Preprocessing Pipeline
  *
  * This pipeline lays out the data in a format that is understood by the
  * CrystFEL Serial Crystalography Processing software.
@@ -567,7 +567,7 @@ export type Message = {
  *
  * Attributes:
  *
- * type: Discriminator field, must be ``"MsgpackBinarySerializer"``
+ * type: Discriminator field, must be ``"MsgpackBinarySerializerParametersBinarySerializer"``
  */
 export type MsgpackBinarySerializerParameters = {
     /**
@@ -667,6 +667,12 @@ export type Parameters = {
         type: 'CrystfelPreprocessingPipeline';
     } & CrystfelPreprocessingPipelineParameters);
     /**
+     * Requirements
+     */
+    requirements?: {
+        [key: string]: Array<string>;
+    };
+    /**
      * Skip Incomplete Events
      */
     skip_incomplete_events: boolean;
@@ -741,6 +747,10 @@ export type PeaknetPreprocessingPipelineParameters = {
  * Psana1DetectorInterfaceParameters
  */
 export type Psana1DetectorInterfaceParameters = {
+    /**
+     * Dtype
+     */
+    dtype?: string | null;
     /**
      * Psana Fields
      */

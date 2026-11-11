@@ -28,10 +28,11 @@ class Psana1DetectorInterfaceParameters(BaseModel):
     """
     Psana1DetectorInterfaceParameters
     """ # noqa: E501
+    dtype: Optional[StrictStr] = None
     psana_fields: Optional[PsanaFields] = None
     psana_name: StrictStr
     type: StrictStr
-    __properties: ClassVar[List[str]] = ["psana_fields", "psana_name", "type"]
+    __properties: ClassVar[List[str]] = ["dtype", "psana_fields", "psana_name", "type"]
 
     @field_validator('type')
     def type_validate_enum(cls, value):
@@ -82,6 +83,11 @@ class Psana1DetectorInterfaceParameters(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of psana_fields
         if self.psana_fields:
             _dict['psana_fields'] = self.psana_fields.to_dict()
+        # set to None if dtype (nullable) is None
+        # and model_fields_set contains the field
+        if self.dtype is None and "dtype" in self.model_fields_set:
+            _dict['dtype'] = None
+
         # set to None if psana_fields (nullable) is None
         # and model_fields_set contains the field
         if self.psana_fields is None and "psana_fields" in self.model_fields_set:
@@ -99,6 +105,7 @@ class Psana1DetectorInterfaceParameters(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
+            "dtype": obj.get("dtype"),
             "psana_fields": PsanaFields.from_dict(obj["psana_fields"]) if obj.get("psana_fields") is not None else None,
             "psana_name": obj.get("psana_name"),
             "type": obj.get("type")

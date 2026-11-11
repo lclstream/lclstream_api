@@ -51,7 +51,7 @@ export const zBatchProcessingPipelineParameters = z.object({
  */
 export const zBinaryDataStreamingDataHandlerParameters = z.object({
     buffer: z.int().optional().default(0),
-    distribute: z.boolean().optional().default(true),
+    distribute: z.boolean().optional().default(false),
     library: z.literal('zmq').optional().default('zmq'),
     role: z.enum(['server', 'client']).optional(),
     socket_type: z.literal('push').optional().default('push'),
@@ -176,7 +176,7 @@ export const zConsumerConnectionInfo = z.object({
 /**
  * CrystfelPreprocessingPipelineParameters
  *
- * Configuration parameters for the CrystFEL Preprocessing Pipeline
+ * Configuration parameters for the CrystFEL  Preprocessing Pipeline
  *
  * This pipeline lays out the data in a format that is understood by the
  * CrystFEL Serial Crystalography Processing software.
@@ -315,7 +315,7 @@ export const zMessage = z.object({
  *
  * Attributes:
  *
- * type: Discriminator field, must be ``"MsgpackBinarySerializer"``
+ * type: Discriminator field, must be ``"MsgpackBinarySerializerParametersBinarySerializer"``
  */
 export const zMsgpackBinarySerializerParameters = z.object({
     type: z.literal('MsgpackBinarySerializer')
@@ -365,6 +365,7 @@ export const zPeaknetPreprocessingPipelineParameters = z.object({
  * Psana1DetectorInterfaceParameters
  */
 export const zPsana1DetectorInterfaceParameters = z.object({
+    dtype: z.string().nullish(),
     psana_fields: z.union([
         z.array(z.string()),
         z.string()
@@ -600,6 +601,18 @@ export const zParameters = z.object({
             type: z.literal('CrystfelPreprocessingPipeline')
         }).and(zCrystfelPreprocessingPipelineParameters)
     ]),
+    requirements: z.record(z.string(), z.array(z.string())).optional().default({ CrystfelPreprocessingPipeline: [
+            'detector_data',
+            'photon_wavelength',
+            'detector_distance',
+            'timestamp',
+            'run_info'
+        ], SimplonBinarySerializer: [
+            'timestamp',
+            'detector_data',
+            'detector_geometry',
+            'run_info'
+        ] }),
     skip_incomplete_events: z.boolean(),
     source_identifier: z.string()
 });

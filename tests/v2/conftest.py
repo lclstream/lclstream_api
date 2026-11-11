@@ -3,9 +3,9 @@ from contextlib import asynccontextmanager
 from typing import cast
 
 import pytest
+from lclstreamer.models.parameters import Parameters
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from lclstream_api.lclstreamer_param import Parameters
 from lclstream_api.v2 import config
 from lclstream_api.v2.config import LCLStreamerProducerSettings
 

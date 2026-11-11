@@ -14,9 +14,9 @@ from uuid import UUID
 import httpx
 from amsc_iri.models import JobSpec, JobState
 from dbos import DBOS, error as dbos_error
+from lclstreamer.models.parameters import Parameters
 from pydantic import AwareDatetime
 
-from ..lclstreamer_param import Parameters
 from . import auth, config, db, repo
 from .clients import fastcache, iri
 from .core import producer as pcore, transfer as tcore

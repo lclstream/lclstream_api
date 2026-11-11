@@ -13,10 +13,10 @@ from uuid import UUID, uuid4
 
 import httpx
 from dbos import DBOS, SetWorkflowID
+from lclstreamer.models.parameters import Parameters
 from pydantic import SecretStr
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..lclstreamer_param import Parameters
 from . import config, repo, workflows
 from .auth import AuthenticatedUser
 from .clients import fastcache, iri
