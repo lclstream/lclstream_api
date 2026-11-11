@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-from typing import Union
 
 import psik
 import yaml
@@ -49,7 +48,7 @@ class Config(BaseModel):
 #            cpu_cores_per_process = 1),
 # script="uv run --project /home/99r/src/lclstreamer lclstreamer --config lclstreamer.json",
 
-Pstr = Union[str, os.PathLike]
+Pstr = str | os.PathLike
 
 
 def load_config(config_name: Pstr | None = None) -> Config:

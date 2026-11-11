@@ -3,7 +3,6 @@ import pytest
 from lclstream_api.ports import PortDatabase
 
 
-
 def test_db(config):
     DB = PortDatabase(config.forwarder)
 
