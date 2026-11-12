@@ -6,6 +6,7 @@ from ._generated.models.container import Container
 from ._generated.models.job_attributes import JobAttributes
 from ._generated.models.job_spec import JobSpec
 from ._generated.models.resource_spec import ResourceSpec
+from ._generated.models.transfer_state import TransferState
 from .wrapper import AsyncLclstreamApiClient, LclstreamApiClient
 
 __all__ = [
@@ -17,6 +18,7 @@ __all__ = [
     "JobSpec",
     "LclstreamApiClient",
     "ResourceSpec",
+    "TransferState",
     "exceptions",
     "models",
     "params",

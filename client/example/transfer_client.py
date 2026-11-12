@@ -9,12 +9,13 @@ body calls it twice: once to get a ZMQ URI, once to hand the transfer back.
 """
 
 import argparse
+import os
 import re
 import time
 from pathlib import Path
 
 import yaml
-from pydantic import AnyHttpUrl
+from pydantic import AnyHttpUrl, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from lclstream_api_client import (
@@ -23,6 +24,7 @@ from lclstream_api_client import (
     JobAttributes,
     JobSpec,
     LclstreamApiClient,
+    TransferState,
     exceptions,
     params,
 )
@@ -56,6 +58,7 @@ class Settings(BaseSettings):
     # {{ source_identifier }} is filled in at runtime, since the per-job
     # exp/run is not known until submission.
     parameters_file: Path = Path("/cfg/lclstreamer-crystfel.yaml")
+    ejfat_uri: SecretStr | None = None
 
     @property
     def token(self) -> str:
@@ -106,7 +109,7 @@ def open_client(cfg: Settings) -> LclstreamApiClient:
     return LclstreamApiClient(base_url=str(cfg.api_url), token=lambda: cfg.token)
 
 
-def wait_for_uri(client: LclstreamApiClient, transfer_id) -> str:
+def wait_for_uri(client: LclstreamApiClient, transfer_id, ejfat: bool = False) -> str | None:
     """Poll until the cache reports its consumer socket, or the transfer dies."""
     deadline = time.monotonic() + CONNECT_TIMEOUT_S
     last_state = None
@@ -121,7 +124,9 @@ def wait_for_uri(client: LclstreamApiClient, transfer_id) -> str:
         if transfer.state.value != last_state:
             last_state = transfer.state.value
             print(f"state: {last_state}")
-        if transfer.connection_info is not None:
+        if ejfat and transfer.state == TransferState.READY:
+            return None
+        if not ejfat and transfer.connection_info is not None:
             info = transfer.connection_info
             if info.socket != ConsumerSocket.REQ:
                 raise SystemExit(
@@ -138,11 +143,16 @@ def wait_for_uri(client: LclstreamApiClient, transfer_id) -> str:
 def create(cfg: Settings) -> int:
     """Start the transfer and print what the job body needs, as shell vars."""
     client = open_client(cfg)
+    ejfat_uri = os.getenv("EJFAT_URI") or cfg.ejfat_uri
+    cons_socket = ConsumerSocket.REQ
+    if ejfat_uri:
+        cons_socket = ConsumerSocket.EJFAT
     try:
         created = client.create_transfer(
             load_parameters(cfg.parameters_file, cfg.source_identifier),
             cache_mode=CacheMode.PER_TRANSFER,
-            consumer_socket=ConsumerSocket.REQ,
+            consumer_socket=cons_socket,
+            ejfat_uri=ejfat_uri,
             job_spec_override=JobSpec(
                 attributes=JobAttributes(account=cfg.job_spec_account),
                 environment={"LCLSTREAMER_DEBUG": "1"},
@@ -150,8 +160,9 @@ def create(cfg: Settings) -> int:
         )
     except exceptions.ApiException as exc:
         raise SystemExit(f"create_transfer failed: HTTP {exc.status}\n{exc.body}")
+    print(f"EJFAT_URI={ejfat_uri}")
     print(f"transfer: {created.id}")
-    uri = wait_for_uri(client, created.id)
+    uri = wait_for_uri(client, created.id, ejfat=cfg.ejfat_uri is not None)
     # Parsed by crystfel_nersc.sh.
     print(f"TRANSFER_ID={created.id}")
     print(f"URI={uri}")

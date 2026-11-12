@@ -63,6 +63,7 @@ class LclstreamApiClient:
         *,
         cache_mode: CacheMode | None = None,
         consumer_socket: ConsumerSocket | None = None,
+        ejfat_uri: str | None = None,
         job_spec_override: JobSpec | None = None,
     ) -> TransferPublic:
         return self._authed().new_transfer_transfers_post_sync(
@@ -70,6 +71,7 @@ class LclstreamApiClient:
                 parameters=parameters.to_generated(),
                 cache_mode=cache_mode,
                 consumer_socket=consumer_socket,
+                ejfat_uri=ejfat_uri,
                 job_spec_override=job_spec_override,
             )
         )
@@ -148,12 +150,14 @@ class AsyncLclstreamApiClient:
         *,
         cache_mode: CacheMode | None = None,
         consumer_socket: ConsumerSocket | None = None,
+        ejfat_uri: str | None = None,
         job_spec_override: JobSpec | None = None,
     ) -> TransferPublic:
         return await self._authed().new_transfer_transfers_post(
             TransferCreate(
                 parameters=parameters.to_generated(),
                 cache_mode=cache_mode,
+                ejfat_uri=ejfat_uri,
                 consumer_socket=consumer_socket,
                 job_spec_override=job_spec_override,
             )

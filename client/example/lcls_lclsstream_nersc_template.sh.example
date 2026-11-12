@@ -23,18 +23,36 @@ env -u PYTHONPATH -u PYTHONHOME uv run --script /sdf/data/lcls/ds/mfx/mfx1012109
 xrdcp  --force {{mask_file}}  root://dtn04.nersc.gov:3096//crystfel-demo/
 env -u PYTHONPATH -u PYTHONHOME uv run --script /sdf/data/lcls/ds/mfx/mfx101210926/scratch/valmar/lclstream_api/client/example/upload_nersc.py --force --dest /global/cfs/cdirs/lcls/crystfel-demo {{cell_file}}
 
-# uv run /sdf/data/lcls/ds/mfx/mfx101210926/scratch/valmar/lclstream_api/client/examplesubmit_crystfel_nersc.py --exp {{experiment_id}} --run {{run_id}} \
-# --xrd-dest --xrd-dest {{(output_dir | string).replace("/sdf/data/lcls/ds/", "", 1)}} \
-# --crystfel-args "--peaks peakfinder8 --threshold {{threshold}} \
-# --min-snr {{min_snr}} --min-res {{min_res}} --max-res {{max_res}} \
-# --min-pix-count {{min_pix_count}} --max-pix-count {{max_pix_count}} \
-# -g /cfg/$geometry_filename --indexing={{indexing}} --zmq-request=next \ 
-# --copy-header=event_id --data-format=msgpack --no-data-timeout=360 -j 100 \
-# ${cell_arg} {{extra_args}}"
+# LB reservation happens here if ejfat is enabled
+EJFAT_ON={{ejfat}}
+EJFAT_ON="${EJFAT_ON,,}"
+# INSTANCE is the ejfat instance token
+INSTANCE=""
+if [[ "$EJFAT_ON" == "true" ]]; then
+    echo "EJFAT On"
+    EJFAT_TOKENFILE="${HOME}/.ejfat"
+    LBNAME={{lbname}}
+    if [ ! -f "$EJFAT_TOKENFILE" ]; then
+        echo "Error: EJFat token file '$EJFAT_TOKENFILE' not found. Create it in ~/.ejfat" >&2
+        exit 1
+    fi
+    EJFAT_TOKEN=$(cat "$EJFAT_TOKENFILE" | tr -d '\r\n')
+    if [ -z "$EJFAT_TOKEN" ]; then
+        echo "Error: Token file '$EJFAT_TOKENFILE' is empty." >&2
+        exit 1
+    fi
+    echo "Reserving LB.."
+    output=$({{lbadm}} --uri "$EJFAT_TOKEN" --reserve --lbname $LBNAME)
+    INSTANCE=$(echo "$output" | grep "Updated URI after reserve" | grep -oE 'ejfats://[^[:space:]"]+')
+    echo "Got token: ${INSTANCE}"
+fi
 
 dest_dir={{output_dir}}
-env -u PYTHONPATH -u PYTHONHOME uv run --script /sdf/data/lcls/ds/mfx/mfx101210926/scratch/valmar/lclstream_api/client/example/submit_crystfel_nersc.py --exp {{experiment_id}} --run {{run_id}} \
+env -u PYTHONPATH -u PYTHONHOME uv run --script {{crysfel_script}} --exp {{experiment_id}} --run {{run_id}} \
 --xrd-dest ${dest_dir#*ds} \
+--ejfat_token $INSTANCE \
+--queue {{queue}} \
+--duration {{duration}} \
 --crystfel-args "--peaks peakfinder8 --peakfinder8-fast --threshold 20 \
 --min-snr 7 --min-res 80 --max-res 3000 \
 --min-pix-count 3 --max-pix-count 100 \

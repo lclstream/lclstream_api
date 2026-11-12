@@ -10,8 +10,13 @@ max_res: 3000
 output_dir: /sdf/data/lcls/ds/mfx/mfx101210926/scratch/valmar/lclstream_api/client/example
 min_pix_count: 3
 max_pix_count: 100
-indexing: "--indexing=asdf"
+indexing_args: "asdf"
 extra_args: ""
 filename_prefix: test
 job_name: test-job
 queue: debug
+duration: 1500
+lbname: slac_test01
+crysfel_script: /path_to/lclstream_api/client/example/submit_crystfel_nersc_ejfat.py
+lbadm: /sdf/scratch/users/k/kmecseki/EJFat/E2SAR-0.4.0rc1/build/bin/lbadm
+ejfat: true
