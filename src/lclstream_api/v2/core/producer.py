@@ -220,7 +220,8 @@ def build_job_spec(
     config_path = producer_config_path(settings, exp, run, transfer_id, username)
 
     jobspec = DEFAULT_JOB_SPEC.model_copy(deep=True)
-    jobspec.attributes.account = f"lcls:{exp}"  # pyrefly: ignore[missing-attribute]
+    assert jobspec.attributes is not None  # DEFAULT_JOB_SPEC sets it
+    jobspec.attributes.account = f"lcls:{exp}"
     jobspec.executable = APPTAINER_BIN
     jobspec.arguments = [
         "run",

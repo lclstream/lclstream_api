@@ -102,6 +102,15 @@ combine-as-imports = true
 quote-style = "double"
 indent-style = "space"
 
+# client/example holds scripts with their own deps, not tests.
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+# No stubs or py.typed upstream.
+[[tool.mypy.overrides]]
+module = ["amscrot.*", "fastapi_jwks.*"]
+ignore_missing_imports = true
+
 [tool.pyrefly]
 project-includes = [
     "**/*.py*",

@@ -141,7 +141,7 @@ def get_dbos() -> DbosSettings:
 
 @lru_cache
 def get_fastcache() -> FastcacheClientSettings:
-    return FastcacheClientSettings()
+    return FastcacheClientSettings()  # type: ignore[call-arg]  # fields from env
 
 
 @lru_cache
@@ -166,4 +166,4 @@ def get_app() -> AppSettings:
 
 @lru_cache
 def get_credentials() -> CredentialsSettings:
-    return CredentialsSettings()
+    return CredentialsSettings()  # type: ignore[call-arg]  # fields from env

@@ -60,14 +60,17 @@ def transaction[**P, R](
     def decorator(
         f: Callable[P, Coroutine[Any, Any, R]],
     ) -> Callable[P, Coroutine[Any, Any, R]]:
-        options = {
-            "name": name or f.__qualname__,
-            "isolation_level": isolation_level,
-        }
+        tx_name = name or f.__qualname__
 
         @wraps(f)
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-            return await datasource().run_tx_step_async(options, f, *args, **kwargs)
+            # Literal inline so mypy types it as DatasourceOptions.
+            return await datasource().run_tx_step_async(
+                {"name": tx_name, "isolation_level": isolation_level},
+                f,
+                *args,
+                **kwargs,
+            )
 
         return wrapper
 
