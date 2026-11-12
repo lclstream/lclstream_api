@@ -9,7 +9,7 @@
 # ]
 #
 # [tool.uv.sources]
-# lclstream-api-client = { git = "https://github.com/lclstream/lclstream_api.git", subdirectory = "client/", rev = "crystfel-nersc" }
+# lclstream-api-client = { git = "https://github.com/lclstream/lclstream_api.git", subdirectory = "client/", rev = "v2-dev" }
 # ///
 """Submit a live lclstreamer transfer via lclstream_api_client and pull the
 resulting ZMQ stream directly in this process.

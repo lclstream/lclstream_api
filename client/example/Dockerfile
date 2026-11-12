@@ -14,13 +14,13 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends git ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# TODO: point at @main once this branch merges
+# TODO: point at @main once v2 merges
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv venv /app/.venv \
     && VIRTUAL_ENV=/app/.venv uv pip install \
         pydantic-settings \
         pyyaml \
-        "lclstream-api-client @ git+https://github.com/lclstream/lclstream_api.git@crystfel-nersc#subdirectory=client/"
+        "lclstream-api-client @ git+https://github.com/lclstream/lclstream_api.git@v2-dev#subdirectory=client/"
 
 FROM python:3.13-slim
 # The environment only; no build tools, no git, no uv.
