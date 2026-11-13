@@ -1,0 +1,52 @@
+#!/bin/bash
+
+set -xeu
+
+source ${HOME}/Projects/LCLStream/remote-cmd/.venv/bin/activate
+
+# The job's working directory on Lux, mounted at /cfg inside the containers.
+lux_dir=/ccs/home/vmarslac/crystfel_demo
+
+geometry_filename=$(basename {{geometry_file}})
+# Point the geometry at the mask's /cfg path in a copy, not the original.
+geometry_copy=$(mktemp -d)/${geometry_filename}
+cp {{geometry_file}} ${geometry_copy}
+
+if [ -z "{{mask_file}}" ]; then
+	mask_filename=""
+else
+	mask_filename=$(basename {{mask_file}})
+	sed -i "s|mask_file.*|mask_file = /cfg/$mask_filename|" ${geometry_copy}
+fi
+
+if [ -z "{{cell_file}}" ]; then
+	cell_arg=""
+else
+	cell_filename=$(basename {{cell_file}})
+	cell_arg="-p /cfg/${cell_filename}"
+fi
+
+remote upload local ${geometry_copy} ${lux_dir}/${geometry_filename}
+# The client container reads this from /cfg to configure lclstreamer.
+remote upload local ${HOME}/Projects/LCLStream/lclstream_api/client/example/lclstreamer-crystfel.yaml ${lux_dir}/lclstreamer-crystfel.yaml
+rm -r $(dirname ${geometry_copy})
+if [ -n "{{mask_file}}" ]; then
+	remote upload local {{mask_file}} ${lux_dir}/${mask_filename}
+fi
+if [ -n "{{cell_file}}" ]; then
+	remote upload local {{cell_file}} ${lux_dir}/${cell_filename}
+fi
+
+dest_dir={{output_dir}}
+env -u PYTHONPATH -u PYTHONHOME uv run --script ${HOME}/Projects/LCLStream/lclstream_api/client/example/submit_crystfel_lux.py --exp {{experiment_id}} --run {{run_id}} \
+--xrd-dest ${dest_dir#*ds} \
+--crystfel-args "--peaks peakfinder8 --peakfinder8-fast --threshold 20 \
+--min-snr 7 --min-res 80 --max-res 3000 \
+--min-pix-count 3 --max-pix-count 100 \
+-g /cfg/$geometry_filename --indexing={{indexing_arg}} --zmq-request=next \
+--copy-header=event_id --data-format=msgpack --no-data-timeout=180 -j 100 \
+${cell_arg} {{extra_args}}"
+
+
+echo "Job {{job_name}} sent to lux"
+echo ""
