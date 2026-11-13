@@ -1,0 +1,298 @@
+import logging
+from typing import Any
+from uuid import UUID
+
+from pydantic import AwareDatetime
+from sqlalchemy import delete, func, select
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from .core import transfer as tcore
+from .models import TransferState, TransitionSource
+from .tables import Cache, Transfer, Transition, UserCredential
+
+logger = logging.getLogger(__name__)
+
+_FINAL_STATES = frozenset(s for s in TransferState if s.is_final())
+
+
+async def insert_transfer(
+    session: AsyncSession,
+    *,
+    transfer_id: UUID,
+    owner_issuer: str,
+    owner_subject: str,
+    owner_email: str,
+    owner_username: str,
+    parameters: dict[str, Any],
+    experiment: str,
+    run: str,
+    job_spec: dict[str, Any],
+    cache_mode: tcore.CacheMode = tcore.CacheMode.per_transfer,
+    consumer_socket: tcore.ConsumerSocket = tcore.ConsumerSocket.pull,
+) -> Transfer:
+    transfer = Transfer(
+        id=transfer_id,
+        owner_issuer=owner_issuer,
+        owner_subject=owner_subject,
+        owner_email=owner_email,
+        owner_username=owner_username,
+        state=TransferState.provisioning,
+        parameters=parameters,
+        experiment=experiment,
+        run=run,
+        cache_mode=cache_mode,
+        consumer_socket=consumer_socket,
+        job_spec=job_spec,
+    )
+    session.add(transfer)
+    session.add(
+        Transition(
+            transfer_id=transfer_id,
+            state=TransferState.provisioning,
+            source=TransitionSource.orchestrator,
+        )
+    )
+    await session.flush()
+    await session.refresh(transfer)
+    return transfer
+
+
+async def get_transfer(session: AsyncSession, transfer_id: UUID) -> Transfer | None:
+    return await session.get(Transfer, transfer_id)
+
+
+async def get_owned_transfer(
+    session: AsyncSession,
+    transfer_id: UUID,
+    *,
+    owner_issuer: str,
+    owner_subject: str,
+) -> Transfer | None:
+    result = await session.execute(
+        select(Transfer).where(
+            Transfer.id == transfer_id,
+            Transfer.owner_issuer == owner_issuer,
+            Transfer.owner_subject == owner_subject,
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_transfer_with_transitions(
+    session: AsyncSession, transfer_id: UUID
+) -> Transfer | None:
+    result = await session.execute(
+        select(Transfer)
+        .where(Transfer.id == transfer_id)
+        .options(selectinload(Transfer.transitions))
+    )
+    return result.scalar_one_or_none()
+
+
+async def list_transfers(
+    session: AsyncSession,
+    *,
+    skip: int = 0,
+    limit: int = 100,
+    state: TransferState | None = None,
+) -> tuple[list[Transfer], int]:
+    query = select(Transfer)
+    if state is not None:
+        query = query.where(Transfer.state == state)
+    count_result = await session.execute(
+        select(func.count()).select_from(query.subquery())
+    )
+    count = count_result.scalar_one()
+    result = await session.execute(
+        query.order_by(Transfer.created_at.desc()).offset(skip).limit(limit)
+    )
+    return list(result.scalars().all()), count
+
+
+async def list_unsettled_transfers(session: AsyncSession) -> list[Transfer]:
+    result = await session.execute(
+        select(Transfer).where(Transfer.state.not_in(_FINAL_STATES))
+    )
+    return list(result.scalars().all())
+
+
+async def set_cache_endpoints(
+    session: AsyncSession,
+    transfer_id: UUID,
+    endpoint: tcore.CacheEndpoint,
+) -> None:
+    cache_id = endpoint.cache_id
+    transfer = await session.get(Transfer, transfer_id)
+    if transfer is None:
+        raise LookupError(f"transfer {transfer_id} not found")
+    if tcore.CacheMode(transfer.cache_mode) is tcore.CacheMode.shared:
+        # Serializes attachment against shared-cache shutdown.
+        # Shutdown locks and retires this row first.
+        await session.execute(
+            insert(Cache)
+            .values(id=cache_id, experiment=transfer.experiment)
+            .on_conflict_do_nothing(index_elements=[Cache.id])
+        )
+        result = await session.execute(
+            select(Cache).where(Cache.id == cache_id).with_for_update()
+        )
+        cache = result.scalar_one()
+        if cache.experiment != transfer.experiment:
+            raise LookupError(f"cache {cache_id} belongs to a different experiment")
+        if cache.retired_at is not None:
+            raise LookupError(f"cache {cache_id} has been shut down")
+    transfer.cache_id = cache_id
+    transfer.cache_hostname = endpoint.hostname
+    transfer.pull_port = endpoint.pull_port
+    transfer.push_port = endpoint.push_port
+    transfer.cache_log_path = str(endpoint.log_path)
+
+
+async def set_producer_job(
+    session: AsyncSession, transfer_id: UUID, producer_job_id: str
+) -> None:
+    transfer = await session.get(Transfer, transfer_id)
+    if transfer is None:
+        raise LookupError(f"transfer {transfer_id} not found")
+    transfer.producer_job_id = producer_job_id
+
+
+async def record_state(
+    session: AsyncSession,
+    transfer_id: UUID,
+    state: TransferState,
+    *,
+    info: str | None = None,
+    source: TransitionSource | None = None,
+    observed_at: AwareDatetime | None = None,  # reconcile loop observation time
+) -> bool:
+    transfer = await session.get(Transfer, transfer_id)
+    if transfer is None:
+        raise LookupError(f"transfer {transfer_id} not found")
+
+    current = TransferState(transfer.state)
+
+    if tcore.is_stale_observation(observed_at, transfer.last_polled_at):
+        return False
+
+    if state != current and not tcore.can_transition(current, state):
+        logger.debug(
+            "illegal transition %s -> %s rejected on transfer %s",
+            current,
+            state,
+            transfer_id,
+        )
+        return False
+
+    if observed_at is not None:
+        transfer.last_polled_at = observed_at
+    if state == current:
+        return False
+
+    transfer.state = state
+    session.add(
+        Transition(
+            transfer_id=transfer_id,
+            state=state,
+            info=info,
+            source=source,
+        )
+    )
+    return True
+
+
+async def find_active_cache(session: AsyncSession, experiment: str) -> UUID | None:
+    """Most recently registered active cache for this experiment."""
+
+    result = await session.execute(
+        select(Cache.id)
+        .where(
+            Cache.experiment == experiment,
+            Cache.retired_at.is_(None),
+        )
+        .order_by(Cache.created_at.desc())
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
+
+
+async def lock_active_cache(session: AsyncSession, cache_id: UUID) -> Cache | None:
+    """Lock a known active cache until the caller's transaction ends."""
+
+    result = await session.execute(
+        select(Cache)
+        .where(
+            Cache.id == cache_id,
+            Cache.retired_at.is_(None),
+        )
+        .with_for_update()
+    )
+    return result.scalar_one_or_none()
+
+
+async def retire_cache(
+    session: AsyncSession, cache: Cache, *, retired_at: AwareDatetime
+) -> None:
+    cache.retired_at = retired_at
+    await session.flush()
+
+
+async def count_active_transfers_by_cache(session: AsyncSession, cache_id: UUID) -> int:
+    result = await session.execute(
+        select(func.count())
+        .select_from(Transfer)
+        .where(Transfer.cache_id == cache_id, Transfer.state.not_in(_FINAL_STATES))
+    )
+    return result.scalar_one()
+
+
+async def get_user_credential(
+    session: AsyncSession, issuer: str, subject: str
+) -> UserCredential | None:
+    return await session.get(UserCredential, (issuer, subject))
+
+
+async def upsert_user_credential(
+    session: AsyncSession,
+    *,
+    issuer: str,
+    subject: str,
+    email: str,
+    encrypted_token: bytes,
+    expires_at: AwareDatetime,
+) -> bool:
+    """Atomically retain only the latest-expiring credential for a principal."""
+
+    insert_statement = insert(UserCredential).values(
+        issuer=issuer,
+        subject=subject,
+        email=email,
+        encrypted_token=encrypted_token,
+        expires_at=expires_at,
+    )
+    statement = insert_statement.on_conflict_do_update(
+        index_elements=[UserCredential.issuer, UserCredential.subject],
+        set_={
+            UserCredential.email: insert_statement.excluded.email,
+            UserCredential.encrypted_token: insert_statement.excluded.encrypted_token,
+            UserCredential.expires_at: insert_statement.excluded.expires_at,
+            UserCredential.updated_at: func.now(),
+        },
+        where=insert_statement.excluded.expires_at > UserCredential.expires_at,
+    ).returning(UserCredential.expires_at)
+    result = await session.execute(statement)
+    return result.scalar_one_or_none() is not None
+
+
+async def purge_expired_user_credentials(
+    session: AsyncSession, *, now: AwareDatetime
+) -> int:
+    statement = (
+        delete(UserCredential)
+        .where(UserCredential.expires_at <= now)
+        .returning(UserCredential.issuer)
+    )
+    result = await session.execute(statement)
+    return len(result.scalars().all())

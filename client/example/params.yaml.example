@@ -1,0 +1,17 @@
+geometry_file: /sdf/data/lcls/ds/mfx/mfx101210926/scratch/cheetah/hdf5/r0056-streaming-test/input_files/jungfrau16M-1.geom   
+mask_file: /sdf/data/lcls/ds/mfx/mfx101210926/scratch/cheetah/hdf5/r0056-streaming-test/input_files/mask-new.h5
+cell_file: /sdf/scratch/lcls/ds/mfx/mfx101210926/scratch/yefanov/cells/b12.cell
+experiment_id: mfx101210926
+run_id: 56
+threshold: 20
+min_snr:  7
+min_res: 80
+max_res: 3000
+output_dir: /sdf/data/lcls/ds/mfx/mfx101210926/scratch/valmar/lclstream_api/client/example
+min_pix_count: 3
+max_pix_count: 100
+indexing: "--indexing=asdf"
+extra_args: ""
+filename_prefix: test
+job_name: test-job
+queue: debug

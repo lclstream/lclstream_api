@@ -9,24 +9,32 @@ authors = [
 ]
 description = "Image streaming API for psana."
 readme = "README.md"
-requires-python = ">=3.11,<3.14"
+requires-python = ">=3.12,<3.14"
 license = "MIT"
 dependencies = [
+    "amscrot-py @ git+https://github.com/doe-iri/iri-facility-api-toolkit@577a6e6d668ce743fb4f09486f21f2b8260193f2",
+    "cryptography>=49.0.0",
     "fastapi>=0.136.3",
-    "lclstream @ git+https://github.com/lclstream/lclstream.git",
+    "fastapi-jwks>=2.0.2",
+    # "lclstream @ git+https://github.com/lclstream/lclstream.git",
     "lclstreamer-models @ git+https://github.com/lclstream/lclstreamer@lclstreamer-models#subdirectory=libs/lclstreamer-models",
     "psik>=3.1.1,<4.0",
     "pydantic>=2.13.4",
+    "pydantic-settings>=2.0",
     "pyyaml>=6.0.3",
     "uvicorn>=0.48.0",
     "certified==1.3.0",
     "svcs>=25.1.0",
     "pyjwt>=2.15.1",
+    "sqlalchemy>=2.0.51",
+    "httpx>=0.28.1",
+    "dbos>=2.0",
+    "alembic>=1.18.5",
 ]
 
 [dependency-groups]
 dev = [
-    "httpx>=0.28.1",
+    "lclstream @ git+https://github.com/lclstream/lclstream.git",
     "mpi4py>=4.1.2",
     "pyzmq>=26.0.0",
     "mypy>=2.1.0",
@@ -50,6 +58,21 @@ include-package-data = false
 where = ["src"]
 #include = ["lclstream_api*"]
 
+[tool.alembic]
+script_location = "lclstream_api.v2:alembic"
+
+[[tool.alembic.post_write_hooks]]
+name = "ruff_format"
+type = "exec"
+executable = "uv"
+options = "run ruff format REVISION_SCRIPT_FILENAME"
+
+[[tool.alembic.post_write_hooks]]
+name = "ruff_check"
+type = "exec"
+executable = "uv"
+options = "run ruff check --fix REVISION_SCRIPT_FILENAME"
+
 [tool.ruff]
 line-length = 88
 target-version = "py313"
@@ -68,9 +91,31 @@ ignore = [
     "E501",  # line too long — handled by formatter
 ]
 
+[tool.ruff.lint.per-file-ignores]
+# conftest must seed env vars before importing the eagerly-built config module.
+"tests/v2/conftest.py" = ["E402"]
+
 [tool.ruff.lint.isort]
 known-first-party = ["lclstream_api"]
+combine-as-imports = true
 
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+
+# client/example holds scripts with their own deps, not tests.
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+# No stubs or py.typed upstream.
+[[tool.mypy.overrides]]
+module = ["amscrot.*", "fastapi_jwks.*"]
+ignore_missing_imports = true
+
+[tool.pyrefly]
+project-includes = [
+    "**/*.py*",
+    "**/*.ipynb",
+]
+search-path = ["src"]
+

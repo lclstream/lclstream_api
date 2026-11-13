@@ -1,0 +1,41 @@
+source_identifier: "{{ source_identifier }}"
+skip_incomplete_events: true
+
+event_source:
+    type: Psana2EventSource
+
+data_sources:
+    timestamp:
+        type: Psana2Timestamp
+
+    detector_data:
+        type: Psana2DetectorInterface
+        psana_name: jungfrau
+        psana_fields: raw.calib
+
+    photon_wavelength:
+        type: Psana2DetectorInterface
+        psana_name: "SIOC:SYS0:ML00:AO192"
+
+    detector_distance:
+        type: Psana2DetectorInterface
+        psana_name: "MFX:DET:MMS:04.RBV"
+
+    run_info:
+        type: Psana2RunInfo
+
+processing_pipeline:
+    type: CrystfelPreprocessingPipeline
+
+data_serializer:
+    type: MsgpackBinarySerializer
+
+data_handlers:
+    - type: BinaryDataStreamingDataHandler
+      urls:
+          - "tcp://127.0.0.1:12321"
+      distribute: False
+      buffer: 0
+      role: client
+      library: zmq
+      socket_type: push

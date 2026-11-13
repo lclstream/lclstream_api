@@ -1,0 +1,17 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@slaclab/ui/slac.css";
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+}
+
+@keyframes skeleton-fade-in {
+  to {
+    opacity: 1;
+  }
+}

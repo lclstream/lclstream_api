@@ -1,0 +1,86 @@
+diff --git a/doc/man/indexamajig.1.md b/doc/man/indexamajig.1.md
+index 191aff1b..2cbaa35e 100644
+--- a/doc/man/indexamajig.1.md
++++ b/doc/man/indexamajig.1.md
+@@ -299,6 +299,10 @@ BASIC OPTIONS
+ : indexamajig's ZeroMQ socket to use REQ mode instead of SUB.  This option and
+ : **--zmq-subscribe** are mutually exclusive.
+ 
++**--data-socket-timeout=ms**
++: Set the receive timeout, in ms, for both ZeroMQ and ASAP::O ("get next")
++: connections.  The default is 500 ms.
++
+ **--asapo-endpoint=endpoint**
+ : Receive data via the specified ASAP::O endpoint.  This option and **--zmq-input**
+ : are mutually exclusive.
+@@ -334,10 +338,6 @@ BASIC OPTIONS
+ : only, but might be extended to other streaming systems in future.  The
+ : default is 60 seconds.
+ 
+-**--asapo-consumer-timeout**
+-: Set the timeout used for "get next" calls from ASAP::O, in ms.  The default
+-: is 500 ms.
+-
+ **--asapo-acks**
+ : Use ASAP::O acknowledgements for more reliable message delivery.
+ 
+diff --git a/src/im-argparse.c b/src/im-argparse.c
+index 3c26c751..b675d9d0 100644
+--- a/src/im-argparse.c
++++ b/src/im-argparse.c
+@@ -238,9 +238,10 @@ static error_t parse_arg(int key, char *arg, struct argp_state *state)
+ 		case 225 :
+ 		if (sscanf(arg, "%d", &args->asapo_params.consumer_timeout_ms) != 1)
+ 		{
+-			ERROR("Invalid value for --asapo-consumer-timeout\n");
++			ERROR("Invalid value for --data-socket-timeout\n");
+ 			return EINVAL;
+ 		}
++		args->zmq_params.timeout_ms = args->asapo_params.consumer_timeout_ms;
+ 		break;
+ 
+ 		case 226 :
+@@ -723,6 +724,7 @@ struct indexamajig_arguments *parse_indexamajig_args(int argc, char *argv[])
+ 	args->zmq_params.addr = NULL;
+ 	args->zmq_params.request = NULL;
+ 	args->zmq_params.n_subscriptions = 0;
++	args->zmq_params.timeout_ms = 500;
+ 	args->asapo_params.endpoint = NULL;
+ 	args->asapo_params.token = NULL;
+ 	args->asapo_params.beamtime = NULL;
+@@ -873,8 +875,8 @@ struct indexamajig_arguments *parse_indexamajig_args(int argc, char *argv[])
+ 		{"cpu-pin", 223, NULL, OPTION_NO_USAGE, "Pin worker processes to CPUs"},
+ 		{"no-data-timeout", 224, "s", OPTION_NO_USAGE,
+ 			"Shut down after this many seconds without data"},
+-		{"asapo-consumer-timeout", 225, "ms", OPTION_NO_USAGE,
+-			"ASAP::O get_next timeout for one frame (milliseconds)"},
++		{"data-socket-timeout", 225, "ms", OPTION_NO_USAGE,
++			"Timeout for ASAP::O and ZMQ receive calls (milliseconds)"},
+ 		{"asapo-acks", 226, NULL, OPTION_NO_USAGE, "Use ASAP::O acknowledgements"},
+ 
+ 		{NULL, 0, 0, OPTION_DOC, "Peak search options:", 3},
+diff --git a/src/im-zmq.c b/src/im-zmq.c
+index b7a2ed40..84e94ac5 100644
+--- a/src/im-zmq.c
++++ b/src/im-zmq.c
+@@ -88,7 +88,7 @@ struct im_zmq *im_zmq_connect(const struct im_zmq_params *params)
+ 		return NULL;
+ 	}
+ 
+-	int timeout = 3000;
++	int timeout = params->timeout_ms;
+ 	zmq_setsockopt(z->socket, ZMQ_RCVTIMEO, &timeout, sizeof(timeout));
+ 	int linger = 0;;
+ 	zmq_setsockopt(z->socket, ZMQ_LINGER, &linger, sizeof(linger));
+diff --git a/src/im-zmq.h b/src/im-zmq.h
+index fb99f4a6..f57a11b4 100644
+--- a/src/im-zmq.h
++++ b/src/im-zmq.h
+@@ -42,6 +42,7 @@ struct im_zmq_params
+ 	char *request;
+ 	char *subscriptions[256];
+ 	int n_subscriptions;
++	int timeout_ms;
+ };
+ 
+ #if defined(HAVE_ZMQ)

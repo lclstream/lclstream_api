@@ -1,0 +1,41 @@
+diff --git a/src/im-argparse.c b/src/im-argparse.c
+index 970fa953..3c26c751 100644
+--- a/src/im-argparse.c
++++ b/src/im-argparse.c
+@@ -872,7 +872,7 @@ struct indexamajig_arguments *parse_indexamajig_args(int argc, char *argv[])
+ 			"Create an ASAP::O hits-only stream"},
+ 		{"cpu-pin", 223, NULL, OPTION_NO_USAGE, "Pin worker processes to CPUs"},
+ 		{"no-data-timeout", 224, "s", OPTION_NO_USAGE,
+-			"Shut down after this many seconds without ASAP::O data"},
++			"Shut down after this many seconds without data"},
+ 		{"asapo-consumer-timeout", 225, "ms", OPTION_NO_USAGE,
+ 			"ASAP::O get_next timeout for one frame (milliseconds)"},
+ 		{"asapo-acks", 226, NULL, OPTION_NO_USAGE, "Use ASAP::O acknowledgements"},
+diff --git a/src/im-sandbox.c b/src/im-sandbox.c
+index 265e495d..c8ed52ea 100644
+--- a/src/im-sandbox.c
++++ b/src/im-sandbox.c
+@@ -1347,7 +1347,7 @@ int create_sandbox(struct index_args *iargs, int n_proc, char *prefix,
+ 			sb->shared->no_more = 1;
+ 		}
+ 
+-		/* Case 3: No (ASAP::O) data for a long time */
++		/* Case 3: No data for a long time */
+ 		if ( get_monotonic_seconds() > t_last_data + no_data_timeout ) {
+ 			allDone = 1;
+ 		}
+diff --git a/src/indexamajig.c b/src/indexamajig.c
+index 53394d53..2fc87506 100644
+--- a/src/indexamajig.c
++++ b/src/indexamajig.c
+@@ -575,6 +575,10 @@ static int run_work(struct indexamajig_arguments *args)
+ 			if ( pargs.zmq_data == NULL ) err = 1;
+ 			if ( pargs.zmq_data_size <= 15 ) err = 1;
+ 
++			pthread_mutex_lock(&shared->queue_lock);
++			shared->end_of_stream[args->worker_id] = (pargs.zmq_data == NULL);
++			pthread_mutex_unlock(&shared->queue_lock);
++
+ 			/* No filename/frame ID or serial number via ZMQ (yet) */
+ 			r = get_queue_entry(shared, queue_sem, args->worker_id,
+ 			                    &pargs, &ser, &allDone);

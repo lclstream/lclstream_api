@@ -1,0 +1,13 @@
+[project]
+name = "lclstreamer-api-usage-example"
+version = "0.1.0"
+description = "An example of how to use the lclstreamer-api-client library"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "amscrot-py @ git+https://github.com/doe-iri/iri-facility-api-toolkit@577a6e6d668ce743fb4f09486f21f2b8260193f2",
+    "pydantic-settings>=2.6.0",
+    "sfapi-client>=0.4.1",
+    "pyzmq>=27.1.0",
+    "lclstream-api-client @ git+https://github.com/lclstream/lclstream_api.git@v2-dev#subdirectory=client/"
+]

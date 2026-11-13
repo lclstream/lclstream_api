@@ -1,0 +1,15 @@
+repos:
+  - repo: local
+    hooks:
+      - id: openapi-clients
+        name: Regenerate OpenAPI clients on backend schema changes
+        description: >-
+          Dumps the v2 app's OpenAPI schema and, only if it changed,
+          regenerates the Python (client/) and frontend (frontend/src/client)
+          clients. Fails the commit so the regenerated files can be reviewed
+          and staged.
+        entry: make clients
+        language: system
+        files: ^src/lclstream_api/v2/.*\.py$
+        exclude: ^src/lclstream_api/v2/alembic/versions/
+        pass_filenames: false
