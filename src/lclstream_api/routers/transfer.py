@@ -32,7 +32,9 @@ async def _submit_job(job: psik.Job, xfer: Transfer, client: ClientName) -> None
         if action:
             await action()
     except Exception as e:
-        _logger.error("Transfer(%d) %s unexpected submit error: %s", xfer.eid, client.value, e)
+        _logger.error(
+            "Transfer(%d) %s unexpected submit error: %s", xfer.eid, client.value, e
+        )
         action = xfer.transition(client, psik.JobState.failed, info=str(e))
         if action:
             await action()
@@ -122,7 +124,8 @@ async def new_transfer(
         entry = ports.create(user)
     except RuntimeError:
         _logger.error("Out of ports.")
-        raise HTTPException(status_code=500, detail="Out of ports.")
+        raise HTTPException(status_code=500, detail="Out of ports.") from None
+
     def on_complete():
         return ports.delete(entry.eid)
 
@@ -183,7 +186,9 @@ async def new_transfer(
 
 
 @transfers.get("/{id}")
-async def get_transfer(id: int, services: DepContainer, user: CurrentUser) -> TransferInfo:
+async def get_transfer(
+    id: int, services: DepContainer, user: CurrentUser
+) -> TransferInfo:
     """Read job
     - id: The transfer ID
 
@@ -194,7 +199,7 @@ async def get_transfer(id: int, services: DepContainer, user: CurrentUser) -> Tr
         xfer = db[id]
         entry = ports[id]
     except KeyError:
-        raise HTTPException(status_code=404, detail="Transfer is not active.")
+        raise HTTPException(status_code=404, detail="Transfer is not active.") from None
     if entry.user != user:
         raise HTTPException(status_code=403, detail="Access denied.")
     return TransferInfo(user=entry.user, log=xfer.log, metrics=xfer.cache_metrics)
@@ -210,7 +215,7 @@ async def cancel_transfer(
         xfer = db[id]
         entry = ports[id]
     except KeyError:
-        raise HTTPException(status_code=404, detail="Transfer is not active.")
+        raise HTTPException(status_code=404, detail="Transfer is not active.") from None
     if entry.user != user:
         raise HTTPException(status_code=403, detail="Access denied.")
     bg_tasks.add_task(xfer.cancel_job)

@@ -55,6 +55,7 @@ lclstreamer:
     script: "lclstreamer --config lclstreamer.json"
 """
 
+
 @pytest.fixture
 def config(tmpdir) -> Config:
     x = yaml.safe_load(cfg_yaml % {"base": str(tmpdir), "zmqbuf": _zmqbuf})

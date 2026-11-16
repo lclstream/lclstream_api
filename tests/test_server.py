@@ -8,7 +8,6 @@ from test_jobs import param2
 
 from lclstream_api.models import TransferInfo, TransferStatus
 
-
 ADDR = "tcp://127.0.0.1:28451"
 
 

@@ -10,7 +10,6 @@ from lclstream_api.jobs import (
 )
 from lclstream_api.models import PortEntry
 
-
 param1 = """{
   "source_identifier": "exp1:run2",
   "skip_incomplete_events": false,
