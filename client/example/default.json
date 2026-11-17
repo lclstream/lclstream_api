@@ -1,0 +1,33 @@
+ {
+  "fastcache": {
+    "inurl": "128.55.83.199",
+    "outurl": "tcp://127.0.0.1:12120",
+    "type": "EJFatInZMQREPOut",
+    "helper_threads": 8,
+    "zmq_io_threads": 1,
+    "hwm": 10,
+    "timeout": 30000,
+    "verbose": true,
+    "simdata_size_mb": 32
+  },
+  "metrics": {
+    "metrics": false,
+    "metrics_url": "tcp://nid200072.nersc.gov:33330",
+    "cache_id": 1,
+    "metrics_interval": 5000
+  },
+  "ejfat": {
+    "useipv6": false,
+    "uselb": true,
+    "mtu": 9000,
+    "socketbufsize": 2147483647,
+    "rate_gbps": -15.0,
+    "num_sendsockets": 8,
+    "reportstats": true,
+    "data_id": 1,
+    "queuesize": 40,
+    "recvthreads":16,
+    "eventtimeoutms": 2000,
+    "autoip": true
+  }
+}

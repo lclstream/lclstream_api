@@ -68,5 +68,6 @@ COPY --from=0 /usr/local /usr/local
 # Environment variable needed for CrystFEL GUI, get_hkl and Mosflm
 # (installed by Meson wrap for libccp4c)
 ENV SYMINFO=/usr/local/share/ccp4/syminfo.lib
+ENV HDF5_USE_FILE_LOCKING=FALSE
 
 RUN ldconfig

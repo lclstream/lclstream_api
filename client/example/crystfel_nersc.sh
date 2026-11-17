@@ -57,7 +57,6 @@ echo "[crystfel] args: ${CRYSTFEL_ARGS[*]}"
 CLIENT_IMAGE=${CLIENT_IMAGE:-lclstream-client:latest}
 CRYSTFEL_IMAGE=${CRYSTFEL_IMAGE:-gitlab.desy.de:5555/thomas.white/crystfel/crystfel:latest}
 GEOM=${CRYSTFEL_GEOM:-jf16mgeom.geom}
-[[ -r "${JOB_DIR}/${GEOM}" ]] || { echo "[crystfel] no geometry: ${GEOM}"; exit 1; }
 
 client() {
     podman-hpc run --rm --network=host \
@@ -93,7 +92,6 @@ podman-hpc run --rm --network=host \
     indexamajig \
         --zmq-input="${URI}" \
         "${CRYSTFEL_ARGS[@]}" \
-        -g "/cfg/${GEOM}" \
         --temp-dir=/out \
         -o "/out/${STREAM_NAME}" &
 CRYSTFEL_PID=$!
@@ -102,6 +100,7 @@ CRYSTFEL_PID=
 echo "[crystfel] exit ${rc}"
 
 # Ship whatever indexed, even on failure.
+export XrdSecSSSKT=${HOME}/.xrd/sss_lstream.keytab
 if [[ -z "${XRD_DEST}" ]]; then
     echo "[xrootd] XRD_DEST unset; stream kept at ${STREAM}"
 elif [[ -s "${STREAM}" ]]; then

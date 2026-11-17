@@ -10,8 +10,9 @@ max_res: 3000
 output_dir: /sdf/data/lcls/ds/mfx/mfx101210926/scratch/valmar/lclstream_api/client/example
 min_pix_count: 3
 max_pix_count: 100
-indexing: "--indexing=asdf"
+indexing_arg: "asdf"
 extra_args: ""
 filename_prefix: test
 job_name: test-job
 queue: debug
+duration: 1500
