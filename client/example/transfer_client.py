@@ -162,7 +162,7 @@ def create(cfg: Settings) -> int:
         raise SystemExit(f"create_transfer failed: HTTP {exc.status}\n{exc.body}")
     print(f"EJFAT_URI={ejfat_uri}")
     print(f"transfer: {created.id}")
-    uri = wait_for_uri(client, created.id, ejfat=cfg.ejfat_uri is not None)
+    uri = wait_for_uri(client, created.id, ejfat=ejfat_uri is not None)
     # Parsed by crystfel_nersc.sh.
     print(f"TRANSFER_ID={created.id}")
     print(f"URI={uri}")

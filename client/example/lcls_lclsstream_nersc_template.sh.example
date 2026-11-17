@@ -2,6 +2,13 @@
 
 set -xeu
 
+# Enable EJFAT
+EJFAT_ON="true"
+LBADM=/sdf/scratch/users/k/kmecseki/EJFat/E2SAR-0.4.0rc1/build/bin/lbadm
+LBNAME="slac-test01"
+
+CRYSFEL_SCRIPT=/path_to/lclstream_api/client/example/submit_crystfel_nersc_ejfat.py
+
 geometry_filename=$(basename {{geometry_file}})
 
 if [ -z "{{mask_file}}" ]; then
@@ -24,14 +31,12 @@ xrdcp  --force {{mask_file}}  root://dtn04.nersc.gov:3096//crystfel-demo/
 env -u PYTHONPATH -u PYTHONHOME uv run --script /sdf/data/lcls/ds/mfx/mfx101210926/scratch/valmar/lclstream_api/client/example/upload_nersc.py --force --dest /global/cfs/cdirs/lcls/crystfel-demo {{cell_file}}
 
 # LB reservation happens here if ejfat is enabled
-EJFAT_ON={{ejfat}}
 EJFAT_ON="${EJFAT_ON,,}"
 # INSTANCE is the ejfat instance token
 INSTANCE=""
 if [[ "$EJFAT_ON" == "true" ]]; then
     echo "EJFAT On"
     EJFAT_TOKENFILE="${HOME}/.ejfat"
-    LBNAME={{lbname}}
     if [ ! -f "$EJFAT_TOKENFILE" ]; then
         echo "Error: EJFat token file '$EJFAT_TOKENFILE' not found. Create it in ~/.ejfat" >&2
         exit 1
@@ -42,13 +47,13 @@ if [[ "$EJFAT_ON" == "true" ]]; then
         exit 1
     fi
     echo "Reserving LB.."
-    output=$({{lbadm}} --uri "$EJFAT_TOKEN" --reserve --lbname $LBNAME)
+    output=$(${LBADM} --uri "$EJFAT_TOKEN" --reserve --lbname $LBNAME)
     INSTANCE=$(echo "$output" | grep "Updated URI after reserve" | grep -oE 'ejfats://[^[:space:]"]+')
     echo "Got token: ${INSTANCE}"
 fi
 
 dest_dir={{output_dir}}
-env -u PYTHONPATH -u PYTHONHOME uv run --script {{crysfel_script}} --exp {{experiment_id}} --run {{run_id}} \
+env -u PYTHONPATH -u PYTHONHOME uv run --script ${CRYSFEL_SCRIPT} --exp {{experiment_id}} --run {{run_id}} \
 --xrd-dest ${dest_dir#*ds} \
 --ejfat_token $INSTANCE \
 --queue {{queue}} \
