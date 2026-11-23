@@ -13,7 +13,7 @@ import logging
 
 from pydantic import BaseModel
 
-from ...config import ForwarderConfig
+from ..psik.config import ForwarderConfig
 
 _logger = logging.getLogger(__name__)
 
