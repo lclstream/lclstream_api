@@ -13,29 +13,11 @@ from ..adapters.store.ports import PortDatabase
 from ..adapters.store.transfers import XferDatabase
 from ..auth.current_user import CurrentUser
 from ..config import Config
-from ..core.enums import JobState
 from ..core.models import ClientName
-from ..services.transfer import Transfer, create_transfer
+from ..services.transfer import create_transfer, submit_job
 from .schemas import TransferInfo, TransferStatus
 
 _logger = logging.getLogger(__name__)
-
-
-async def _submit_job(job: psik.Job, xfer: Transfer, client: ClientName) -> None:
-    try:
-        await job.submit()
-    except psik.SubmitException as e:
-        _logger.error("Transfer(%d) %s submit failed: %s", xfer.eid, client.value, e)
-        action = xfer.transition(client, JobState.failed, info=str(e))
-        if action:
-            await action()
-    except Exception as e:
-        _logger.error(
-            "Transfer(%d) %s unexpected submit error: %s", xfer.eid, client.value, e
-        )
-        action = xfer.transition(client, JobState.failed, info=str(e))
-        if action:
-            await action()
 
 
 transfers = APIRouter(responses={401: {"description": "Unauthorized"}})
@@ -168,8 +150,8 @@ async def new_transfer(
 
     db.add(entry.eid, xfer)
     # Submit jobs to the queue
-    bg_tasks.add_task(_submit_job, forwarder_job, xfer, ClientName.cache)
-    bg_tasks.add_task(_submit_job, producer_job, xfer, ClientName.producer)
+    bg_tasks.add_task(submit_job, forwarder_job, xfer, ClientName.cache)
+    bg_tasks.add_task(submit_job, producer_job, xfer, ClientName.producer)
 
     last = xfer.log[-1]
     return TransferStatus(
