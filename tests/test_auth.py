@@ -17,6 +17,7 @@ from pydantic import ValidationError
 from starlette.requests import Request
 
 from lclstream_api.adapters.store.ports import PortDatabase, PortEntry
+from lclstream_api.adapters.store.transfers import XferDatabase
 from lclstream_api.auth import (
     MTLS,
     Anonymous,
@@ -32,7 +33,6 @@ from lclstream_api.core.models import (
     PortTransition,
 )
 from lclstream_api.server import app as main_app
-from lclstream_api.xfer_db import XferDatabase
 
 # An `auth:` block as written in YAML, e.g. {"type": "mtls"}.
 AuthBlock = dict[str, Any]

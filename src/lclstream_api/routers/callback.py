@@ -13,9 +13,9 @@ from fastapi import (
 )
 from svcs.fastapi import DepContainer
 
+from ..adapters.store.transfers import XferDatabase
 from ..core.enums import JobState
 from ..core.models import ClientName
-from ..xfer_db import XferDatabase
 
 _logger = logging.getLogger(__name__)
 
