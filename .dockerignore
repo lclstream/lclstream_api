@@ -21,7 +21,7 @@ venv
 env
 
 # Tooling / caches
-.mypy_cache
+.ty_cache
 .ruff_cache
 .pytest_cache
 .vscode
