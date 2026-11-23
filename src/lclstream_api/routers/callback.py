@@ -2,6 +2,7 @@ import logging
 from typing import Annotated
 
 import psik
+import psik.web
 from aiohttp.web import HTTPForbidden
 from fastapi import (
     APIRouter,
@@ -44,7 +45,7 @@ async def handle_callback(
         try:
             body = (await request.body()).decode("utf-8")
         except AttributeError:  # aiohttp uses read()
-            body = (await request.read()).decode("utf-8")  # type: ignore[attr-defined]
+            body = (await request.read()).decode("utf-8")  # ty: ignore[missing-attribute]
             # body = cb.model_dump_json()
         # psik raises aiohttp's 403, which FastAPI would turn into a 500.
         try:

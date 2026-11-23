@@ -27,6 +27,9 @@ class MTLS(AuthBackend):
         return self
 
     async def authenticate(self, conn: HTTPConnection) -> Principal | None:
+        if get_clientname is None:
+            return None
+
         try:
             user = get_clientname(Request(conn.scope))
         except Exception:
