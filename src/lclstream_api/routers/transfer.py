@@ -12,14 +12,11 @@ from svcs.fastapi import DepContainer
 from ..auth.current_user import CurrentUser
 from ..config import Config
 from ..core.enums import JobState
-from ..core.models import (
-    ClientName,
-    TransferInfo,
-    TransferStatus,
-)
+from ..core.models import ClientName
 from ..ports import PortDatabase
 from ..transfer_mgr import Transfer, create_transfer
 from ..xfer_db import XferDatabase
+from .schemas import TransferInfo, TransferStatus
 
 _logger = logging.getLogger(__name__)
 

@@ -9,17 +9,6 @@ from ..core.enums import JobState
 _logger = logging.getLogger(__name__)
 
 
-class TransferStatus(BaseModel):
-    time: float
-    jobndx: int
-    state: JobState
-    info: str
-
-    id: int
-    url: str
-    user: str
-
-
 class CacheMetrics(BaseModel):
     time: float
     producers: int
@@ -44,12 +33,6 @@ class PortTransition(BaseModel):
     state: JobState
     info: str
     jobndx: int
-
-
-class TransferInfo(BaseModel):
-    user: str
-    log: list[PortTransition]
-    metrics: CacheMetrics
 
 
 class PortEntry(BaseModel):
