@@ -6,6 +6,7 @@ from pathlib import Path
 from lclstreamer.models.parameters import Parameters
 from psik import Job, JobManager
 
+from .adapters.psik.jobs import create_forwarder, create_producer
 from .config import Config
 from .core.models import (
     CacheMetrics,
@@ -15,7 +16,6 @@ from .core.models import (
     PortTransition,
     empty_metric,
 )
-from .jobs import create_forwarder, create_producer
 
 _logger = logging.getLogger(__name__)
 
