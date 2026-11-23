@@ -11,7 +11,7 @@ import logging
 from psik import Job
 from psik.models import JobID
 
-from .models import ClientName
+from .core.models import ClientName
 from .transfer_mgr import Transfer
 
 _logger = logging.getLogger(__name__)

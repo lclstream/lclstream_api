@@ -12,7 +12,7 @@ the format:
 import logging
 
 from .config import ForwarderConfig
-from .models import PortEntry
+from .core.models import PortEntry
 
 _logger = logging.getLogger(__name__)
 

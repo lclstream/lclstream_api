@@ -11,7 +11,7 @@ from lclstreamer.models.parameters import (
 from pydantic import SecretStr
 
 from .config import Config
-from .models import PortEntry
+from .core.models import PortEntry
 
 
 def replace_data_handler(req: Parameters, url: str) -> None:

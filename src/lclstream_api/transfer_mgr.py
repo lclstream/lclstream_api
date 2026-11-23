@@ -7,8 +7,7 @@ from lclstreamer.models.parameters import Parameters
 from psik import Job, JobManager
 
 from .config import Config
-from .jobs import create_forwarder, create_producer
-from .models import (
+from .core.models import (
     CacheMetrics,
     ClientName,
     JobState,
@@ -16,6 +15,7 @@ from .models import (
     PortTransition,
     empty_metric,
 )
+from .jobs import create_forwarder, create_producer
 
 _logger = logging.getLogger(__name__)
 

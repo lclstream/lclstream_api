@@ -25,7 +25,12 @@ from lclstream_api.auth import (
     TrustedHeaders,
 )
 from lclstream_api.config import Config
-from lclstream_api.models import CacheMetrics, ClientName, PortEntry, PortTransition
+from lclstream_api.core.models import (
+    CacheMetrics,
+    ClientName,
+    PortEntry,
+    PortTransition,
+)
 from lclstream_api.ports import PortDatabase
 from lclstream_api.server import app as main_app
 from lclstream_api.xfer_db import XferDatabase

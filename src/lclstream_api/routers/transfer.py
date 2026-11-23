@@ -11,7 +11,7 @@ from svcs.fastapi import DepContainer
 
 from ..auth.current_user import CurrentUser
 from ..config import Config
-from ..models import (
+from ..core.models import (
     ClientName,
     TransferInfo,
     TransferStatus,

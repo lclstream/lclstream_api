@@ -1,6 +1,7 @@
 import psik
 from lclstreamer.models.parameters import Parameters
 
+from lclstream_api.core.models import PortEntry
 from lclstream_api.jobs import (
     create_forwarder,
     create_producer,
@@ -8,7 +9,6 @@ from lclstream_api.jobs import (
     get_outdir,
     replay_job,
 )
-from lclstream_api.models import PortEntry
 
 param1 = """{
   "source_identifier": "exp1:run2",

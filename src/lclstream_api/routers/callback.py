@@ -13,7 +13,7 @@ from fastapi import (
 )
 from svcs.fastapi import DepContainer
 
-from ..models import ClientName
+from ..core.models import ClientName
 from ..xfer_db import XferDatabase
 
 _logger = logging.getLogger(__name__)
