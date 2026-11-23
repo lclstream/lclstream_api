@@ -6,7 +6,7 @@ There is a lot of state tracking and management associated with each transfer:
 
   These track a finite resource (ports on the forwarder host), and
   need to be cleared.  Clearing happens by calling the PortUsage
-  table's delete(eid) method.  We implement that in the `on_complete`
+  table's delete(transfer_id) method.  We implement that in the `on_complete`
   callback within `adapters.store.transfers.XferDatabase.delete` (not currently used anywhere)
   and `Transfer.cancel`.  After calling once, it it set to None,
   preventing double-free.
@@ -63,7 +63,7 @@ Transfers should complete in the "normal" sequence:
      but a log-rotation is needed to clear memory periodically!
 
      Without calling Database.delete(), the Database.jobids index
-     (from psik.Job.stamp-s to eid-s) will grow too.
+     (from psik.Job.stamp-s to transfer ids) will grow too.
 
      Production note: psik.manager.rm(jobid) should be used to
      clean up the file store backing a jobid.

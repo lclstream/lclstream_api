@@ -19,7 +19,7 @@ _logger = logging.getLogger(__name__)
 
 
 class PortEntry(BaseModel):
-    eid: int  # serial number
+    id: int  # serial number
     user: str
     port: int
     internal_url: str
@@ -33,7 +33,7 @@ class PortDatabase:  # singleton
         self.sequence = 1  # sequential index number
 
         self.open_ports = list(range(forwarder.start_port, forwarder.end_port, 2))
-        # Mapping from eid to user, port pairs.
+        # Mapping from transfer_id to user, port pairs.
         self.entries: dict[int, PortEntry] = {}
 
     def items(self):
@@ -60,34 +60,34 @@ class PortDatabase:  # singleton
         return f"tcp://{self.host}:{port + 1}"
 
     def create(self, user: str) -> PortEntry:
-        eid = self.sequence
+        transfer_id = self.sequence
         self.sequence += 1
 
-        # if eid in self.entries:
-        #    entry = self.entries[eid]
+        # if transfer_id in self.entries:
+        #    entry = self.entries[transfer_id]
         #    # Make create idempotent
         #    if entry.user == user:
         #        return entry
-        #    raise KeyError(f"PortEntry {eid} already created by another user!")
+        #    raise KeyError(f"PortEntry {transfer_id} already created by another user!")
         port = self.alloc()
         if port is None:
             raise RuntimeError("No available ports.")
 
         entry = PortEntry(
-            eid=eid,
+            id=transfer_id,
             user=user,
             port=port,
             internal_url=self.internal_url(port),
             external_url=self.external_url(port),
         )
-        self.entries[eid] = entry
+        self.entries[transfer_id] = entry
 
         return entry
 
-    def __getitem__(self, eid: int) -> PortEntry:
-        return self.entries[eid]
+    def __getitem__(self, transfer_id: int) -> PortEntry:
+        return self.entries[transfer_id]
 
-    def delete(self, eid: int) -> PortEntry:
-        entry = self.entries.pop(eid)
+    def delete(self, transfer_id: int) -> PortEntry:
+        entry = self.entries.pop(transfer_id)
         self.free(entry.port)
         return entry
