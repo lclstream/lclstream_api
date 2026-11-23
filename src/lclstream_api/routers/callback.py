@@ -16,6 +16,7 @@ from svcs.fastapi import DepContainer
 from ..adapters.store.transfers import XferDatabase
 from ..core.enums import JobState
 from ..core.models import ClientName
+from ..services.transfer import apply_transition
 
 _logger = logging.getLogger(__name__)
 
@@ -57,7 +58,8 @@ async def handle_callback(
             raise HTTPException(status_code=403, detail=e.reason) from e
 
     bg_tasks.add_task(
-        xfer.transition,
+        apply_transition,
+        xfer,
         client,
         JobState(cb.state),
         cb.jobndx,

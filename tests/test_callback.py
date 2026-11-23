@@ -66,6 +66,22 @@ async def test_transition(client, name, route):
 
 
 @pytest.mark.asyncio
+async def test_finished_producer_cancels_forwarder(client):
+    xfer, job = await add_transfer(client, ClientName.producer)
+    with svcs.Container(svcs.fastapi.get_registry(client)) as services:
+        mgr = services.get(psik.JobManager)
+    forwarder = await mgr.create(psik.JobSpec(script="true"))
+    xfer.transition(ClientName.cache, JobState.new, job=forwarder)
+
+    cb = Callback(jobid=job.stamp, jobndx=0, state=JobState.completed, info="ok")
+    response = client.post(
+        "/callback/producer", content=cb.model_dump_json(), headers=JSON
+    )
+    assert response.status_code == 200
+    assert xfer.states[ClientName.cache] == JobState.canceled
+
+
+@pytest.mark.asyncio
 async def test_missing_signature(client):
     xfer, job = await add_transfer(client, ClientName.producer, cb_secret=SECRET)
 

@@ -229,3 +229,11 @@ async def submit_job(job: psik.Job, xfer: Transfer, client: ClientName) -> None:
         action = xfer.transition(client, JobState.failed, info=str(e))
         if action:
             await action()
+
+
+async def apply_transition(
+    xfer: Transfer, client: ClientName, state: JobState, jobndx: int, info: str
+) -> None:
+    action = xfer.transition(client, state, jobndx, info)
+    if action:
+        await action()
