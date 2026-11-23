@@ -1,12 +1,12 @@
 import logging
 from contextlib import asynccontextmanager
-from importlib.metadata import version
 from typing import Any
 
 import psik
 import svcs
 from fastapi import FastAPI
 
+from . import __version__
 from .auth import AuthBackend
 from .config import Config, load_config, to_mgr
 from .ports import PortDatabase
@@ -15,7 +15,7 @@ from .routers.transfer import transfers
 from .xfer_db import XferDatabase
 
 _logger = logging.getLogger(__name__)
-version_tag = version(__package__)
+version_tag = __version__
 
 description = """
 Access your psana(2) data remotely.
