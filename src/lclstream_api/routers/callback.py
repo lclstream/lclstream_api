@@ -13,6 +13,7 @@ from fastapi import (
 )
 from svcs.fastapi import DepContainer
 
+from ..core.enums import JobState
 from ..core.models import ClientName
 from ..xfer_db import XferDatabase
 
@@ -58,7 +59,7 @@ async def handle_callback(
     bg_tasks.add_task(
         xfer.transition,
         client,
-        cb.state,
+        JobState(cb.state),
         cb.jobndx,
         cb.info,
     )

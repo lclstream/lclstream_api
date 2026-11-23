@@ -2,8 +2,9 @@ import logging
 import time
 from enum import StrEnum
 
-from psik.models import JobState
 from pydantic import BaseModel
+
+from ..core.enums import JobState
 
 _logger = logging.getLogger(__name__)
 

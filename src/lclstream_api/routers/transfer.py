@@ -11,6 +11,7 @@ from svcs.fastapi import DepContainer
 
 from ..auth.current_user import CurrentUser
 from ..config import Config
+from ..core.enums import JobState
 from ..core.models import (
     ClientName,
     TransferInfo,
@@ -28,14 +29,14 @@ async def _submit_job(job: psik.Job, xfer: Transfer, client: ClientName) -> None
         await job.submit()
     except psik.SubmitException as e:
         _logger.error("Transfer(%d) %s submit failed: %s", xfer.eid, client.value, e)
-        action = xfer.transition(client, psik.JobState.failed, info=str(e))
+        action = xfer.transition(client, JobState.failed, info=str(e))
         if action:
             await action()
     except Exception as e:
         _logger.error(
             "Transfer(%d) %s unexpected submit error: %s", xfer.eid, client.value, e
         )
-        action = xfer.transition(client, psik.JobState.failed, info=str(e))
+        action = xfer.transition(client, JobState.failed, info=str(e))
         if action:
             await action()
 
