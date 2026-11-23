@@ -12,7 +12,7 @@ from psik import Job
 from psik.models import JobID
 
 from ...core.models import ClientName
-from ...transfer_mgr import Transfer
+from ...services.transfer import Transfer
 
 _logger = logging.getLogger(__name__)
 

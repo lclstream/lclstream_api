@@ -26,7 +26,7 @@ There is a lot of state tracking and management associated with each transfer:
 
 Producer and Forwarder jobs are now created and managed the same way:
 
-1. POST /transfers calls transfer_mgr.create_transfer, which returns two psik.Job-s (producer_job and forwarder_job), along with the xfer object (Transfer finite state machine)
+1. POST /transfers calls services.transfer.create_transfer, which returns two psik.Job-s (producer_job and forwarder_job), along with the xfer object (Transfer finite state machine)
 
 2. The transfers post adds both job.submit() calls to its backgroundTasks and then returns TransferStatus to the caller
 

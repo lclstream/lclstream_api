@@ -15,7 +15,7 @@ from ..auth.current_user import CurrentUser
 from ..config import Config
 from ..core.enums import JobState
 from ..core.models import ClientName
-from ..transfer_mgr import Transfer, create_transfer
+from ..services.transfer import Transfer, create_transfer
 from .schemas import TransferInfo, TransferStatus
 
 _logger = logging.getLogger(__name__)
