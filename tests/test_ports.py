@@ -1,6 +1,6 @@
 import pytest
 
-from lclstream_api.ports import PortDatabase
+from lclstream_api.adapters.store.ports import PortDatabase
 
 
 def test_db(config):

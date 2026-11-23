@@ -9,11 +9,11 @@ from fastapi import (
 from lclstreamer.models.parameters import Parameters
 from svcs.fastapi import DepContainer
 
+from ..adapters.store.ports import PortDatabase
 from ..auth.current_user import CurrentUser
 from ..config import Config
 from ..core.enums import JobState
 from ..core.models import ClientName
-from ..ports import PortDatabase
 from ..transfer_mgr import Transfer, create_transfer
 from ..xfer_db import XferDatabase
 from .schemas import TransferInfo, TransferStatus

@@ -7,12 +7,12 @@ from lclstreamer.models.parameters import Parameters
 from psik import Job, JobManager
 
 from .adapters.psik.jobs import create_forwarder, create_producer
+from .adapters.store.ports import PortEntry
 from .config import Config
 from .core.models import (
     CacheMetrics,
     ClientName,
     JobState,
-    PortEntry,
     PortTransition,
     empty_metric,
 )

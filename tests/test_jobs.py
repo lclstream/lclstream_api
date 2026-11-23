@@ -8,7 +8,7 @@ from lclstream_api.adapters.psik.jobs import (
     get_outdir,
     replay_job,
 )
-from lclstream_api.core.models import PortEntry
+from lclstream_api.adapters.store.ports import PortEntry
 
 param1 = """{
   "source_identifier": "exp1:run2",

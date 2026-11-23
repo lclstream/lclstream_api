@@ -33,11 +33,3 @@ class PortTransition(BaseModel):
     state: JobState
     info: str
     jobndx: int
-
-
-class PortEntry(BaseModel):
-    eid: int  # serial number
-    user: str
-    port: int
-    internal_url: str
-    external_url: str

@@ -11,10 +11,19 @@ the format:
 
 import logging
 
-from .config import ForwarderConfig
-from .core.models import PortEntry
+from pydantic import BaseModel
+
+from ...config import ForwarderConfig
 
 _logger = logging.getLogger(__name__)
+
+
+class PortEntry(BaseModel):
+    eid: int  # serial number
+    user: str
+    port: int
+    internal_url: str
+    external_url: str
 
 
 class PortDatabase:  # singleton
