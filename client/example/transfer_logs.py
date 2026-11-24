@@ -38,9 +38,7 @@ class Settings(BaseSettings):
         env_prefix="LCLSTREAM_LOGS_", env_file=".env", extra="ignore"
     )
 
-    api_url: AnyHttpUrl = AnyHttpUrl(
-        "https://lclstream-dev.slac.stanford.edu"
-    )
+    api_url: AnyHttpUrl = AnyHttpUrl("https://lclstream-dev.slac.stanford.edu")
     token_file: Path = Path("~/.s3df-access-token").expanduser()
 
     # S3DF IRI, for files the API will not serve.
@@ -54,7 +52,9 @@ class Settings(BaseSettings):
         try:
             return self.token_file.read_text().strip()
         except FileNotFoundError:
-            raise SystemExit(f"No token at {self.token_file}; run ./scripts/s3df-login") from None
+            raise SystemExit(
+                f"No token at {self.token_file}; run ./scripts/s3df-login"
+            ) from None
 
 
 def api(cfg: Settings) -> httpx.Client:
@@ -72,9 +72,13 @@ def show_state(client: httpx.Client, tid: str) -> None:
     d = r.json()
     print(f"state: {d['state']}   cache_mode={d.get('cache_mode')}")
     if d.get("connection_info"):
-        print(f"consumer: {d['connection_info']['uri']} ({d['connection_info']['socket']})")
+        print(
+            f"consumer: {d['connection_info']['uri']} ({d['connection_info']['socket']})"
+        )
     for t in d.get("transitions", []):
-        print(f"  {t['created_at'][11:19]} {t['state']:<13} {t['source']:<13} {t.get('info') or ''}")
+        print(
+            f"  {t['created_at'][11:19]} {t['state']:<13} {t['source']:<13} {t.get('info') or ''}"
+        )
 
 
 def show_streams(client: httpx.Client, tid: str, lines: int) -> None:
@@ -83,7 +87,10 @@ def show_streams(client: httpx.Client, tid: str, lines: int) -> None:
         print(f"\n=== {s['stream']}  {s['path']}  available={s['available']}")
         if not s["available"]:
             continue
-        r = client.get(f"/transfers/{tid}/logs/{s['stream']}", params={"mode": "tail", "lines": lines})
+        r = client.get(
+            f"/transfers/{tid}/logs/{s['stream']}",
+            params={"mode": "tail", "lines": lines},
+        )
         print(r.text if r.status_code == 200 else f"(HTTP {r.status_code})")
 
 
@@ -95,7 +102,9 @@ def watch_cache(client: httpx.Client, tid: str, seconds: float, lines: int) -> N
         r = client.get(url, params={"mode": "tail", "lines": lines})
         if r.status_code == 200 and r.text.strip() and r.text != last:
             last = r.text
-            print(f"\n=== cache log at t+{seconds - (deadline - time.monotonic()):.1f}s")
+            print(
+                f"\n=== cache log at t+{seconds - (deadline - time.monotonic()):.1f}s"
+            )
             print(last)
         time.sleep(0.4)
     if last is None:
@@ -108,12 +117,18 @@ def show_supervisor(cfg: Settings, lines: int) -> None:
         return
     fs = Resource(
         data={"id": cfg.fs_resource},
-        facility_client=FacilityClient(endpoint=str(cfg.iri_url), token=cfg.token, name="s3df"),
+        facility_client=FacilityClient(
+            endpoint=str(cfg.iri_url), token=cfg.token, name="s3df"
+        ),
     ).fs
     print(f"\n=== fastcache_api {cfg.supervisor_log}")
     # S3DF returns the content directly, unlike NERSC's stringified dict.
     out = str(fs.tail(str(cfg.supervisor_log), lines=lines).result)
-    print("\n".join(l for l in out.splitlines() if "GET /api/v1/caches/" not in l))
+    print(
+        "\n".join(
+            line for line in out.splitlines() if "GET /api/v1/caches/" not in line
+        )
+    )
 
 
 def main() -> int:

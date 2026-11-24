@@ -20,7 +20,6 @@ run anything.
 import argparse
 import re
 import subprocess
-import sys
 import tempfile
 from pathlib import Path
 

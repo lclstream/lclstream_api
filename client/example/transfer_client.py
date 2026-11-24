@@ -43,9 +43,7 @@ class Settings(BaseSettings):
         env_prefix="LCLSTREAM_CRYSTFEL_", env_file=".env", extra="ignore"
     )
 
-    api_url: AnyHttpUrl = AnyHttpUrl(
-        "https://lclstream-dev.slac.stanford.edu"
-    )
+    api_url: AnyHttpUrl = AnyHttpUrl("https://lclstream-dev.slac.stanford.edu")
     # The job body mounts the staged token here.
     token_file: Path = Path("/run/s3df_token")
 
@@ -109,7 +107,9 @@ def open_client(cfg: Settings) -> LclstreamApiClient:
     return LclstreamApiClient(base_url=str(cfg.api_url), token=lambda: cfg.token)
 
 
-def wait_for_uri(client: LclstreamApiClient, transfer_id, ejfat: bool = False) -> str | None:
+def wait_for_uri(
+    client: LclstreamApiClient, transfer_id, ejfat: bool = False
+) -> str | None:
     """Poll until the cache reports its consumer socket, or the transfer dies."""
     deadline = time.monotonic() + CONNECT_TIMEOUT_S
     last_state = None
@@ -159,7 +159,9 @@ def create(cfg: Settings) -> int:
             ),
         )
     except exceptions.ApiException as exc:
-        raise SystemExit(f"create_transfer failed: HTTP {exc.status}\n{exc.body}")
+        raise SystemExit(
+            f"create_transfer failed: HTTP {exc.status}\n{exc.body}"
+        ) from exc
     print(f"EJFAT_URI={ejfat_uri}")
     print(f"transfer: {created.id}")
     uri = wait_for_uri(client, created.id, ejfat=ejfat_uri is not None)

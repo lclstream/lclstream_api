@@ -60,7 +60,7 @@ def transaction[**P, R](
     def decorator(
         f: Callable[P, Coroutine[Any, Any, R]],
     ) -> Callable[P, Coroutine[Any, Any, R]]:
-        tx_name = name or f.__qualname__
+        tx_name = name or getattr(f, "__qualname__", repr(f))
 
         @wraps(f)
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:

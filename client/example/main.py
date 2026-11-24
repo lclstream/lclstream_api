@@ -47,9 +47,7 @@ POLL_INTERVAL_S = 5.0
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="LCLSTREAM_EXAMPLE_", env_file=".env")
 
-    api_url: AnyHttpUrl = AnyHttpUrl(
-        "https://lclstream-dev.slac.stanford.edu"
-    )
+    api_url: AnyHttpUrl = AnyHttpUrl("https://lclstream-dev.slac.stanford.edu")
     token_file: Path = Path("~/.s3df-access-token").expanduser()
     source_identifier: str = (
         "exp=mfx100848724,run=51,dir=/sdf/data/lcls/ds/prj/public01/xtc"

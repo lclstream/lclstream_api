@@ -78,6 +78,7 @@ class Settings(BaseSettings):
     xrd_dest: str = ""
     ejfat_uri: str = ""
 
+
 def source_id(exp: str, run: str) -> str:
     """lclstream_api parses exp and run back out of this string."""
     return f"exp={exp},run={run}"
@@ -174,7 +175,7 @@ def submit(
     if xrd_dest:
         jobenv["XRD_DEST"] = xrd_dest
     if ejfat_uri:
-        jobenv["EJFAT_URI"] =  shlex.quote(ejfat_uri)
+        jobenv["EJFAT_URI"] = shlex.quote(ejfat_uri)
     job = facility.resource(cfg.compute_resource).submit(
         executable="/bin/bash",
         # The job body exports this as the source identifier.
