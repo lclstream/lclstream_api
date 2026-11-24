@@ -1,0 +1,23 @@
+name: lclstream-api
+
+# Local dev runs ONLY the frontend, pointed at k8s dev instance. 
+# Requires SLAC network/VPN access. Set VITE_API_URL in a local (gitignored) .env
+# file next to this compose file;
+
+# Auth: run `bun run dev:token` in frontend/ to mint a real S3DF/Dex bearer token 
+# and write it to frontend/.env.local as VITE_DEV_BEARER_TOKEN.
+services:
+  frontend:
+    build:
+      context: ./frontend
+      target: dev
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+    ports:
+      - "55175:5175"
+    volumes:
+      - ./frontend:/app
+      - frontend-node-modules:/app/node_modules
+
+volumes:
+  frontend-node-modules:

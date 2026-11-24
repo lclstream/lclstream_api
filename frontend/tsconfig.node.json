@@ -1,0 +1,4 @@
+{
+  "extends": "@slaclab/ui/tsconfig.node.json",
+  "include": ["vite.config.ts"]
+}
