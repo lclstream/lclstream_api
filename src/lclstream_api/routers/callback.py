@@ -13,8 +13,9 @@ from fastapi import (
 )
 from svcs.fastapi import DepContainer
 
-from ..models import ClientName
-from ..xfer_db import XferDatabase
+from ..adapters.store.transfers import XferDatabase
+from ..core.enums import JobState
+from ..core.models import ClientName
 
 _logger = logging.getLogger(__name__)
 
@@ -58,7 +59,7 @@ async def handle_callback(
     bg_tasks.add_task(
         xfer.transition,
         client,
-        cb.state,
+        JobState(cb.state),
         cb.jobndx,
         cb.info,
     )

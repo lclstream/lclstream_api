@@ -16,6 +16,8 @@ from fastapi.testclient import TestClient
 from pydantic import ValidationError
 from starlette.requests import Request
 
+from lclstream_api.adapters.store.ports import PortDatabase, PortEntry
+from lclstream_api.adapters.store.transfers import XferDatabase
 from lclstream_api.auth import (
     MTLS,
     Anonymous,
@@ -25,10 +27,12 @@ from lclstream_api.auth import (
     TrustedHeaders,
 )
 from lclstream_api.config import Config
-from lclstream_api.models import CacheMetrics, ClientName, PortEntry, PortTransition
-from lclstream_api.ports import PortDatabase
+from lclstream_api.core.models import (
+    CacheMetrics,
+    ClientName,
+    PortTransition,
+)
 from lclstream_api.server import app as main_app
-from lclstream_api.xfer_db import XferDatabase
 
 # An `auth:` block as written in YAML, e.g. {"type": "mtls"}.
 AuthBlock = dict[str, Any]

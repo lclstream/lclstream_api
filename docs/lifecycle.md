@@ -7,7 +7,7 @@ There is a lot of state tracking and management associated with each transfer:
   These track a finite resource (ports on the forwarder host), and
   need to be cleared.  Clearing happens by calling the PortUsage
   table's delete(eid) method.  We implement that in the `on_complete`
-  callback within `xfer_db.Database.delete` (not currently used anywhere)
+  callback within `adapters.store.transfers.XferDatabase.delete` (not currently used anywhere)
   and `Transfer.cancel`.  After calling once, it it set to None,
   preventing double-free.
 
@@ -26,7 +26,7 @@ There is a lot of state tracking and management associated with each transfer:
 
 Producer and Forwarder jobs are now created and managed the same way:
 
-1. POST /transfers calls transfer_mgr.create_transfer, which returns two psik.Job-s (producer_job and forwarder_job), along with the xfer object (Transfer finite state machine)
+1. POST /transfers calls services.transfer.create_transfer, which returns two psik.Job-s (producer_job and forwarder_job), along with the xfer object (Transfer finite state machine)
 
 2. The transfers post adds both job.submit() calls to its backgroundTasks and then returns TransferStatus to the caller
 

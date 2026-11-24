@@ -7,12 +7,12 @@ import svcs
 from fastapi import FastAPI
 
 from . import __version__
+from .adapters.store.ports import PortDatabase
+from .adapters.store.transfers import XferDatabase
 from .auth import AuthBackend
 from .config import Config, load_config, to_mgr
-from .ports import PortDatabase
 from .routers.callback import callback
 from .routers.transfer import transfers
-from .xfer_db import XferDatabase
 
 _logger = logging.getLogger(__name__)
 version_tag = __version__

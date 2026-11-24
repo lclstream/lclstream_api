@@ -3,16 +3,17 @@ import time
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 
+import psik
 from lclstreamer.models.parameters import Parameters
 from psik import Job, JobManager
 
-from .config import Config
-from .jobs import create_forwarder, create_producer
-from .models import (
+from ..adapters.psik.jobs import create_forwarder, create_producer
+from ..adapters.store.ports import PortEntry
+from ..config import Config
+from ..core.models import (
     CacheMetrics,
     ClientName,
     JobState,
-    PortEntry,
     PortTransition,
     empty_metric,
 )
@@ -211,3 +212,20 @@ async def create_transfer(
             await action()
 
     return producer_job, forwarder_job, xfer
+
+
+async def submit_job(job: psik.Job, xfer: Transfer, client: ClientName) -> None:
+    try:
+        await job.submit()
+    except psik.SubmitException as e:
+        _logger.error("Transfer(%d) %s submit failed: %s", xfer.eid, client.value, e)
+        action = xfer.transition(client, JobState.failed, info=str(e))
+        if action:
+            await action()
+    except Exception as e:
+        _logger.error(
+            "Transfer(%d) %s unexpected submit error: %s", xfer.eid, client.value, e
+        )
+        action = xfer.transition(client, JobState.failed, info=str(e))
+        if action:
+            await action()

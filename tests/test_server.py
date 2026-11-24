@@ -6,7 +6,7 @@ import pytest_asyncio
 from lclstream.zmqsock import puller
 from test_jobs import param2
 
-from lclstream_api.models import TransferInfo, TransferStatus
+from lclstream_api.routers.schemas import TransferInfo, TransferStatus
 
 ADDR = "tcp://127.0.0.1:28451"
 

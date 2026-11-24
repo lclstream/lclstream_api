@@ -5,9 +5,9 @@ from psik.models import Callback, JobState
 from psik.web import sign_message
 from pydantic import SecretStr
 
-from lclstream_api.models import ClientName
-from lclstream_api.transfer_mgr import Transfer
-from lclstream_api.xfer_db import XferDatabase
+from lclstream_api.adapters.store.transfers import XferDatabase
+from lclstream_api.core.models import ClientName
+from lclstream_api.services.transfer import Transfer
 
 SECRET = "secret token"
 JSON = {"content-type": "application/json"}
