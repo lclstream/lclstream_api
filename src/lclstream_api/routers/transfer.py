@@ -110,7 +110,7 @@ async def new_transfer(
         return ports.delete(entry.id)
 
     try:
-        forwarder_job, producer_job, xfer = await create_transfer(
+        producer_job, forwarder_job, xfer = await create_transfer(
             entry, request, mgr, cfg, on_complete
         )
     except Exception:
