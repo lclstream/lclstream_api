@@ -26,7 +26,7 @@ class Transfer:
     status of a given transfer.
     """
 
-    eid: int
+    id: int
     states: dict[ClientName, JobState]
     log: list[PortTransition]
     producer_job: Job | None
@@ -34,8 +34,8 @@ class Transfer:
 
     cache_metrics: CacheMetrics
 
-    def __init__(self, eid: int, on_complete: Callable | None = None):
-        self.eid = eid
+    def __init__(self, id: int, on_complete: Callable | None = None):
+        self.id = id
         self.on_complete = on_complete
         self.states = {}
 
@@ -89,7 +89,7 @@ class Transfer:
         )
         _logger.debug(
             "Transfer(%d) %s: %s -> %s",
-            self.eid,
+            self.id,
             name.value,
             self.states[name].value,
             state.value,
@@ -103,7 +103,7 @@ class Transfer:
                 if self.states[ClientName.cache].is_final():
                     _logger.error(
                         "Transfer(%d): cache is %s at %s",
-                        self.eid,
+                        self.id,
                         self.states[ClientName.cache].value,
                         str(self.log[-1]),
                     )
@@ -123,13 +123,13 @@ class Transfer:
                 if not self.states[ClientName.producer].is_final():
                     _logger.warning(
                         "Transfer(%d): Cache completed while producer is %s - canceling.",
-                        self.eid,
+                        self.id,
                         self.states[ClientName.producer].value,
                     )
                     return self._cancel_producer
 
                 # both finalized - normal completion path.
-                _logger.info("Transfer(%d): Successful completion.", self.eid)
+                _logger.info("Transfer(%d): Successful completion.", self.id)
                 self.done()
 
         # TODO: handle user-initiated transitions here.
@@ -191,7 +191,7 @@ async def create_transfer(
 
     # 3. Create the formal PortEntry structure
     try:
-        xfer = Transfer(entry.eid, on_complete)
+        xfer = Transfer(entry.id, on_complete)
     except Exception as e:
         return producer_job, forwarder_job, e
 
@@ -218,13 +218,13 @@ async def submit_job(job: psik.Job, xfer: Transfer, client: ClientName) -> None:
     try:
         await job.submit()
     except psik.SubmitException as e:
-        _logger.error("Transfer(%d) %s submit failed: %s", xfer.eid, client.value, e)
+        _logger.error("Transfer(%d) %s submit failed: %s", xfer.id, client.value, e)
         action = xfer.transition(client, JobState.failed, info=str(e))
         if action:
             await action()
     except Exception as e:
         _logger.error(
-            "Transfer(%d) %s unexpected submit error: %s", xfer.eid, client.value, e
+            "Transfer(%d) %s unexpected submit error: %s", xfer.id, client.value, e
         )
         action = xfer.transition(client, JobState.failed, info=str(e))
         if action:

@@ -44,11 +44,11 @@ async def list_transfers(
     db, ports = await services.aget(XferDatabase, PortDatabase)
 
     out = []
-    for eid, entry in ports.items():
+    for transfer_id, entry in ports.items():
         if entry.user != user:
             continue
         try:
-            xfer = db[eid]
+            xfer = db[transfer_id]
         except KeyError:
             continue
 
@@ -58,7 +58,7 @@ async def list_transfers(
         last = xfer.log[-1]
         out.append(
             TransferStatus(
-                id=eid,
+                id=transfer_id,
                 url=entry.external_url,
                 user=entry.user,
                 time=last.time,
@@ -89,7 +89,7 @@ async def new_transfer(
     """
     Submit a transfer to run ASAP.
 
-    If successful this will return the eid created.
+    If successful this will return the transfer id created.
     """
 
     # 0. TODO: any additional validation of request/user goes here.
@@ -107,7 +107,7 @@ async def new_transfer(
         raise HTTPException(status_code=500, detail="Out of ports.") from None
 
     def on_complete():
-        return ports.delete(entry.eid)
+        return ports.delete(entry.id)
 
     try:
         forwarder_job, producer_job, xfer = await create_transfer(
@@ -148,14 +148,14 @@ async def new_transfer(
             status_code=400, detail=f"Error creating port pair: {str(xfer)}"
         )
 
-    db.add(entry.eid, xfer)
+    db.add(entry.id, xfer)
     # Submit jobs to the queue
     bg_tasks.add_task(submit_job, forwarder_job, xfer, ClientName.cache)
     bg_tasks.add_task(submit_job, producer_job, xfer, ClientName.producer)
 
     last = xfer.log[-1]
     return TransferStatus(
-        id=entry.eid,
+        id=entry.id,
         url=entry.external_url,
         user=entry.user,
         time=last.time,

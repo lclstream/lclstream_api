@@ -229,22 +229,22 @@ class _MockPortDB:
     def items(self):
         return self._entries.items()
 
-    def __getitem__(self, eid: int) -> PortEntry:
-        return self._entries[eid]
+    def __getitem__(self, transfer_id: int) -> PortEntry:
+        return self._entries[transfer_id]
 
 
 class _MockXferDB:
     def __init__(self, jobs: dict) -> None:
         self._jobs = jobs
 
-    def __getitem__(self, eid: int):
-        return self._jobs[eid]
+    def __getitem__(self, transfer_id: int):
+        return self._jobs[transfer_id]
 
 
-def _port_entry(eid: int, user: str) -> PortEntry:
-    port = 11400 + eid * 2
+def _port_entry(transfer_id: int, user: str) -> PortEntry:
+    port = 11400 + transfer_id * 2
     return PortEntry(
-        eid=eid,
+        id=transfer_id,
         user=user,
         port=port,
         internal_url=f"tcp://127.0.0.1:{port}",
@@ -274,7 +274,7 @@ def _mock_transfer() -> SimpleNamespace:
 def transfer_client(setup_lclstream_api: Path) -> Iterator[AsUser]:
     """Yield a factory that returns a TestClient authenticated as a given user.
 
-    Two transfers exist: alice owns eid=1, bob owns eid=2.
+    Two transfers exist: alice owns transfer_id=1, bob owns transfer_id=2.
     """
     alice_entry = _port_entry(1, "alice@example.com")
     bob_entry = _port_entry(2, "bob@example.com")

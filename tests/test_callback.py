@@ -23,9 +23,9 @@ async def add_transfer(
     secret = SecretStr(cb_secret) if cb_secret else None
     job = await mgr.create(psik.JobSpec(script="true", cb_secret=secret))
 
-    xfer = Transfer(eid=1)
+    xfer = Transfer(id=1)
     xfer.transition(name, JobState.new, job=job)
-    db.add(xfer.eid, xfer)
+    db.add(xfer.id, xfer)
     return xfer, job
 
 
